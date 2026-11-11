@@ -1,0 +1,193 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>诗词视频工坊</title>
+  <link rel="stylesheet" href="/style.css" />
+</head>
+<body>
+  <header>
+    <h1>🎬 诗词视频工坊</h1>
+    <div class="sub">输入一首诗 → AI 分镜 → 插画 + 镜头动画 + 配音 → 一键成片</div>
+    <button id="btnSettings" class="ghost">⚙ 模型配置</button>
+  </header>
+
+  <main>
+    <section class="card">
+      <h2>① 输入诗词</h2>
+      <div class="row">
+        <label>诗名<input id="title" placeholder="池上" /></label>
+        <label>作者<input id="author" placeholder="白居易" /></label>
+      </div>
+      <label>诗词正文
+        <textarea id="poem" rows="5" placeholder="小娃撑小艇，偷采白莲回。&#10;不解藏踪迹，浮萍一道开。"></textarea>
+      </label>
+      <label>统一画风
+        <input id="style" />
+      </label>
+      <div class="actions">
+        <button id="btnStoryboard" class="primary">生成分镜</button>
+        <span id="sbHint" class="hint"></span>
+      </div>
+    </section>
+
+    <section class="card" id="sbCard" hidden>
+      <h2>② 检查并微调分镜</h2>
+      <p class="hint">每个镜头 = 一段旁白 + 一张插画的提示词。片头、片尾复用诗句镜头的画面，不额外生成。生图按张计费，建议先在这里改满意。</p>
+      <div id="sbMeta" class="hint"></div>
+      <div id="scenes"></div>
+      <div class="actions">
+        <button id="btnGenerate" class="primary">③ 开始生成视频</button>
+      </div>
+    </section>
+
+    <section class="card" id="jobCard" hidden>
+      <h2>生成进度</h2>
+      <div class="progress"><div id="bar"></div></div>
+      <div id="stage" class="hint"></div>
+      <div id="jobScenes" class="jobScenes"></div>
+      <div id="result"></div>
+      <details><summary>日志</summary><pre id="logs"></pre></details>
+      <div class="actions"><button id="btnRetry" class="ghost" hidden>重试（跳过已完成步骤）</button></div>
+    </section>
+
+    <section class="card">
+      <h2>历史作品</h2>
+      <div id="history" class="history"></div>
+    </section>
+  </main>
+
+  <dialog id="dlg">
+    <form method="dialog" id="settingsForm">
+      <h2>模型配置</h2>
+      <p class="hint">API Key 只保存在本机 <code>data/settings.json</code>，不会上传。未配置时可选 <b>mock</b> 模式跑通流程。阿里百炼一个 Key 可同时用于下面的 LLM、配音、文生图、文生视频。</p>
+
+      <fieldset>
+        <legend>分镜 LLM（OpenAI 兼容）</legend>
+        <label class="inline"><input type="checkbox" name="llm.enabled" /> 启用（不启用则用规则模板生成提示词，角色一致性会变差）</label>
+        <label>Base URL<input name="llm.baseUrl" /></label>
+        <label>API Key<input name="llm.apiKey" type="password" autocomplete="off" /></label>
+        <label>模型<input name="llm.model" /></label>
+      </fieldset>
+
+      <fieldset>
+        <legend>文生图（画面 = 插画 + 镜头推拉）</legend>
+        <label>模式
+          <select name="image.mode">
+            <option value="mock">mock（测试，渐变底图）</option>
+            <option value="dashscope">阿里百炼 qwen-image / 万相</option>
+            <option value="custom">自定义请求模板</option>
+          </select>
+        </label>
+        <label>Base URL（留空用官方默认）<input name="image.baseUrl" /></label>
+        <label>API Key<input name="image.apiKey" type="password" autocomplete="off" /></label>
+        <div class="row">
+          <label>模型<input name="image.model" list="imageModels" /></label>
+          <label>并发数<input name="image.concurrency" type="number" /></label>
+        </div>
+        <datalist id="imageModels">
+          <option value="qwen-image-2.0"></option>
+          <option value="qwen-image-2.0-pro"></option>
+          <option value="qwen-image-3.0"></option>
+          <option value="z-image-turbo"></option>
+        </datalist>
+        <label>自定义模板 JSON（仅 custom 模式）<textarea name="image.custom" rows="6" class="mono" placeholder='{"request":{"method":"POST","url":"https://...","headers":{"Authorization":"Bearer {{apiKey}}"},"body":{"model":"{{model}}","prompt":"{{prompt}}","size":"{{size}}"}},"responseType":"url","path":"data[0].url"}'></textarea></label>
+      </fieldset>
+
+      <fieldset>
+        <legend>配音 TTS</legend>
+        <label>模式
+          <select name="tts.mode">
+            <option value="mock">mock（测试，提示音）</option>
+            <option value="edge">Edge 在线朗读（免费，无需 Key）</option>
+            <option value="dashscope">阿里百炼 qwen3-tts</option>
+            <option value="openai">OpenAI 兼容 /audio/speech</option>
+            <option value="custom">自定义请求模板</option>
+          </select>
+        </label>
+        <label>Edge 音色（edge 模式）
+          <select name="tts.edgeVoice">
+            <option value="zh-CN-YunxiNeural">云希（男，沉稳，适合古诗）</option>
+            <option value="zh-CN-YunjianNeural">云健（男，浑厚）</option>
+            <option value="zh-CN-YunyangNeural">云扬（男，新闻播报）</option>
+            <option value="zh-CN-XiaoxiaoNeural">晓晓（女，温柔）</option>
+            <option value="zh-CN-XiaoyiNeural">晓伊（女，清亮）</option>
+          </select>
+        </label>
+        <label>Base URL（留空用官方默认）<input name="tts.baseUrl" /></label>
+        <label>API Key<input name="tts.apiKey" type="password" autocomplete="off" /></label>
+        <div class="row">
+          <label>模型<input name="tts.model" /></label>
+          <label>音色（百炼如 Ethan / Cherry / Serena）<input name="tts.voice" /></label>
+          <label>语速（edge / openai）<input name="tts.speed" type="number" step="0.1" /></label>
+        </div>
+        <label>自定义模板 JSON（仅 custom 模式）<textarea name="tts.custom" rows="6" class="mono" placeholder='{"request":{"method":"POST","url":"https://...","headers":{"Authorization":"Bearer {{apiKey}}"},"body":{"text":"{{text}}","voice":"{{voice}}"}},"responseType":"binary"}'></textarea></label>
+      </fieldset>
+
+      <fieldset>
+        <legend>成片</legend>
+        <div class="row">
+          <label>画面方式
+            <select name="render.visual">
+              <option value="i2v">图生视频：插画先定角色，再让画面动起来（推荐，真动画）</option>
+              <option value="image">插画 + 镜头推拉（最便宜，画面本身不动）</option>
+              <option value="video">纯文生视频（角色一致性较差）</option>
+            </select>
+          </label>
+          <label>画幅
+            <select name="render.orientation">
+              <option value="landscape">横屏 1920×1080（B站/小红书/YouTube）</option>
+              <option value="portrait">竖屏 1080×1920（抖音/视频号）</option>
+            </select>
+          </label>
+        </div>
+        <div class="row">
+          <label>每镜头句数<input name="render.linesPerScene" type="number" min="1" /></label>
+          <label>帧率<input name="render.fps" type="number" /></label>
+        </div>
+        <label class="inline"><input type="checkbox" name="render.subtitles" /> 烧录字幕</label>
+        <label class="inline"><input type="checkbox" name="render.titleCard" /> 片头标题卡（诗名 + 作者）</label>
+        <label class="inline"><input type="checkbox" name="render.endCard" /> 片尾全诗展示</label>
+        <label>默认画风<input name="render.style" /></label>
+      </fieldset>
+
+      <fieldset>
+        <legend>视频生成（「画面方式」选图生视频 / 文生视频时使用）</legend>
+        <label>模式
+          <select name="video.mode">
+            <option value="mock">mock（测试）</option>
+            <option value="dashscope_i2v">阿里百炼 万相2.7 图生视频（配合「图生视频」）</option>
+            <option value="dashscope">阿里百炼 万相 文生视频</option>
+            <option value="openai">OpenAI Sora（sora-2 / sora-2-pro）</option>
+            <option value="ark">火山方舟 Seedance</option>
+            <option value="custom">自定义请求模板</option>
+          </select>
+        </label>
+        <label>Base URL（留空用官方默认）<input name="video.baseUrl" /></label>
+        <label>API Key<input name="video.apiKey" type="password" autocomplete="off" /></label>
+        <div class="row">
+          <label>模型 / 接入点ID<input name="video.model" /></label>
+          <label>清晰度（影响费用）
+            <select name="video.resolution">
+              <option value="720P">720P（推荐，便宜）</option>
+              <option value="1080P">1080P</option>
+            </select>
+          </label>
+          <label>单段时长(秒，仅文生视频)<input name="video.duration" type="number" /></label>
+          <label>并发数<input name="video.concurrency" type="number" /></label>
+        </div>
+        <label>自定义模板 JSON（仅 custom 模式）<textarea name="video.custom" rows="8" class="mono"></textarea></label>
+      </fieldset>
+
+      <div class="actions">
+        <button value="save" class="primary" id="btnSave">保存</button>
+        <button type="button" value="cancel" class="ghost">关闭</button>
+        <span id="saveHint" class="hint"></span>
+      </div>
+    </form>
+  </dialog>
+
+  <script src="/app.js"></script>
+</body>
+</html>
