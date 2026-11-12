@@ -275,7 +275,7 @@ export async function mount(root) {
           <button class="chip ${hot ? '' : 'on'}" data-tab="demo">做同款示范</button>${
             hot
               ? ''
-              : `<span class="chip-sep"></span>${PLATFORMS.map((p) => `<button class="chip ${p === featPlatform ? 'on' : ''}" data-plat="${p}">${p}</button>`).join('')}${
+              : `<span class="chip-sep"></span>${PLATFORMS.map((p) => `<button class="chip ${p === featPlatform ? 'on' : ''}" data-plat="${p}"${p === '全部' ? '' : ' title="按该平台常见的内容形态写的示范，不是平台原视频，没有播放量数据"'}>${p}</button>`).join('')}${
                   tplId === 'free' ? '' : `<span class="chip-sep"></span><button class="chip ${featAll ? 'on' : ''}" data-scope>看全部模板</button>`
                 }`
           }</div>

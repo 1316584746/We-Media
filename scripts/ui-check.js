@@ -274,10 +274,10 @@ const ok = (c, m) => {
   await click('[data-tpl="poem"]');
   ok(await waitFor(`document.querySelectorAll('.feat').length === 4 && document.querySelector('#featured h2').textContent.includes('古诗词')`, 3000), '默认模板是古诗词，精选只展示 4 条诗词');
   ok(await js(`[...document.querySelectorAll('.feat')].every(c => ['shanju-qiuming','jingyesi','dengguanque','jiangxue'].includes(c.dataset.feat))`), '展示的都是诗词类');
-  await click('[data-plat="抖音风"]');
-  ok(await js(`document.querySelectorAll('.feat').length === 2 && [...document.querySelectorAll('.feat-plat')].every(e=>e.textContent==='抖音风')`), '筛选抖音风');
-  await click('[data-plat="小红书风"]');
-  ok(await js(`document.querySelectorAll('.feat').length === 2 && [...document.querySelectorAll('.feat-plat')].every(e=>e.textContent==='小红书风')`), '筛选小红书风');
+  await click('[data-plat="抖音向"]');
+  ok(await js(`document.querySelectorAll('.feat').length === 2 && [...document.querySelectorAll('.feat-plat')].every(e=>e.textContent==='抖音向')`), '筛选抖音向');
+  await click('[data-plat="小红书向"]');
+  ok(await js(`document.querySelectorAll('.feat').length === 2 && [...document.querySelectorAll('.feat-plat')].every(e=>e.textContent==='小红书向')`), '筛选小红书向');
   await click('[data-plat="全部"]');
   // 示范视频原地播放：卡片不变，只在画面区出现播放器，同一时间只播一个
   await js(`document.querySelector('#featured').scrollIntoView()`);

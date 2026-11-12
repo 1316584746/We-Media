@@ -3,7 +3,7 @@
  * 这些是我们自己写的示范文案 + 自动生成的封面，不是平台上的原作品；
  * 目的是给用户灵感，点「做同款」把模板、文案、画幅、画风一次套进创作页。
  *
- * platform：内容形态更接近哪个平台（抖音风=竖屏强节奏，小红书风=氛围/生活方式）
+ * platform：内容形态更接近哪个平台（抖音向=竖屏强节奏，小红书向=氛围/生活方式）
  * styleName：对应 templates.js 里 STYLE_PRESETS 的 name
  * coverPrompt：生成封面用的画面描述（scripts/gen-featured-covers.js 读取，不会下发给前端）
  */
@@ -16,7 +16,7 @@ const DIR = path.join(__dirname, '..', 'public', 'featured');
 const FEATURED = [
   {
     id: 'cat-cafe',
-    platform: '小红书风',
+    platform: '小红书向',
     topic: '治愈故事',
     template: 'story',
     orientation: 'portrait',
@@ -30,7 +30,7 @@ const FEATURED = [
   },
   {
     id: 'sky-blue',
-    platform: '抖音风',
+    platform: '抖音向',
     topic: '知识科普',
     template: 'explainer',
     orientation: 'portrait',
@@ -44,7 +44,7 @@ const FEATURED = [
   },
   {
     id: 'self-discipline',
-    platform: '抖音风',
+    platform: '抖音向',
     topic: '口播干货',
     template: 'talk',
     orientation: 'portrait',
@@ -58,7 +58,7 @@ const FEATURED = [
   },
   {
     id: 'shanju-qiuming',
-    platform: '小红书风',
+    platform: '小红书向',
     topic: '古诗词',
     template: 'poem',
     orientation: 'portrait',
@@ -71,7 +71,7 @@ const FEATURED = [
   },
   {
     id: 'last-metro',
-    platform: '抖音风',
+    platform: '抖音向',
     topic: '悬疑短片',
     template: 'story',
     orientation: 'portrait',
@@ -85,7 +85,7 @@ const FEATURED = [
   },
   {
     id: 'seaside-town',
-    platform: '小红书风',
+    platform: '小红书向',
     topic: '旅行氛围',
     template: 'free',
     orientation: 'portrait',
@@ -99,7 +99,7 @@ const FEATURED = [
   },
   {
     id: 'bear-honey',
-    platform: '抖音风',
+    platform: '抖音向',
     topic: '睡前故事',
     template: 'story',
     orientation: 'landscape',
@@ -113,7 +113,7 @@ const FEATURED = [
   },
   {
     id: 'coffee-journey',
-    platform: '小红书风',
+    platform: '小红书向',
     topic: '生活科普',
     template: 'explainer',
     orientation: 'portrait',
@@ -129,7 +129,7 @@ const FEATURED = [
   /* ---------------- 古诗词 ---------------- */
   {
     id: 'jingyesi',
-    platform: '抖音风',
+    platform: '抖音向',
     topic: '古诗词',
     template: 'poem',
     orientation: 'portrait',
@@ -142,7 +142,7 @@ const FEATURED = [
   },
   {
     id: 'dengguanque',
-    platform: '小红书风',
+    platform: '小红书向',
     topic: '古诗词',
     template: 'poem',
     orientation: 'landscape',
@@ -155,7 +155,7 @@ const FEATURED = [
   },
   {
     id: 'jiangxue',
-    platform: '抖音风',
+    platform: '抖音向',
     topic: '古诗词',
     template: 'poem',
     orientation: 'landscape',
@@ -170,7 +170,7 @@ const FEATURED = [
   /* ---------------- 故事绘本 ---------------- */
   {
     id: 'star-pond',
-    platform: '小红书风',
+    platform: '小红书向',
     topic: '睡前故事',
     template: 'story',
     orientation: 'portrait',
@@ -186,7 +186,7 @@ const FEATURED = [
   /* ---------------- 知识科普 ---------------- */
   {
     id: 'rainbow',
-    platform: '小红书风',
+    platform: '小红书向',
     topic: '自然科普',
     template: 'explainer',
     orientation: 'landscape',
@@ -200,7 +200,7 @@ const FEATURED = [
   },
   {
     id: 'yawn',
-    platform: '抖音风',
+    platform: '抖音向',
     topic: '生活科普',
     template: 'explainer',
     orientation: 'portrait',
@@ -216,7 +216,7 @@ const FEATURED = [
   /* ---------------- 口播短视频 ---------------- */
   {
     id: 'interview',
-    platform: '抖音风',
+    platform: '抖音向',
     topic: '职场干货',
     template: 'talk',
     orientation: 'portrait',
@@ -230,7 +230,7 @@ const FEATURED = [
   },
   {
     id: 'sleep-habit',
-    platform: '小红书风',
+    platform: '小红书向',
     topic: '生活干货',
     template: 'talk',
     orientation: 'portrait',
@@ -244,7 +244,7 @@ const FEATURED = [
   },
   {
     id: 'save-money',
-    platform: '抖音风',
+    platform: '抖音向',
     topic: '理财干货',
     template: 'talk',
     orientation: 'portrait',
@@ -260,7 +260,7 @@ const FEATURED = [
   /* ---------------- 心灵鸡汤 ---------------- */
   {
     id: 'heal-slow',
-    platform: '小红书风',
+    platform: '小红书向',
     topic: '睡前安慰',
     template: 'heal',
     orientation: 'portrait',
@@ -274,7 +274,7 @@ const FEATURED = [
   },
   {
     id: 'heal-bloom',
-    platform: '抖音风',
+    platform: '抖音向',
     topic: '自我鼓励',
     template: 'heal',
     orientation: 'portrait',
@@ -288,7 +288,7 @@ const FEATURED = [
   },
   {
     id: 'heal-breath',
-    platform: '小红书风',
+    platform: '小红书向',
     topic: '缓解焦虑',
     template: 'heal',
     orientation: 'portrait',
@@ -302,7 +302,7 @@ const FEATURED = [
   },
   {
     id: 'heal-rain',
-    platform: '抖音风',
+    platform: '抖音向',
     topic: '雨天情绪',
     template: 'heal',
     orientation: 'landscape',
@@ -318,7 +318,7 @@ const FEATURED = [
   /* ---------------- 自由创作 ---------------- */
   {
     id: 'free-mountain',
-    platform: '小红书风',
+    platform: '小红书向',
     topic: '山居日常',
     template: 'free',
     orientation: 'portrait',
@@ -332,7 +332,7 @@ const FEATURED = [
   },
   {
     id: 'free-night',
-    platform: '抖音风',
+    platform: '抖音向',
     topic: '城市夜景',
     template: 'free',
     orientation: 'portrait',
@@ -346,7 +346,7 @@ const FEATURED = [
   },
   {
     id: 'free-autumn',
-    platform: '小红书风',
+    platform: '小红书向',
     topic: '季节氛围',
     template: 'free',
     orientation: 'landscape',

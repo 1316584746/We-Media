@@ -1,11 +1,11 @@
 /* 创作精选：卡片网格、详情弹窗。点「做同款」由调用方把内容套进创作表单。 */
 import { $, esc, icon, toast, tplOf, tplColor, state } from './core.js';
 
-export const PLATFORMS = ['全部', '抖音风', '小红书风'];
+export const PLATFORMS = ['全部', '抖音向', '小红书向'];
 
 const orientName = (o) => (o === 'portrait' ? '竖屏 9:16' : '横屏 16:9');
 const styleName = (item) => state.meta.stylePresets.find((s) => s.value === item.style)?.name || item.styleName;
-const platformCls = (p) => (p === '抖音风' ? 'dy' : 'xhs');
+const platformCls = (p) => (p === '抖音向' ? 'dy' : 'xhs');
 
 function coverHtml(item) {
   const t = tplOf(item.template);
@@ -18,7 +18,7 @@ function coverHtml(item) {
 /** 画面区：封面 + 角标 + 播放按钮（有示范视频时） */
 function mediaInner(f) {
   return `${coverHtml(f)}
-    <span class="feat-plat ${platformCls(f.platform)}">${esc(f.platform)}</span>
+    <span class="feat-plat ${platformCls(f.platform)}" title="按该平台常见的内容形态（画幅、节奏、题材）写的示范，不是平台上的原视频，也没有播放量数据；真实的高播放视频请看「热门动画」页签">${esc(f.platform)}</span>
     <span class="feat-ori">${f.orientation === 'portrait' ? '竖屏' : '横屏'}</span>
     ${f.video ? `<button type="button" class="feat-play" data-play aria-label="播放示范视频">${icon('play')}</button>` : ''}
     <button type="button" class="feat-use" data-use>做同款</button>`;
@@ -156,7 +156,7 @@ export function openFeatured(item) {
             : coverHtml(item)
         }</div>
         <div class="fd-info">
-          <div class="fd-tags"><span class="feat-plat inline ${platformCls(item.platform)}">${esc(item.platform)}</span><span class="tag">${esc(item.topic)}</span></div>
+          <div class="fd-tags"><span class="feat-plat inline ${platformCls(item.platform)}" title="按该平台常见的内容形态（画幅、节奏、题材）写的示范，不是平台上的原视频，也没有播放量数据；真实的高播放视频请看「热门动画」页签">${esc(item.platform)}</span><span class="tag">${esc(item.topic)}</span></div>
           <h3>${esc(item.title)}${item.author ? ` <small>· ${esc(item.author)}</small>` : ''}</h3>
           <p class="fd-desc">${esc(item.desc)}</p>
           <div class="fd-params">
