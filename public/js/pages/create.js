@@ -1,9 +1,11 @@
+import { featuredCardsHtml, handleCoverErrors, openFeatured, PLATFORMS } from '../featured.js';
 import { $, $$, api, esc, state, toast, icon, paintIcons, tplOf, tplColor, VISUAL, STATUS, relTime, mockParts, voiceChoices, previewVoice, previewBtnHtml } from '../core.js';
 
 let tplId = 'poem';
 let form = null;
 let busy = false;
 let exts = { skills: [], mcp: [] };
+let featPlatform = '全部';
 
 /** 当前模板可用的技能（已启用 + 适用于该模板） */
 const applicableSkills = (id) => exts.skills.filter((s) => s.enabled && (!s.templates.length || s.templates.includes(id)));
@@ -129,11 +131,13 @@ export async function mount(root) {
   const projects = await api('/api/projects').catch(() => []);
   exts = await api('/api/extensions').catch(() => exts);
   const recent = projects.slice(0, 4);
+  const featured = state.meta.featured || [];
 
   root.innerHTML = `<div class="page">
     <div class="hero"><h1>想做一支什么视频？</h1><p>选一个模板，写下文案，剩下的分镜、画面、配音、字幕、成片交给 AI</p></div>
     <div class="tpl-grid" id="tpls"></div>
     <div id="composer"></div>
+    ${featured.length ? '<div id="featured"></div>' : ''}
     ${
       recent.length
         ? `<div class="section-title"><h2>最近项目</h2><a href="#/projects">全部项目 →</a></div>
@@ -154,6 +158,7 @@ export async function mount(root) {
   </div>`;
 
   const tplsEl = $('#tpls', root);
+  const featEl = $('#featured', root);
   const compEl = $('#composer', root);
   const paintTpls = () => (tplsEl.innerHTML = templatesHtml());
   const paintComposer = () => {
@@ -167,6 +172,39 @@ export async function mount(root) {
   };
   paintTpls();
   paintComposer();
+
+  // ---- 创作精选 ----
+  const paintFeatured = () => {
+    if (!featEl) return;
+    featEl.innerHTML = `<div class="section-title feat-head">
+        <div><h2>创作精选</h2><span class="sub">抖音 / 小红书同类型的热门题材，点「做同款」一键套用模板、文案、画幅和画风</span></div>
+        <div class="chips" id="featFilter">${PLATFORMS.map((p) => `<button class="chip ${p === featPlatform ? 'on' : ''}" data-plat="${p}">${p}</button>`).join('')}</div>
+      </div>
+      <div class="feat-grid" id="featGrid">${featuredCardsHtml(featured, featPlatform)}</div>`;
+  };
+  const useFeatured = (item) => {
+    resetForm(item.template);
+    Object.assign(form, { title: item.title, author: item.author || '', script: item.script, style: item.style, orientation: item.orientation });
+    paintTpls();
+    paintComposer();
+    compEl.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    toast(`已套用「${item.title}」，可以直接改文案，再点「生成分镜并创建项目」`, 'ok');
+  };
+  paintFeatured();
+  if (featEl) {
+    handleCoverErrors(featEl);
+    featEl.addEventListener('click', async (e) => {
+      const pl = e.target.closest('[data-plat]');
+      if (pl) {
+        featPlatform = pl.dataset.plat;
+        return paintFeatured();
+      }
+      const card = e.target.closest('[data-feat]');
+      if (!card) return;
+      const item = featured.find((f) => f.id === card.dataset.feat);
+      if (item && (await openFeatured(item))) useFeatured(item);
+    });
+  }
 
   tplsEl.addEventListener('click', (e) => {
     const b = e.target.closest('[data-tpl]');

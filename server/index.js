@@ -2,6 +2,7 @@ const path = require('path');
 const os = require('os');
 const fs = require('fs');
 const providers = require('./providers');
+const { publicFeatured } = require('./featured');
 const express = require('express');
 const settingsStore = require('./settings');
 const pipeline = require('./pipeline');
@@ -39,6 +40,7 @@ app.get('/api/meta', (req, res) => {
     templates: TEMPLATES,
     stylePresets: STYLE_PRESETS,
     voices: VOICES,
+    featured: publicFeatured(),
     ttsMode: s.tts.mode,
   });
 });

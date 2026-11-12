@@ -184,6 +184,24 @@ const ok = (c, m) => {
   ok(await js(`document.querySelector('[data-skill]').classList.contains('on')`), '适用的技能默认勾选');
   await click('[data-skill]');
   ok(await js(`!document.querySelector('[data-skill]').classList.contains('on')`), '点击可取消勾选');
+  // 创作精选：筛选、详情、做同款
+  ok(await waitFor(`document.querySelectorAll('.feat').length === 8`, 3000), '创作页展示 8 条创作精选');
+  await click('[data-plat="抖音风"]');
+  ok(await js(`document.querySelectorAll('.feat').length === 4 && [...document.querySelectorAll('.feat-plat')].every(e=>e.textContent==='抖音风')`), '筛选抖音风');
+  await click('[data-plat="小红书风"]');
+  ok(await js(`document.querySelectorAll('.feat').length === 4 && [...document.querySelectorAll('.feat-plat')].every(e=>e.textContent==='小红书风')`), '筛选小红书风');
+  await click('[data-plat="全部"]');
+  await js(`document.querySelector('#featured').scrollIntoView()`);
+  await sleep(800);
+  await shot('ui-featured');
+  await click('[data-feat="sky-blue"]');
+  ok(await waitFor(`!!document.querySelector('dialog.feat-dlg[open]') && document.querySelector('.fd-script').textContent.includes('散射')`, 3000), '点击卡片打开详情，显示示范文案');
+  await sleep(500);
+  await shot('ui-featured-dlg');
+  await click('dialog.feat-dlg [value="yes"]');
+  ok(await waitFor(`document.querySelector('[data-k="title"]').value === '天空为什么是蓝色的' && document.querySelector('[data-k="script"]').value.includes('散射')`, 3000), '做同款：标题和文案已填入');
+  ok(await js(`document.querySelector('.tpl.on').dataset.tpl === 'explainer' && document.querySelector('[data-seg="orientation"] .on').dataset.v === 'portrait'`), '做同款：模板和画幅已切换');
+  ok(await js(`document.querySelector('[data-k="style"]').value.includes('扁平')`), '做同款：画风已套用');
   // 音色试听：点击进入播放态，再点停止
   ok(await js(`!!document.querySelector('.voice-row [data-preview]')`), '创作页配音旁有试听按钮');
   await click('.voice-row [data-preview]');

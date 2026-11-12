@@ -300,6 +300,39 @@ details.logs summary { cursor: pointer; color: var(--text2); font-size: 13px; }
 details.logs pre { margin: 10px 0 0; max-height: 220px; overflow: auto; background: var(--bg); border: 1px solid var(--line); border-radius: 9px; padding: 10px; font: 12px/1.6 var(--mono); color: var(--text2); white-space: pre-wrap; word-break: break-all; }
 .lock-note { font-size: 12px; color: var(--accent); }
 
+/* ============ 创作精选 ============ */
+.feat-head { flex-wrap: wrap; gap: 12px; }
+.feat-head h2 { display: inline; }
+.feat-head .sub { margin-left: 12px; color: var(--muted); font-size: 12.5px; }
+.feat-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(190px, 1fr)); gap: 18px; }
+.feat { padding: 0; text-align: left; cursor: pointer; background: var(--panel); border: 1px solid var(--line); border-radius: var(--r2); overflow: hidden; transition: 0.18s; display: block; }
+.feat:hover { border-color: var(--line2); transform: translateY(-3px); box-shadow: var(--shadow); }
+.feat-media { position: relative; }
+.feat-cover { position: relative; aspect-ratio: 3 / 4; overflow: hidden; display: grid; place-items: center; }
+.feat-cover img { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; transition: transform 0.35s; }
+.feat:hover .feat-cover img { transform: scale(1.04); }
+.feat-cover .glyph { font-size: 46px; font-weight: 700; color: rgba(255, 255, 255, 0.9); font-family: 'Songti SC', 'STSong', 'SimSun', serif; }
+.feat-plat { position: absolute; top: 9px; left: 9px; display: inline-flex; align-items: center; gap: 5px; height: 22px; padding: 0 9px; border-radius: 99px; font-size: 11.5px; font-weight: 600; color: #fff; backdrop-filter: blur(6px); background: rgba(13, 15, 18, 0.62); }
+.feat-plat::before { content: ''; width: 6px; height: 6px; border-radius: 50%; background: currentColor; }
+.feat-plat.dy::before { background: #25f4ee; box-shadow: 1.5px 0 0 #fe2c55; }
+.feat-plat.xhs::before { background: #ff4d67; }
+.feat-plat.inline { position: static; background: var(--panel2); color: var(--text); border: 1px solid var(--line2); }
+.feat-ori { position: absolute; top: 9px; right: 9px; height: 22px; padding: 0 8px; border-radius: 6px; font-size: 11px; line-height: 22px; background: rgba(0, 0, 0, 0.55); color: #fff; }
+.feat-use { position: absolute; left: 50%; bottom: 14px; transform: translate(-50%, 8px); opacity: 0; transition: 0.2s; padding: 7px 18px; border-radius: 99px; background: linear-gradient(135deg, var(--accent), var(--accent2)); color: #fff; font-size: 13px; font-weight: 600; white-space: nowrap; box-shadow: 0 6px 18px rgba(0, 0, 0, 0.4); }
+.feat:hover .feat-use, .feat:focus-visible .feat-use { opacity: 1; transform: translate(-50%, 0); }
+.feat-info { padding: 11px 13px 13px; }
+.feat-info .t { font-weight: 600; font-size: 14px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.feat-info .m { margin-top: 3px; color: var(--muted); font-size: 12px; display: flex; gap: 8px; }
+dialog.dlg.feat-dlg { width: min(780px, calc(100vw - 32px)); }
+.fd-grid { display: grid; grid-template-columns: 240px minmax(0, 1fr); gap: 24px; padding: 22px 24px 4px; }
+.fd-cover .feat-cover { border-radius: 12px; aspect-ratio: 9 / 16; }
+.fd-info { display: flex; flex-direction: column; gap: 10px; min-width: 0; }
+.fd-tags, .fd-params { display: flex; gap: 8px; flex-wrap: wrap; align-items: center; }
+.fd-info h3 { margin: 0; font-size: 20px; }
+.fd-info h3 small { color: var(--muted); font-weight: 400; font-size: 14px; }
+.fd-desc { margin: 0; }
+.fd-script { max-height: 250px; overflow-y: auto; background: var(--bg2); border: 1px solid var(--line); border-radius: 12px; padding: 12px 14px; }
+.fd-script p { margin: 0 0 6px; color: var(--text); font-size: 13.5px; line-height: 1.7; }
 /* ============ 设置页（二级页：左侧分区 + 大圆角卡片） ============ */
 body.in-settings .rail { display: none; }
 body.in-settings .main { margin-left: 0; padding-bottom: 0; }
@@ -389,6 +422,10 @@ dialog.dlg .dlg-err { color: var(--err); font-size: 12.5px; margin-right: auto; 
   .page { padding: 22px 16px 40px; }
   .hero h1 { font-size: 25px; }
   .tpl-grid { grid-template-columns: repeat(2, 1fr); }
+  .feat-grid { grid-template-columns: repeat(2, 1fr); gap: 12px; }
+  .feat-head .sub { display: block; margin: 4px 0 0; }
+  .fd-grid { grid-template-columns: 1fr; }
+  .fd-cover { display: none; }
   .row2, .row3 { grid-template-columns: 1fr; }
   .search { width: 100%; }
   .ed-title { flex-basis: 140px; }

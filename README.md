@@ -109,6 +109,13 @@ WM_KEY=sk-xxxx node scripts/setup-dashscope.js     # 需先 npm start
 **安全提示**：stdio 的 MCP 会在本机执行命令，所以服务默认只监听 `127.0.0.1`，并拒绝非本机的 `Host` 请求。
 只导入你信任的 MCP / 技能。需要局域网访问时才设置 `WM_HOST=0.0.0.0`，此时任何能访问该端口的人都能配置并执行本机命令，请务必谨慎。
 
+## 创作精选
+
+创作页下方的「创作精选」展示抖音 / 小红书同类型的热门题材（治愈故事、知识科普、口播干货、古诗词、悬疑短片、旅行氛围……），可按「抖音风 / 小红书风」筛选。点卡片看示范文案，点「做同款」会把模板、文案、画幅和画风一次套进创作表单，再自己改。
+
+- 这些是我们自己写的示范内容 + 自动生成的封面，**不是**平台上的原作品（平台没有开放接口，也涉及版权）。
+- 内容在 `server/featured.js`，加一条就多一张卡片；封面存在 `public/featured/<id>.jpg`。
+- 新增或想重做封面：`node scripts/gen-featured-covers.js`（只补缺的，`--force` 全部重做，也可以传 id）。用设置里已配置的文生图，每张约一次生图费用；遇到限流会自动退避重试。
 ## 接入其他 AI 服务
 
 LLM / 文生图 / 配音 / 视频都支持 `custom` 模式：用「请求模板」描述任意 HTTP 接口，不用改代码。
@@ -168,7 +175,7 @@ LLM / 文生图 / 配音 / 视频都支持 `custom` 模式：用「请求模板�
 ## 目录
 
 ```
-server/    index.js 路由 · pipeline.js 项目与流水线 · templates.js 模板 · providers.js 模型适配 · ffmpeg.js 合成 · settings.js 配置
+server/    index.js 路由 · pipeline.js 项目与流水线 · templates.js 模板 · featured.js 创作精选 · providers.js 模型适配 · ffmpeg.js 合成 · settings.js 配置
 public/    前端：index.html 应用外壳 · style.css 设计系统 · js/main.js 路由 · js/core.js 公共工具 · js/pages/ 四个页面
 data/      settings.json（含 API Key）· extensions.json（技能与 MCP 配置，可能含 env 密钥），均已 gitignore
 output/    每个项目的素材与成片（已 gitignore）

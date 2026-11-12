@@ -165,6 +165,16 @@ async function waitDone(id, timeoutMs = 180000) {
   ext = (await api('GET', '/api/extensions')).json;
   ok(!ext.mcp.length && !ext.skills.length, '清理扩展配置');
 
+  /* ---------- 创作精选 ---------- */
+  ok(Array.isArray(meta.featured) && meta.featured.length >= 8, `meta 带创作精选 ${meta.featured?.length} 条`);
+  const tplIds = meta.templates.map((t) => t.id);
+  ok(meta.featured.every((f) => tplIds.includes(f.template) && f.script.trim() && f.style && !('coverPrompt' in f)), '精选条目模板有效、带文案和画风，且不下发封面提示词');
+  const covers = await Promise.all(meta.featured.map((f) => fetch(BASE + f.cover).then((r) => r.status)));
+  ok(covers.every((s) => s === 200), `所有精选封面都能访问 ${covers.join(',')}`);
+  const f0 = meta.featured[0];
+  const fp = await api('POST', '/api/projects', { template: f0.template, title: f0.title, script: f0.script, options: { style: f0.style, orientation: f0.orientation, visual: 'image' } });
+  ok(fp.status === 200 && fp.json.scenes.length >= 3, `用精选内容能直接创建项目（${fp.json.scenes?.length} 个镜头）`);
+  await api('DELETE', `/api/projects/${fp.json.id}`);
   /* ---------- 音色试听 ---------- */
   const pv = await fetch(BASE + '/api/tts/preview', {
     method: 'POST',
