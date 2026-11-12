@@ -3,8 +3,10 @@ import * as createPage from './pages/create.js';
 import * as projectsPage from './pages/projects.js';
 import * as editorPage from './pages/editor.js';
 import * as settingsPage from './pages/settings.js';
+import * as extensionsPage from './pages/extensions.js';
 
 const ROUTES = [
+  [/^#\/extensions$/, extensionsPage, 'extensions'],
   [/^#?\/?$/, createPage, 'create'],
   [/^#\/projects$/, projectsPage, 'projects'],
   [/^#\/p\/([\w-]+)$/, editorPage, 'editor'],

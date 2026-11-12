@@ -5,7 +5,18 @@ const pipeline = require('./pipeline');
 const ff = require('./ffmpeg');
 const { TEMPLATES, STYLE_PRESETS, VOICES } = require('./templates');
 
+const extensions = require('./extensions');
+const mcp = require('./mcp');
+
 const app = express();
+// 安全：MCP 本地命令方式会在本机执行命令，默认只监听本机并校验 Host（防 DNS 重绑定）。
+// 需要局域网访问时显式设置 WM_HOST=0.0.0.0（风险自负）。
+app.use((req, res, next) => {
+  if (process.env.WM_HOST) return next();
+  const host = (req.headers.host || '').replace(/:\d+$/, '').replace(/^\[|\]$/g, '');
+  if (['localhost', '127.0.0.1', '::1'].includes(host)) return next();
+  res.status(403).send('forbidden host');
+});
 app.use(express.json({ limit: '2mb' }));
 app.use(express.static(path.join(settingsStore.ROOT, 'public')));
 app.use('/output', express.static(pipeline.OUTPUT_DIR));
@@ -83,8 +94,47 @@ app.post(
   wrap((req, res) => res.json(pipeline.resetSceneById(req.params.id, req.params.sid))),
 );
 
+/* ---------- 扩展：技能 / MCP ---------- */
+const extList = () => {
+  const d = extensions.load();
+  return { skills: d.skills, mcp: d.mcp.map(extensions.publicMcp) };
+};
+app.get('/api/extensions', (req, res) => res.json(extList()));
+
+app.post('/api/skills/preview', wrap(async (req, res) => res.json(await extensions.previewSkillImport(req.body || {}))));
+app.post('/api/skills', wrap((req, res) => res.json(extensions.createSkill(req.body || {}))));
+app.put('/api/skills/:id', wrap((req, res) => res.json(extensions.updateSkill(req.params.id, req.body || {}))));
+app.delete(
+  '/api/skills/:id',
+  wrap((req, res) => {
+    extensions.deleteSkill(req.params.id);
+    res.json({ ok: true });
+  }),
+);
+
+app.post('/api/mcp', wrap((req, res) => res.json(extensions.publicMcp(extensions.createMcp(req.body || {})))));
+app.post('/api/mcp/import', wrap((req, res) => res.json(extensions.importMcpJson((req.body || {}).json))));
+app.put('/api/mcp/:id', wrap((req, res) => res.json(extensions.publicMcp(extensions.updateMcp(req.params.id, req.body || {})))));
+app.delete(
+  '/api/mcp/:id',
+  wrap((req, res) => {
+    extensions.deleteMcp(req.params.id);
+    res.json({ ok: true });
+  }),
+);
+app.post(
+  '/api/mcp/:id/test',
+  wrap(async (req, res) => {
+    const cfg = extensions.getMcp(req.params.id);
+    if (!cfg) return res.status(404).json({ error: 'MCP 服务不存在' });
+    extensions.recordMcpTest(cfg.id, await mcp.testServer(cfg));
+    res.json(extensions.publicMcp(extensions.getMcp(cfg.id)));
+  }),
+);
+
 const port = Number(process.env.WM_PORT) || 3000;
-app.listen(port, () => {
-  console.log(`AI 视频工坊已启动： http://localhost:${port}`);
+const host = process.env.WM_HOST || '127.0.0.1';
+app.listen(port, host, () => {
+  console.log(`AI 视频工坊已启动： http://localhost:${port}${process.env.WM_HOST ? `（监听 ${host}）` : '（仅本机访问）'}`);
   console.log(`ffmpeg: ${ff.ffmpegPath}`);
 });

@@ -111,6 +111,72 @@ async function waitDone(id, timeoutMs = 180000) {
   await api('DELETE', `/api/projects/${poem.id}`);
   await api('DELETE', `/api/projects/${talk.id}`);
 
+  /* ---------- 扩展：技能 ---------- */
+  const md = '---\nname: 国风分镜规范\ndescription: >-\n  古诗词分镜时的构图要求\n---\n# 规则\n1. 多用留白构图\n2. 色调偏青绿';
+  r = await api('POST', '/api/skills/preview', { text: md });
+  ok(r.status === 200 && r.json.name === '国风分镜规范' && r.json.description.includes('构图') && r.json.content.includes('留白'), `解析 SKILL.md frontmatter：${r.json.name}`);
+  r = await api('POST', '/api/skills/preview', { text: '   ' });
+  ok(r.status === 400, '空技能文本被拒绝');
+  r = await api('POST', '/api/skills', { ...(await api('POST', '/api/skills/preview', { text: md })).json, templates: ['poem'] });
+  ok(r.status === 200 && r.json.enabled && r.json.templates.join() === 'poem', '创建技能');
+  const skill = r.json;
+  r = await api('PUT', `/api/skills/${skill.id}`, { enabled: false });
+  ok(r.json.enabled === false && r.json.name === skill.name, '停用技能（只改开关，其它字段保留）');
+  r = await api('POST', '/api/skills', { name: 'x', content: '' });
+  ok(r.status === 400, '技能内容为空被拒绝');
+  r = await api('POST', '/api/skills', { name: 'x', content: 'a'.repeat(20001) });
+  ok(r.status === 400, '技能内容过长被拒绝');
+
+  /* ---------- 扩展：MCP ---------- */
+  const samplePath = require('path').resolve(__dirname, 'sample-mcp-server.js');
+  r = await api('POST', '/api/mcp/import', {
+    json: JSON.stringify({
+      mcpServers: {
+        'sample-research': { command: process.execPath, args: [samplePath], env: { SECRET_TOKEN: 'abc123' } },
+        'bogus-http': { url: 'http://127.0.0.1:9/mcp', headers: { Authorization: 'Bearer xyz' } },
+        broken: { foo: 1 },
+      },
+    }),
+  });
+  ok(r.status === 200 && r.json.added.length === 2 && r.json.skipped.length === 1, `导入 mcp.json：新增 ${r.json.added}，跳过 ${r.json.skipped}`);
+  let ext = (await api('GET', '/api/extensions')).json;
+  const sample = ext.mcp.find((m) => m.name === 'sample-research');
+  const bogus = ext.mcp.find((m) => m.name === 'bogus-http');
+  ok(sample.env.SECRET_TOKEN === '********' && bogus.headers.Authorization === '********', '环境变量 / 请求头在接口里脱敏');
+  r = await api('POST', `/api/mcp/${sample.id}/test`);
+  ok(r.status === 200 && r.json.status === 'ok' && r.json.tools.some((t) => t.name === 'lookup_background'), `测试本地 MCP：${r.json.statusMsg}`);
+  r = await api('POST', `/api/mcp/${bogus.id}/test`);
+  ok(r.json.status === 'error' && r.json.statusMsg, `测试不可达的远程 MCP 返回错误：${String(r.json.statusMsg).slice(0, 40)}`);
+  r = await api('PUT', `/api/mcp/${sample.id}`, { name: 'sample-research', transport: 'stdio', command: process.execPath, args: [samplePath], env: { SECRET_TOKEN: '********' } });
+  ok(r.status === 200 && r.json.status === 'ok', '编辑时回传脱敏值视为未修改，连接参数没变则保留测试结果');
+  r = await api('POST', '/api/mcp', { name: 'bad', transport: 'stdio', command: '' });
+  ok(r.status === 400, '缺少命令被拒绝');
+  r = await api('POST', '/api/mcp', { name: 'bad', transport: 'http', url: 'ftp://x' });
+  ok(r.status === 400, '非 http(s) 地址被拒绝');
+
+  // 带技能 / 工具增强创建项目（未启用 LLM：不生效，但要给出明确提示且不影响创建）
+  r = await api('POST', '/api/projects', { template: 'poem', title: '池上', author: '白居易', script: '小娃撑小艇，偷采白莲回。', skills: [skill.id], useTools: true, options: { visual: 'image' } });
+  ok(r.status === 200 && r.json.researchWarning && r.json.researchWarning.includes('LLM') && r.json.ext.useTools, `未启用 LLM 时工具增强给出提示：${r.json.researchWarning}`);
+  await api('DELETE', `/api/projects/${r.json.id}`);
+
+  // 清理
+  for (const m of ext.mcp) await api('DELETE', `/api/mcp/${m.id}`);
+  await api('DELETE', `/api/skills/${skill.id}`);
+  ext = (await api('GET', '/api/extensions')).json;
+  ok(!ext.mcp.length && !ext.skills.length, '清理扩展配置');
+
+  /* ---------- 安全：Host 校验 ---------- */
+  const status = await new Promise((resolve) => {
+    const u = new URL(BASE);
+    require('http')
+      .request({ host: u.hostname, port: u.port, path: '/api/settings', headers: { Host: 'evil.example.com' } }, (res) => {
+        res.resume();
+        resolve(res.statusCode);
+      })
+      .end();
+  });
+  ok(status === 403, `非本机 Host 请求被拒绝 -> ${status}`);
+
   console.log(failed ? `\n${failed} 项失败` : '\n全部通过');
   process.exit(failed ? 1 : 0);
 })().catch((e) => {

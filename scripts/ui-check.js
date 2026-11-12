@@ -146,6 +146,48 @@ const ok = (c, m) => {
   ok(await waitFor(`document.querySelectorAll('.proj').length === ${before}`, 4000), '删除项目');
   await shot('ui-projects');
 
+  // ---- 扩展页：技能 / MCP ----
+  await goto('#/extensions');
+  ok(await js(`document.querySelectorAll('[data-nav]').length === 4`), '侧边栏有 4 个入口（含扩展）');
+  await click('[data-act="import-skill"]');
+  await waitFor(`!!document.querySelector('dialog.dlg[open]')`, 3000);
+  ok(await js(`document.querySelector('[data-ok]').disabled === true`), '导入技能：解析前「导入」不可点');
+  await setVal('#srcText', '---\nname: 界面测试技能\ndescription: 用于 UI 自测\n---\n每个镜头都要留白。');
+  await click('#btnParse');
+  ok(await waitFor(`document.querySelector('#skName').value === '界面测试技能'`, 4000), '粘贴 SKILL.md 后解析出名称');
+  ok(await js(`document.querySelector('#skContent').value.includes('留白') && !document.querySelector('[data-ok]').disabled`), '解析出正文且「导入」可点');
+  await shot('ui-skill-import');
+  await click('[data-ok]');
+  ok(await waitFor(`[...document.querySelectorAll('.ext b')].some(b=>b.textContent==='界面测试技能')`, 4000), '技能出现在列表');
+  await click('.ext [data-act="toggle-skill"]');
+  ok(await waitFor(`document.querySelector('.ext').classList.contains('off')`, 3000), '停用技能');
+  await click('.ext [data-act="toggle-skill"]');
+  await waitFor(`!document.querySelector('.ext').classList.contains('off')`, 3000);
+
+  await click('#tabs [data-t="mcp"]');
+  await click('[data-act="import-mcp"]');
+  await waitFor(`!!document.querySelector('dialog.dlg[open]')`, 3000);
+  const samplePath = require('path').resolve(__dirname, 'sample-mcp-server.js');
+  await setVal('#mjson', JSON.stringify({ mcpServers: { 'ui-sample': { command: process.execPath, args: [samplePath] } } }));
+  await click('[data-ok]');
+  ok(await waitFor(`[...document.querySelectorAll('.ext b')].some(b=>b.textContent==='ui-sample')`, 4000), '导入 mcp.json 后服务出现在列表');
+  await click('.ext [data-act="test-mcp"]');
+  ok(await waitFor(`document.querySelector('.ext .badge.done') && document.querySelector('.ext .badge.done').textContent.includes('1 个工具')`, 20000), '测试连接成功并显示工具数');
+  ok(await js(`document.querySelector('.ext details summary').textContent.includes('1 个工具')`), '工具清单可展开');
+  await shot('ui-extensions-mcp');
+
+  // 创作页能勾选技能、能开工具增强
+  await goto('#/');
+  ok(await js(`!!document.querySelector('[data-skill]') && !!document.querySelector('[data-k="useTools"]')`), '创作页出现技能勾选和工具增强开关');
+  ok(await js(`document.querySelector('[data-skill]').classList.contains('on')`), '适用的技能默认勾选');
+  await click('[data-skill]');
+  ok(await js(`!document.querySelector('[data-skill]').classList.contains('on')`), '点击可取消勾选');
+  await shot('ui-create-ext');
+  // 清理
+  const extNow = await (await fetch(`${BASE}/api/extensions`)).json();
+  for (const m of extNow.mcp) await fetch(`${BASE}/api/mcp/${m.id}`, { method: 'DELETE' });
+  for (const s of extNow.skills) await fetch(`${BASE}/api/skills/${s.id}`, { method: 'DELETE' });
+
   // ---- 设置页 ----
   await goto('#/settings');
   await click('[data-tab="tts"]');

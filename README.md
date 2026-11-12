@@ -7,7 +7,7 @@
 
 ```bash
 npm install
-npm start          # 默认 http://localhost:3000，可用 WM_PORT 改端口
+npm start          # 默认 http://localhost:3000，可用 WM_PORT 改端口，WM_HOST 改监听地址（默认仅本机）
 ```
 
 打开页面，到「设置」填 API Key。没有 Key 也能跑：各项选 `mock` 可以走通整条流水线（画面是占位图）。
@@ -87,6 +87,27 @@ WM_KEY=sk-xxxx node scripts/setup-dashscope.js     # 需先 npm start
 | POST | `/api/projects/:id/duplicate` | 复制项目（连同已生成素材） |
 | POST | `/api/projects/:id/storyboard` | 按脚本重新生成分镜 |
 | POST | `/api/projects/:id/scenes/:sid/reset` | 清除单个镜头的画面 |
+| GET | `/api/extensions` | 技能列表 + MCP 服务列表（env / headers 脱敏） |
+| POST | `/api/skills/preview` | 解析 SKILL.md（`text` 或 `url`），不保存 |
+| POST / PUT / DELETE | `/api/skills[/:id]` | 新增 / 修改（含启用开关、适用模板）/ 删除技能 |
+| POST / PUT / DELETE | `/api/mcp[/:id]` | 新增 / 修改 / 删除 MCP 服务 |
+| POST | `/api/mcp/import` | 导入标准 `mcp.json`（`{json}`，同名则更新） |
+| POST | `/api/mcp/:id/test` | 测试连接并列出工具 |
+
+## 扩展：技能（Skills）与 MCP
+
+在左侧「扩展」页管理，数据保存在本机 `data/extensions.json`（已 gitignore）。
+
+- **技能**：一份 `SKILL.md`（frontmatter 里的 `name` / `description` + 正文）。可粘贴、选文件或填 URL 导入，也可以手写。
+  创建项目时勾选的技能会注入「分镜 LLM」的系统提示词，用来约束分镜风格、镜头语言、改写规则等。可设置只适用于某些模板。
+- **MCP 服务**：支持本地命令（stdio）和远程地址（Streamable HTTP，自动回退 SSE）。可直接粘贴标准 `mcp.json`（`mcpServers`）导入。
+  创建项目时打开「工具增强」，分镜前 LLM 会按需调用这些服务的工具（搜索、查资料……），把结果作为背景资料再写分镜；
+  调用结果和失败原因在编辑器「项目」页签里可查。工具失败不会中断创建，会退回普通分镜。
+- 技能和工具增强都依赖「分镜 LLM」，且所选模型要支持函数调用（工具增强）。未启用 LLM 时会给出提示。
+- 自带一个示例 MCP 服务 `scripts/sample-mcp-server.js`（工具 `lookup_background`），用来验证连接：命令填 `node`，参数填它的绝对路径。
+
+**安全提示**：stdio 的 MCP 会在本机执行命令，所以服务默认只监听 `127.0.0.1`，并拒绝非本机的 `Host` 请求。
+只导入你信任的 MCP / 技能。需要局域网访问时才设置 `WM_HOST=0.0.0.0`，此时任何能访问该端口的人都能配置并执行本机命令，请务必谨慎。
 
 ## 接入其他 AI 服务
 
@@ -149,7 +170,7 @@ LLM / 文生图 / 配音 / 视频都支持 `custom` 模式：用「请求模板�
 ```
 server/    index.js 路由 · pipeline.js 项目与流水线 · templates.js 模板 · providers.js 模型适配 · ffmpeg.js 合成 · settings.js 配置
 public/    前端：index.html 应用外壳 · style.css 设计系统 · js/main.js 路由 · js/core.js 公共工具 · js/pages/ 四个页面
-data/      settings.json（含 API Key，已 gitignore）
+data/      settings.json（含 API Key）· extensions.json（技能与 MCP 配置，可能含 env 密钥），均已 gitignore
 output/    每个项目的素材与成片（已 gitignore）
 scripts/   api-test.js 后端接口自测 · ui-check.js 真实浏览器 UI 自测 · e2e.js 真实模型端到端 · setup-dashscope.js 一键写入百炼配置
 ```

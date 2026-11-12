@@ -267,6 +267,28 @@ export async function mount(root, [id]) {
     </div>`;
   }
 
+  /** 创建分镜时用到的技能与工具检索结果 */
+  function extSection() {
+    const skills = p.skillsUsed || [];
+    const useTools = p.ext?.useTools;
+    if (!skills.length && !useTools && !p.researchWarning) return '';
+    const calls = p.research?.calls || [];
+    return `<div class="insp-sec"><h4>扩展（分镜时使用）</h4>
+      <dl class="kv">
+        ${skills.length ? `<dt>技能</dt><dd>${skills.map((s) => esc(s.name)).join('、')}</dd>` : ''}
+        ${useTools ? `<dt>工具增强</dt><dd>${p.research ? `调用了 ${calls.length} 次工具${calls.some((c) => !c.ok) ? '（有失败）' : ''}` : '没有获得资料'}</dd>` : ''}
+      </dl>
+      ${p.researchWarning ? `<div class="notice"><span>${esc(p.researchWarning)}</span></div>` : ''}
+      ${
+        p.research?.text || calls.length
+          ? `<details class="logs"><summary>查看检索详情</summary><pre>${esc(
+              [...calls.map((c) => `${c.ok ? '✓' : '✗'} ${c.server} / ${c.tool}  ${JSON.stringify(c.args)}`), p.research?.text ? `\n${p.research.text}` : ''].join('\n').trim(),
+            )}</pre></details>`
+          : ''
+      }
+    </div>`;
+  }
+
   function projectInspHtml() {
     const dis = busy() ? 'disabled' : '';
     const o = p.options;
@@ -305,6 +327,7 @@ export async function mount(root, [id]) {
       <button class="btn sm danger" data-act="rebuild" ${dis}>${icon('refresh')}按脚本重新生成分镜</button>
       <span class="hint">会丢弃当前所有镜头的修改和已生成的素材。</span>
     </div>
+    ${extSection()}
     ${p.character || p.setting ? `<div class="insp-sec"><h4>统一设定（LLM 生成）</h4><dl class="kv">${p.character ? `<dt>角色</dt><dd>${esc(p.character)}</dd>` : ''}${p.setting ? `<dt>场景</dt><dd>${esc(p.setting)}</dd>` : ''}</dl></div>` : ''}
     <div class="insp-sec"><details class="logs"><summary>运行日志（${p.logs.length}）</summary><pre id="logs">${esc(p.logs.join('\n') || '暂无')}</pre></details></div>`;
   }

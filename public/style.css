@@ -309,6 +309,28 @@ details.logs pre { margin: 10px 0 0; max-height: 220px; overflow: auto; backgrou
 .quick-row { display: flex; gap: 10px; flex: 1; min-width: 280px; }
 .save-bar { position: sticky; bottom: 0; display: flex; align-items: center; gap: 14px; padding: 14px 0; margin-top: 18px; background: linear-gradient(180deg, transparent, var(--bg) 40%); }
 
+/* ============ 扩展页 ============ */
+dialog.dlg.wide { width: min(680px, calc(100vw - 32px)); }
+dialog.dlg .dlg-body.form { display: flex; flex-direction: column; gap: 14px; max-height: 70vh; overflow-y: auto; }
+dialog.dlg .dlg-err { color: var(--err); font-size: 12.5px; margin-right: auto; align-self: center; white-space: pre-line; }
+.ext-list { display: flex; flex-direction: column; gap: 12px; }
+.ext { padding: 16px 18px; display: flex; flex-direction: column; gap: 10px; }
+.ext.off { opacity: 0.6; }
+.ext-head { display: flex; align-items: flex-start; gap: 12px; }
+.ext-head .tt { flex: 1; min-width: 0; }
+.ext-head .tt b { font-size: 15px; }
+.ext-head .tt p { color: var(--muted); font-size: 12.5px; margin-top: 2px; }
+.ext-acts { display: flex; align-items: center; gap: 8px; flex: none; }
+.ext-body { font-size: 12.5px; color: var(--text2); display: flex; flex-direction: column; gap: 8px; }
+.ext-body .snip { background: var(--bg2); border: 1px solid var(--line); border-radius: 8px; padding: 8px 11px; color: var(--muted); display: -webkit-box; -webkit-line-clamp: 3; -webkit-box-orient: vertical; overflow: hidden; white-space: pre-wrap; word-break: break-all; }
+.ext-body code { font-family: var(--mono); font-size: 12px; background: var(--bg2); border: 1px solid var(--line); border-radius: 6px; padding: 2px 7px; word-break: break-all; }
+.ext-meta { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
+.tool-chip { font-family: var(--mono); font-size: 11.5px; padding: 1px 8px; border-radius: 6px; background: var(--panel2); color: var(--text2); border: 1px solid var(--line2); }
+.ext details summary { cursor: pointer; color: var(--text2); font-size: 12.5px; }
+.ext details .chips { margin-top: 8px; }
+.ext .err-msg { color: var(--err); font-size: 12px; white-space: pre-line; word-break: break-all; }
+.tabs-row { display: flex; align-items: center; gap: 12px; margin-bottom: 16px; flex-wrap: wrap; }
+
 /* ============ 响应式 ============ */
 @media (max-width: 1180px) {
   .tpl-grid { grid-template-columns: repeat(3, 1fr); }

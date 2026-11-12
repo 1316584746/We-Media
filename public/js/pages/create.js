@@ -3,11 +3,18 @@ import { $, $$, api, esc, state, toast, icon, paintIcons, tplOf, tplColor, VISUA
 let tplId = 'poem';
 let form = null;
 let busy = false;
+let exts = { skills: [], mcp: [] };
+
+/** 当前模板可用的技能（已启用 + 适用于该模板） */
+const applicableSkills = (id) => exts.skills.filter((s) => s.enabled && (!s.templates.length || s.templates.includes(id)));
+const toolServers = () => exts.mcp.filter((s) => s.enabled);
 
 function resetForm(id) {
   const t = tplOf(id);
   tplId = t.id;
   form = {
+    skills: null, // null = 还没动过，默认勾选所有适用的技能
+    useTools: false,
     title: '',
     author: '',
     script: '',
@@ -43,6 +50,19 @@ function composerHtml() {
         .join('')}</select>`
     : `<select disabled><option>当前配音服务使用设置里的音色</option></select>`;
   const mocks = mockParts(state.settings, form.visual);
+  const sk = applicableSkills(tplId);
+  if (form.skills === null) form.skills = sk.map((s) => s.id);
+  form.skills = form.skills.filter((id) => sk.some((s) => s.id === id));
+  const servers = toolServers();
+  const llmOn = state.settings.llm.enabled && state.settings.llm.apiKey;
+  const extHtml =
+    sk.length || servers.length
+      ? `<div class="field"><span class="lbl">扩展 <a href="#/extensions" class="hint" style="text-decoration:underline">管理</a></span>
+          ${sk.length ? `<div class="chips">${sk.map((s) => `<button class="chip ${form.skills.includes(s.id) ? 'on' : ''}" data-skill="${s.id}" title="${esc(s.description || '')}">${esc(s.name)}</button>`).join('')}</div>` : ''}
+          ${servers.length ? `<label class="switch" style="margin-top:6px"><input type="checkbox" data-k="useTools" ${form.useTools ? 'checked' : ''} />工具增强：分镜前用 MCP 工具检索资料（${servers.length} 个服务）</label>` : ''}
+          ${llmOn ? '' : '<span class="opt-note">技能和工具增强需要先在设置里启用「分镜 LLM」才会生效。</span>'}
+        </div>`
+      : `<div class="field"><span class="lbl">扩展</span><span class="opt-note">还没有技能或 MCP 服务。<a href="#/extensions" style="text-decoration:underline">去导入</a>后，可以在这里勾选使用。</span></div>`;
   return `
   <div class="card composer">
     <div class="col">
@@ -89,6 +109,7 @@ function composerHtml() {
         <textarea data-k="style" rows="2" style="min-height:52px">${esc(form.style)}</textarea>
       </div>
       <div class="field"><span class="lbl">配音</span>${voiceSel}</div>
+      ${extHtml}
       <div style="display:flex;gap:18px;flex-wrap:wrap">
         <label class="switch"><input type="checkbox" data-k="subtitles" ${form.subtitles ? 'checked' : ''} />字幕</label>
         <label class="switch"><input type="checkbox" data-k="titleCard" ${form.titleCard ? 'checked' : ''} />片头标题</label>
@@ -106,6 +127,7 @@ function composerHtml() {
 export async function mount(root) {
   if (!form) resetForm(tplId);
   const projects = await api('/api/projects').catch(() => []);
+  exts = await api('/api/extensions').catch(() => exts);
   const recent = projects.slice(0, 4);
 
   root.innerHTML = `<div class="page">
@@ -177,6 +199,13 @@ export async function mount(root) {
       form.style = st.dataset.style;
       return paintComposer();
     }
+    const skBtn = e.target.closest('[data-skill]');
+    if (skBtn) {
+      const id = skBtn.dataset.skill;
+      form.skills = form.skills.includes(id) ? form.skills.filter((x) => x !== id) : [...form.skills, id];
+      skBtn.classList.toggle('on');
+      return;
+    }
     const sp = e.target.closest('[data-sample]');
     if (sp) {
       const s = tplOf(tplId).samples[Number(sp.dataset.sample)];
@@ -195,6 +224,8 @@ export async function mount(root) {
             title: form.title,
             author: form.author,
             script: form.script,
+            skills: form.skills || [],
+            useTools: form.useTools,
             options: {
               style: form.style,
               orientation: form.orientation,

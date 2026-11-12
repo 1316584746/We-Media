@@ -5,6 +5,8 @@ const settingsStore = require('./settings');
 const providers = require('./providers');
 const ff = require('./ffmpeg');
 const { getTemplate } = require('./templates');
+const extensions = require('./extensions');
+const mcp = require('./mcp');
 const { pLimit, retry } = require('./util');
 
 const OUTPUT_DIR = process.env.WM_OUTPUT_DIR || path.join(settingsStore.ROOT, 'output');
@@ -132,12 +134,31 @@ function makeScene(s = {}) {
  * 生成分镜：[片头标题卡] + 每个分句一个镜头 + [片尾]
  * 片头/片尾复用首/尾镜头的画面，不额外生成图片。
  */
-async function buildStoryboard({ tpl, title, author, script, options }) {
+async function buildStoryboard({ tpl, title, author, script, options, ext = {} }) {
   const settings = settingsStore.load();
   const style = options.style || tpl.defaults.style;
   const { lines, units } = tpl.split === 'line' ? splitPoem(script, options.linesPerScene) : splitSentences(script);
   if (!units.length) throw httpError(400, '没有识别到可用的文案');
   if (units.length > MAX_SCENES) throw httpError(400, `文案太长：切出了 ${units.length} 个镜头，最多支持 ${MAX_SCENES} 个，请精简或分成多个视频`);
+
+  const llmReady = settings.llm.enabled && settings.llm.apiKey;
+
+  // 技能：注入分镜提示词
+  const skills = llmReady ? extensions.pickSkills(ext.skills, tpl.id) : [];
+
+  // 工具增强：先让 LLM 用 MCP 工具检索资料（失败不阻断分镜）
+  let research = null;
+  let researchWarning = null;
+  if (ext.useTools && llmReady) {
+    try {
+      research = await mcp.research({ llm: settings.llm, task: `视频类型：${tpl.name}\n标题：${title || '无'}${author ? `\n作者：${author}` : ''}\n文案：\n${script}` });
+      if (research?.warnings?.length) researchWarning = research.warnings.join('；');
+    } catch (e) {
+      researchWarning = e.message;
+    }
+  } else if (ext.useTools) {
+    researchWarning = '工具增强需要先启用 LLM 分镜（设置 → 分镜 LLM）';
+  }
 
   const { shots, character, setting, usedLlm, warning } = await providers.buildShots({
     llm: settings.llm,
@@ -147,6 +168,8 @@ async function buildStoryboard({ tpl, title, author, script, options }) {
     script,
     verses: units,
     style,
+    skillText: extensions.skillsPrompt(skills),
+    research: research?.text || '',
   });
 
   const scenes = [];
@@ -167,7 +190,16 @@ async function buildStoryboard({ tpl, title, author, script, options }) {
       tpl.endMode === 'script' ? [`《${title || '无题'}》`, author, ...lines].filter(Boolean).join('\n') : tpl.endText || title || '';
     if (display) scenes.push(makeScene({ kind: 'ending', text: '', display, silent: 5 }));
   }
-  return { usedLlm, warning, character, setting, scenes };
+  return {
+    usedLlm,
+    warning,
+    character,
+    setting,
+    scenes,
+    research: research ? { text: research.text, calls: research.calls } : null,
+    researchWarning,
+    skillsUsed: skills.map((s) => ({ id: s.id, name: s.name })),
+  };
 }
 
 /* ----------------------------- 存取 ----------------------------- */
@@ -193,6 +225,8 @@ function normalize(job) {
   job.script = job.script || job.scenes.filter((s) => s.kind === 'verse' || s.kind === 'shot').map((s) => s.text).join('\n');
   job.options = job.options || resolveOptions(getTemplate(job.template), settings.render, {});
   job.updatedAt = job.updatedAt || job.createdAt;
+  job.ext = job.ext || { skills: [], useTools: false };
+  job.skillsUsed = job.skillsUsed || [];
   job.dirty = !!job.dirty;
   job.duration = job.duration || null;
   job.scenes.forEach((s, i) => {
@@ -254,16 +288,17 @@ function listProjects() {
 
 /* ----------------------------- 项目 CRUD ----------------------------- */
 
-async function createProject({ template, title, author, script, options }) {
+async function createProject({ template, title, author, script, options, skills, useTools }) {
   const tpl = getTemplate(template);
   script = String(script || '').trim();
   if (!script) throw httpError(400, '请先输入文案');
   title = String(title || '').trim();
   author = String(author || '').trim();
   const opts = resolveOptions(tpl, settingsStore.load().render, options);
+  const ext = { skills: (Array.isArray(skills) ? skills : []).filter((s) => typeof s === 'string').slice(0, 20), useTools: !!useTools };
   // 没填标题时取文案的第一个分句
   const autoTitle = title || script.split(/[，。！？；,.!?;\n]/).map((s) => s.trim()).find(Boolean)?.slice(0, 16) || '未命名视频';
-  const sb = await buildStoryboard({ tpl, title: title || '', author, script, options: opts });
+  const sb = await buildStoryboard({ tpl, title: title || '', author, script, options: opts, ext });
 
   const id = `${new Date().toISOString().replace(/\D/g, '').slice(0, 14)}-${crypto.randomBytes(2).toString('hex')}`;
   const now = Date.now();
@@ -287,6 +322,10 @@ async function createProject({ template, title, author, script, options }) {
     setting: sb.setting,
     usedLlm: sb.usedLlm,
     warning: sb.warning || null,
+    ext,
+    skillsUsed: sb.skillsUsed,
+    research: sb.research,
+    researchWarning: sb.researchWarning,
     logs: [],
     scenes: sb.scenes,
   };
@@ -402,9 +441,12 @@ async function rebuildStoryboard(id) {
   if (!job) throw httpError(404, '项目不存在');
   if (isBusy(job)) throw httpError(409, '正在生成，暂时不能编辑');
   const tpl = getTemplate(job.template);
-  const sb = await buildStoryboard({ tpl, title: job.title, author: job.author, script: job.script, options: job.options });
+  const sb = await buildStoryboard({ tpl, title: job.title, author: job.author, script: job.script, options: job.options, ext: job.ext });
   job.scenes.forEach((s) => fs.rmSync(sceneDir(job, s), { recursive: true, force: true }));
   job.scenes = sb.scenes;
+  job.skillsUsed = sb.skillsUsed;
+  job.research = sb.research;
+  job.researchWarning = sb.researchWarning;
   job.character = sb.character;
   job.setting = sb.setting;
   job.usedLlm = sb.usedLlm;

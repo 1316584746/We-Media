@@ -156,6 +156,25 @@ async function llmChat(cfg, messages) {
   return content;
 }
 
+/**
+ * 通用对话补全（OpenAI 兼容），支持 tools；返回 message 对象（含 content / tool_calls）。
+ * 直接 fetch，不走请求模板（消息里可能含 {{ }}，不能被当成模板变量替换）。
+ */
+async function llmComplete(cfg, { messages, tools, temperature = 0.4 }) {
+  const body = { model: cfg.model, messages, temperature };
+  if (tools?.length) body.tools = tools;
+  const res = await fetch(`${trimSlash(cfg.baseUrl)}/chat/completions`, {
+    method: 'POST',
+    headers: { Authorization: `Bearer ${cfg.apiKey}`, 'Content-Type': 'application/json' },
+    body: JSON.stringify(body),
+    signal: AbortSignal.timeout(120000),
+  });
+  const json = await readJsonOrThrow(res, 'LLM');
+  const msg = getPath(json, 'choices[0].message');
+  if (!msg) throw new Error('LLM 返回内容为空');
+  return msg;
+}
+
 function extractJson(text) {
   const m = text.match(/\{[\s\S]*\}/);
   if (!m) throw new Error('LLM 没有返回 JSON');
@@ -168,7 +187,7 @@ const SHOT_CYCLE = ['远景', '中景', '特写', '背影', '全景', '近景'];
  * 为每个分句生成镜头：景别 + 画面提示词 + 动作描述，并给出贯穿全片的角色/场景设定（保证画面一致）。
  * template 决定分镜师角色、回退文案与默认动作；失败/未配置 LLM 时回退到规则模板。
  */
-async function buildShots({ llm, template, title, author, script, verses, style }) {
+async function buildShots({ llm, template, title, author, script, verses, style, skillText = '', research = '' }) {
   const DEFAULT_MOTION = template.defaultMotion;
   const compose = (shot, body, character, setting) =>
     [
@@ -204,11 +223,12 @@ async function buildShots({ llm, template, title, author, script, verses, style 
           '"setting":"统一的季节、时间、光线与环境基调",' +
           '"shots":[{"shot":"远景|全景|中景|近景|特写|背影 之一","prompt":"该镜头的画面描述，50-90字，写清主体、动作、构图、光影","motion":"该镜头里画面如何动起来，30-60字，写清人物动作、景物动态（水波、风、云雾、花叶摇曳）和运镜，动作要自然舒缓"}]}。' +
           `shots 的数量必须与${template.unit}数完全一致；第一个镜头建立整体环境；镜头类型要交替变化；` +
-          '各镜头的角色、画风、色调必须保持一致；画面里不要出现任何文字。只输出 JSON。',
+          '各镜头的角色、画风、色调必须保持一致；画面里不要出现任何文字。只输出 JSON。' +
+          skillText,
       },
       {
         role: 'user',
-        content: `标题：${title || '无题'}\n${author ? `作者：${author}\n` : ''}全文：${script}\n统一画风：${style}\n分句（共${verses.length}个镜头）：\n${verses
+        content: `标题：${title || '无题'}\n${author ? `作者：${author}\n` : ''}全文：${script}\n${research ? `背景资料（来自工具检索，仅供设计画面时参考）：\n${research}\n` : ''}统一画风：${style}\n分句（共${verses.length}个镜头）：\n${verses
           .map((v, i) => `${i + 1}. ${v.text}`)
           .join('\n')}`,
       },
@@ -406,6 +426,7 @@ async function generateClip({ cfg, render, prompt, outFile, imageFile, duration,
 
 module.exports = {
   buildShots,
+  llmComplete,
   synthesizeSpeech,
   ttsWithVoice,
   makeSilence,
