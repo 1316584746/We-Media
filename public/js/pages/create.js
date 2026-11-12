@@ -1,4 +1,4 @@
-import { featuredCardsHtml, hotCardsHtml, platformLinksHtml, searchUrl, handleCoverErrors, openFeatured, playInCard, playHotInCard, stopInCard, PLATFORMS } from '../featured.js';
+import { featuredCardsHtml, hotCardsHtml, platformLinksHtml, searchUrl, fmtPlay, handleCoverErrors, openFeatured, playInCard, playHotInCard, stopInCard, PLATFORMS } from '../featured.js';
 import { estimate, estimateHtml } from '../pricing.js';
 import { $, $$, api, esc, state, toast, icon, paintIcons, tplOf, tplColor, VISUAL, mockParts, voiceChoices, previewVoice, previewBtnHtml } from '../core.js';
 
@@ -9,6 +9,7 @@ let exts = { skills: [], mcp: [] };
 let featPlatform = '全部';
 let featTab = 'hot'; // hot = B 站热门动画；demo = 做同款示范
 const hotCache = new Map(); // 模板 id -> /api/discover 结果（页面会话内缓存，服务端另有 30 分钟缓存）
+let drafting = false; // 正在让 AI 写文案
 let featAll = false; // false = 只看当前模板的同类精选；true = 所有模板
 
 /** 当前模板可用的技能（已启用 + 适用于该模板） */
@@ -72,6 +73,16 @@ function composerHtml() {
   return `
   <div class="card composer">
     <div class="col">
+      ${
+        form.ref
+          ? `<div class="ref-banner"><span>参考视频：<a href="${esc(form.ref.url)}" target="_blank" rel="noopener">${esc(form.ref.title)}</a> · ▶ ${fmtPlay(form.ref.play)}</span>
+              <span class="ref-sp">${
+                llmOn
+                  ? `<button type="button" class="btn sm" data-ai-draft ${drafting ? 'disabled' : ''}>${drafting ? '<i class="spin"></i> 正在写…' : 'AI 按此题材写一版文案（约 0.01 元）'}</button>`
+                  : '<span class="hint">启用「分镜 LLM」后，可一键让 AI 按这个题材写文案</span>'
+              }<button type="button" class="icon-btn" data-ref-clear title="移除参考" aria-label="移除参考">✕</button></span></div>`
+          : ''
+      }
       <div class="row-head" style="display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap">
         <h3>${esc(t.name)} · 写下内容</h3>
         ${
@@ -292,6 +303,18 @@ export async function mount(root) {
     compEl.scrollIntoView({ behavior: 'smooth', block: 'start' });
     toast(`已套用「${item.title}」，可以直接改文案，再点「生成分镜并创建项目」`, 'ok');
   };
+  // 热门视频「做同款」：以它的题材为参考；标题填进表单（诗词模板的标题是诗名，不填），
+  // 文案可以自己写，也可以让 AI 按这个题材原创一版（不会照搬原视频）
+  const cleanTitle = (s) =>
+    s.replace(/【[^】]*】|\[[^\]]*\]|#[^#\s]+#?|[“”"《》「」]/g, '').replace(/[|｜].*$/, '').replace(/\s+/g, ' ').trim().slice(0, 24);
+  const useHot = (v) => {
+    resetForm(tplId);
+    form.ref = { title: v.title.length > 34 ? `${v.title.slice(0, 34)}…` : v.title, topic: cleanTitle(v.title) || v.title, url: v.url, play: v.play };
+    if (tplId !== 'poem') form.title = form.ref.topic;
+    paintComposer();
+    compEl.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    toast(`已以「${form.ref.title}」为参考，可以自己写文案，或点「AI 写一版文案」`, 'ok');
+  };
   paintFeatured();
   if (featEl) {
     handleCoverErrors(featEl);
@@ -322,6 +345,10 @@ export async function mount(root) {
       }
       const hotCard = e.target.closest('[data-hot]');
       if (hotCard) {
+        if (e.target.closest('[data-hot-use]')) {
+          const v = hotList.find((x) => x.bvid === hotCard.dataset.hot);
+          return v && useHot(v);
+        }
         if (e.target.closest('[data-stop]')) return stopInCard(hotCard);
         if (e.target.closest('[data-hplay]')) {
           const v = hotList.find((x) => x.bvid === hotCard.dataset.hot);
@@ -396,6 +423,24 @@ export async function mount(root) {
       form.skills = form.skills.includes(id) ? form.skills.filter((x) => x !== id) : [...form.skills, id];
       skBtn.classList.toggle('on');
       return;
+    }
+    if (e.target.closest('[data-ref-clear]')) {
+      form.ref = null;
+      return paintComposer();
+    }
+    if (e.target.closest('[data-ai-draft]') && form.ref && !drafting) {
+      drafting = true;
+      paintComposer();
+      try {
+        const r = await api('/api/script-draft', { method: 'POST', body: { template: tplId, topic: form.ref.topic } });
+        Object.assign(form, { script: r.script, author: r.author || form.author });
+        if (r.title && (tplId === 'poem' || !form.title)) form.title = r.title;
+        toast('AI 已按这个题材写好一版文案，可以直接改', 'ok');
+      } catch (err) {
+        toast(`AI 写文案失败：${err.message}`, 'err');
+      }
+      drafting = false;
+      return paintComposer();
     }
     const sp = e.target.closest('[data-sample]');
     if (sp) {

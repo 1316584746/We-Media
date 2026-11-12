@@ -265,6 +265,12 @@ const ok = (c, m) => {
     ok(await js(`document.querySelectorAll('.hot iframe').length === 0 && document.querySelectorAll('.hot [data-hplay]').length === document.querySelectorAll('.hot').length`), '点 ✕ 关闭播放器，恢复封面');
     await click('[data-tpl="heal"]');
     ok(await waitFor(`document.querySelectorAll('.hot').length > 0 && document.querySelector('#featured h2').textContent.includes('心灵鸡汤') && document.querySelector('.hot').dataset.hot !== ${JSON.stringify(hotApi.items[0].bvid)}`, 30000), '切到心灵鸡汤，热门视频同步换成治愈类');
+    // 热门视频「做同款」：以它为参考，标题带入表单，出现参考横幅
+    await click('.hot [data-hot-use]');
+    ok(await waitFor(`!!document.querySelector('.ref-banner a[href*="bilibili.com"]') && document.querySelector('[data-k="title"]').value.length > 0 && document.querySelector('.tpl.on').dataset.tpl === 'heal'`, 3000), '热门视频「做同款」：保持当前模板、标题带入、出现参考视频横幅');
+    ok(await js(`!document.querySelector('[data-ai-draft]') && !!document.querySelector('.ref-banner .hint')`), '没启用分镜 LLM 时，横幅提示先启用，不显示 AI 写文案按钮');
+    await click('[data-ref-clear]');
+    ok(await js(`!document.querySelector('.ref-banner')`), '点 ✕ 移除参考横幅');
     await click('[data-tpl="poem"]');
   }
   // 示范页签

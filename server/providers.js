@@ -427,6 +427,7 @@ async function generateClip({ cfg, render, prompt, outFile, imageFile, duration,
 module.exports = {
   buildShots,
   llmComplete,
+  extractJson,
   synthesizeSpeech,
   ttsWithVoice,
   makeSilence,

@@ -195,6 +195,31 @@ async function waitDone(id, timeoutMs = 180000) {
   } else {
     ok(hot.status === 502 && /B 站/.test(hot.json.error), `联网失败时返回可读错误（${hot.status}）：${hot.json.error}`);
   }
+  /* ---------- 做同款：按题材让 LLM 写文案（用本地假 LLM，不花钱） ---------- */
+  const noTpl = await api('POST', '/api/script-draft', { template: '__nope__', topic: 'x' });
+  ok(noTpl.status === 400, '做同款：未知模板返回 400');
+  const noLlm = await api('POST', '/api/script-draft', { template: 'heal', topic: '晚安' });
+  ok(noLlm.status === 400 && /分镜 LLM/.test(noLlm.json.error), `做同款：未启用 LLM 时给出明确提示（${noLlm.json.error}）`);
+  const fake = require('http').createServer((req, res) => {
+    let body = '';
+    req.on('data', (d) => (body += d));
+    req.on('end', () => {
+      const asked = JSON.parse(body).messages.map((m) => m.content).join('\n');
+      const reply = asked.includes('晚安小熊') ? '{"title":"给你的晚安","author":"","script":"今天辛苦了。\\n把烦恼放下吧。\\n晚安。"}' : 'not json';
+      res.setHeader('Content-Type', 'application/json');
+      res.end(JSON.stringify({ choices: [{ message: { content: reply } }] }));
+    });
+  });
+  await new Promise((r) => fake.listen(0, '127.0.0.1', r));
+  const keepLlm = (await api('GET', '/api/settings')).json.llm;
+  if (keepLlm.apiKey) throw new Error('当前服务里已有真实 LLM Key，api-test 会改写它，请用隔离的测试服务（WM_DATA_DIR 指向临时目录）运行');
+  await api('PUT', '/api/settings', { llm: { enabled: true, baseUrl: `http://127.0.0.1:${fake.address().port}`, apiKey: 'sk-fake', model: 'fake' } });
+  const draft = await api('POST', '/api/script-draft', { template: 'heal', topic: '晚安小熊' });
+  ok(draft.status === 200 && draft.json.title === '给你的晚安' && draft.json.script.split('\n').length === 3, `做同款：返回原创文案 ${JSON.stringify(draft.json).slice(0, 60)}`);
+  const badDraft = await api('POST', '/api/script-draft', { template: 'heal', topic: '随便' });
+  ok(badDraft.status === 502 && /重试/.test(badDraft.json.error), '做同款：模型没按 JSON 返回时提示重试');
+  await api('PUT', '/api/settings', { llm: { enabled: !!keepLlm.enabled, baseUrl: keepLlm.baseUrl, apiKey: '', model: keepLlm.model } });
+  fake.close();
   /* ---------- 音色试听 ---------- */
   const pv = await fetch(BASE + '/api/tts/preview', {
     method: 'POST',

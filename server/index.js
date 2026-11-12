@@ -63,6 +63,46 @@ app.get(
   }),
 );
 
+/* ---------- 「做同款」：参考一个题材，让分镜 LLM 原创一版文案 ----------
+ * body: { template, topic }；返回 { title, author, script }。需要在设置里启用分镜 LLM（一次约 0.01 元）。 */
+app.post(
+  '/api/script-draft',
+  wrap(async (req, res) => {
+    const { template, topic } = req.body || {};
+    const tpl = TEMPLATES.find((t) => t.id === template);
+    if (!tpl) return res.status(400).json({ error: '未知模板' });
+    const theme = String(topic || '').replace(/\s+/g, ' ').trim().slice(0, 120);
+    if (!theme) return res.status(400).json({ error: '缺少题材' });
+    const llm = settingsStore.load().llm;
+    if (!llm.enabled || !llm.apiKey) return res.status(400).json({ error: '还没有启用分镜 LLM：请先到「设置 → 模型」启用并填写 Key，或者自己写文案' });
+    const rule =
+      tpl.id === 'poem'
+        ? '选一首与该题材意境相符的经典古诗词（四到八句，必须是真实存在的原文），script 里一句一行，title 填诗名，author 填作者。'
+        : tpl.id === 'talk'
+          ? '口播风格：观点先行，层层递进；script 5~8 句，每句不超过 30 字，一句一行，总共 120~200 字；title 填一个吸引人的标题，author 留空。'
+          : `script 5~8 句，每句不超过 30 字，一句一行，总共 120~200 字，语言自然有画面感；title 填一个简短的标题（${tpl.titleLabel || '标题'}），author 留空。`;
+    const msg = await providers.llmComplete(llm, {
+      temperature: 0.8,
+      messages: [
+        { role: 'system', content: `你是「${tpl.name}」短视频的文案写手。${tpl.desc}。` },
+        {
+          role: 'user',
+          content: `参考题材「${theme}」，为「${tpl.name}」原创一版文案（不要照搬任何已有作品，不要出现平台名、博主名、「关注点赞」之类的字样）。${rule}\n只输出一个 JSON：{"title":"","author":"","script":""}，script 里用 \\n 分行，不要输出别的内容。`,
+        },
+      ],
+    });
+    let j;
+    try {
+      j = providers.extractJson(String(msg.content || ''));
+    } catch {
+      throw Object.assign(new Error('模型没有按要求返回文案，请重试一次'), { status: 502 });
+    }
+    const script = String(j.script || '').trim();
+    if (!script) throw Object.assign(new Error('模型返回的文案为空，请重试一次'), { status: 502 });
+    res.json({ title: String(j.title || '').trim(), author: String(j.author || '').trim(), script });
+  }),
+);
+
 /* ---------- 设置 ---------- */
 app.get('/api/settings', (req, res) => res.json(settingsStore.masked(settingsStore.load())));
 app.put('/api/settings', (req, res) => res.json(settingsStore.masked(settingsStore.save(req.body))));

@@ -72,7 +72,8 @@ function hotMedia(v, i) {
   return `<div class="feat-cover hot-cover"><img src="${esc(v.pic)}" loading="lazy" alt="" referrerpolicy="no-referrer" /></div>
     <span class="hot-rank r${i < 3 ? i + 1 : 0}">${i + 1}</span>
     <span class="hot-dur">${fmtDur(v.duration)}</span>
-    <button type="button" class="feat-play" data-hplay aria-label="播放">${icon('play')}</button>`;
+    <button type="button" class="feat-play" data-hplay aria-label="播放">${icon('play')}</button>
+    <button type="button" class="feat-use" data-hot-use>做同款</button>`;
 }
 
 export function hotCardsHtml(items) {
@@ -84,7 +85,7 @@ export function hotCardsHtml(items) {
         <div class="feat-info">
           <div class="t hot-title" title="${esc(v.title)}">${esc(v.title)}</div>
           <div class="m"><span class="hot-play">▶ ${fmtPlay(v.play)}</span><span>${esc(v.author)}</span></div>
-          <div class="m"><span>${fmtDate(v.pubdate)}</span><a class="hot-open" href="${esc(v.url)}" target="_blank" rel="noopener">在 B 站打开 ↗</a></div>
+          <div class="m"><span>${fmtDate(v.pubdate)}</span><span class="hot-acts"><a class="hot-open" href="${esc(v.url)}" target="_blank" rel="noopener">在 B 站打开 ↗</a><button type="button" class="hot-use" data-hot-use>做同款</button></span></div>
         </div>
       </div>`,
     )
