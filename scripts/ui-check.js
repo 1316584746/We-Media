@@ -206,6 +206,31 @@ const ok = (c, m) => {
   ok(await js(`!document.querySelector('[data-skill]').classList.contains('on')`), '点击可取消勾选');
   // 创作精选：筛选、详情、做同款
   ok(await js(`!document.querySelector('#recent') && ![...document.querySelectorAll('h2')].some(h=>h.textContent.includes('最近项目'))`), '创作页不再展示「最近项目」');
+  // 热门动画页签（默认）：B 站同主题视频按播放量排序，原地播放。依赖外网，联网失败时只校验错误提示
+  await click('[data-tpl="poem"]');
+  ok(await js(`document.querySelector('[data-tab="hot"]').classList.contains('on')`), '创作精选默认是「热门动画」页签');
+  ok(await waitFor(`document.querySelectorAll('.hot').length > 0 || !!document.querySelector('[data-hot-retry]')`, 30000), '热门动画：加载出视频或给出可重试的错误提示');
+  if (await js(`document.querySelectorAll('.hot').length > 0`)) {
+    const hotApi = await (await fetch(`${BASE}/api/discover?template=poem`)).json();
+    ok(hotApi.items.length >= 6 && hotApi.items.every((v, i) => i === 0 || hotApi.items[i - 1].play >= v.play), `热门视频 ${hotApi.items.length} 条，按播放量从高到低`);
+    ok(await js(`JSON.stringify([...document.querySelectorAll('.hot')].map(c=>c.dataset.hot)) === ${JSON.stringify(JSON.stringify(hotApi.items.map((v) => v.bvid)))}`), '页面顺序与接口一致');
+    ok(await js(`[...document.querySelectorAll('.hot')].every(c => c.querySelector('.hot-play') && c.querySelector('.hot-dur') && c.querySelector('.hot-open'))`), '每张卡片有播放量、时长、「在 B 站打开」');
+    await js(`document.querySelector('#featured').scrollIntoView()`);
+    await click('.hot [data-hplay]');
+    ok(await waitFor(`document.querySelectorAll('.hot iframe').length === 1 && document.querySelector('.hot iframe').src.includes('player.bilibili.com') && !document.querySelector('dialog[open]')`, 3000), '点播放：在卡片内嵌入 B 站播放器，不弹窗');
+    await sleep(2500);
+    await shot('ui-hot-playing');
+    await click('.hot [data-hplay]');
+    ok(await js(`document.querySelectorAll('.hot iframe').length === 1`), '再播另一条，同时只有一个播放器');
+    await click('.hot [data-stop]');
+    ok(await js(`document.querySelectorAll('.hot iframe').length === 0 && document.querySelectorAll('.hot [data-hplay]').length === document.querySelectorAll('.hot').length`), '点 ✕ 关闭播放器，恢复封面');
+    await click('[data-tpl="heal"]');
+    ok(await waitFor(`document.querySelectorAll('.hot').length > 0 && document.querySelector('#featured h2').textContent.includes('心灵鸡汤') && document.querySelector('.hot').dataset.hot !== ${JSON.stringify(hotApi.items[0].bvid)}`, 30000), '切到心灵鸡汤，热门视频同步换成治愈类');
+    await click('[data-tpl="poem"]');
+  }
+  // 示范页签
+  await click('[data-tab="demo"]');
+  ok(await waitFor(`document.querySelectorAll('.feat:not(.hot)').length === 4`, 3000), '切到「做同款示范」页签');
   // 精选跟随模板：选「古诗词动画」→ 只推荐诗词
   await click('[data-tpl="poem"]');
   ok(await waitFor(`document.querySelectorAll('.feat').length === 4 && document.querySelector('#featured h2').textContent.includes('古诗词')`, 3000), '默认模板是古诗词，精选只展示 4 条诗词');

@@ -62,6 +62,44 @@ export function stopInCard(card) {
   media._saved = null;
 }
 
+/* ---------------- 热门视频（B 站，按播放量） ---------------- */
+
+export const fmtPlay = (n) => (n >= 1e8 ? `${(n / 1e8).toFixed(1)}亿` : n >= 1e4 ? `${(n / 1e4).toFixed(n >= 1e6 ? 0 : 1)}万` : String(n));
+const fmtDur = (s) => `${Math.floor(s / 60)}:${String(Math.round(s % 60)).padStart(2, '0')}`;
+const fmtDate = (ts) => (ts ? new Date(ts * 1000).toLocaleDateString('zh-CN', { year: 'numeric', month: 'numeric', day: 'numeric' }) : '');
+
+function hotMedia(v, i) {
+  return `<div class="feat-cover hot-cover"><img src="${esc(v.pic)}" loading="lazy" alt="" referrerpolicy="no-referrer" /></div>
+    <span class="hot-rank r${i < 3 ? i + 1 : 0}">${i + 1}</span>
+    <span class="hot-dur">${fmtDur(v.duration)}</span>
+    <button type="button" class="feat-play" data-hplay aria-label="播放">${icon('play')}</button>`;
+}
+
+export function hotCardsHtml(items) {
+  if (!items.length) return '<div class="empty"><b>暂无内容</b></div>';
+  return items
+    .map(
+      (v, i) => `<div class="feat hot" data-hot="${esc(v.bvid)}">
+        <div class="feat-media hot-media">${hotMedia(v, i)}</div>
+        <div class="feat-info">
+          <div class="t hot-title" title="${esc(v.title)}">${esc(v.title)}</div>
+          <div class="m"><span class="hot-play">▶ ${fmtPlay(v.play)}</span><span>${esc(v.author)}</span></div>
+          <div class="m"><span>${fmtDate(v.pubdate)}</span><a class="hot-open" href="${esc(v.url)}" target="_blank" rel="noopener">在 B 站打开 ↗</a></div>
+        </div>
+      </div>`,
+    )
+    .join('');
+}
+
+/** 在卡片画面区内嵌 B 站官方外嵌播放器（16:9 正好铺满封面位置） */
+export function playHotInCard(card, v) {
+  const media = $('.feat-media', card);
+  media._saved = media.innerHTML;
+  const src = `https://player.bilibili.com/player.html?isOutside=true&bvid=${encodeURIComponent(v.bvid)}&p=1&autoplay=1&danmaku=0&high_quality=1`;
+  media.innerHTML = `<div class="feat-cover feat-vplayer"><iframe src="${src}" allowfullscreen allow="autoplay; fullscreen" scrolling="no" frameborder="0"></iframe></div>
+    <button type="button" class="feat-stop" data-stop aria-label="关闭视频" title="关闭视频">✕</button>`;
+}
+
 /** 图片加载失败时退回模板色块（只留字形） */
 export function handleCoverErrors(container) {
   container.addEventListener(

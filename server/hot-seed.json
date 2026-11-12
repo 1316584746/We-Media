@@ -1,0 +1,854 @@
+{
+ "poem": {
+  "source": "bilibili",
+  "keywords": [
+   "古诗词动画",
+   "古诗 国风动画"
+  ],
+  "fetchedAt": 1794473412917,
+  "items": [
+   {
+    "bvid": "BV1CJ411P7Ns",
+    "title": "这可能就是外国人做不出来的文化吧 别眨眼 带你一秒沉沦这山水墨染的中国风",
+    "author": "小x文",
+    "play": 6725452,
+    "danmaku": 11215,
+    "duration": 226,
+    "pic": "https://i0.hdslb.com/bfs/archive/f040e67a6f8e8e6e52d888e4bca2980ddd04b2f2.png",
+    "pubdate": 1568338277,
+    "url": "https://www.bilibili.com/video/BV1CJ411P7Ns"
+   },
+   {
+    "bvid": "BV16J41157VY",
+    "title": "“喜见你眉秀似山，眼拥星霜”",
+    "author": "锦书致南辞",
+    "play": 6533515,
+    "danmaku": 8030,
+    "duration": 237,
+    "pic": "https://i2.hdslb.com/bfs/archive/2e28781080fd7a6d796fb77bff9c70e4cb792af4.jpg",
+    "pubdate": 1578474200,
+    "url": "https://www.bilibili.com/video/BV16J41157VY"
+   },
+   {
+    "bvid": "BV1YV41117ke",
+    "title": "这大概就是外国人所无法理解的国漫之美！",
+    "author": "米欧Mioco",
+    "play": 4428918,
+    "danmaku": 5730,
+    "duration": 207,
+    "pic": "https://i2.hdslb.com/bfs/archive/e3407184537ba46645acd9e0e846c9ec27b6e3b8.jpg",
+    "pubdate": 1601524854,
+    "url": "https://www.bilibili.com/video/BV1YV41117ke"
+   },
+   {
+    "bvid": "BV1R5411K7KF",
+    "title": "漂亮警告！听说你们想看点不一样的",
+    "author": "阿巳与小铃铛",
+    "play": 4173842,
+    "danmaku": 1694,
+    "duration": 114,
+    "pic": "https://i1.hdslb.com/bfs/archive/5ce6f2bd3a0e8173b4283d9c51b84bc6ef0e94a3.jpg",
+    "pubdate": 1623837614,
+    "url": "https://www.bilibili.com/video/BV1R5411K7KF"
+   },
+   {
+    "bvid": "BV1Vr4y1C7xi",
+    "title": "【国漫混剪】“她唱着他乡遇故知，一步一句是相思。”",
+    "author": "她脚踝银铃响了",
+    "play": 3436910,
+    "danmaku": 2826,
+    "duration": 207,
+    "pic": "https://i0.hdslb.com/bfs/archive/6c94998b58611acccd1867aa3d8f1eba8bd75701.jpg",
+    "pubdate": 1635916766,
+    "url": "https://www.bilibili.com/video/BV1Vr4y1C7xi"
+   },
+   {
+    "bvid": "BV1Kh411y7o7",
+    "title": "#原创动画#——菱花镜——",
+    "author": "巴比伦塔1",
+    "play": 3172907,
+    "danmaku": 3053,
+    "duration": 139,
+    "pic": "https://i1.hdslb.com/bfs/archive/b38dd4f0931a321fbf20a8ad00bea2281b5fa3af.jpg",
+    "pubdate": 1613452177,
+    "url": "https://www.bilibili.com/video/BV1Kh411y7o7"
+   },
+   {
+    "bvid": "BV1GP4y1E7Mb",
+    "title": "这动画美得像一首诗！中国人刻在骨子里的浪漫，别人永远无法偷走！",
+    "author": "蒙娜丽鲨鱼",
+    "play": 2269953,
+    "danmaku": 816,
+    "duration": 253,
+    "pic": "https://i2.hdslb.com/bfs/archive/49bdeb291baaa537fd04bb1cecd6b3eb77c16f89.jpg",
+    "pubdate": 1641558199,
+    "url": "https://www.bilibili.com/video/BV1GP4y1E7Mb"
+   },
+   {
+    "bvid": "BV1DC4y1h7JH",
+    "title": "“两情若是久长时，又岂在朝朝暮暮”",
+    "author": "-TS映画-",
+    "play": 2028574,
+    "danmaku": 2373,
+    "duration": 220,
+    "pic": "https://i0.hdslb.com/bfs/archive/7cda13e9f3190705fde9a0eeb91c7523f633a729.jpg",
+    "pubdate": 1591695040,
+    "url": "https://www.bilibili.com/video/BV1DC4y1h7JH"
+   },
+   {
+    "bvid": "BV1ug411T77a",
+    "title": "“这世间太苦，我来渡你”",
+    "author": "一禅走天涯",
+    "play": 2000000,
+    "danmaku": 1199,
+    "duration": 118,
+    "pic": "https://i2.hdslb.com/bfs/archive/88bf7f052ba95a5c7295a4ccefc1de2b57865747.jpg",
+    "pubdate": 1636715533,
+    "url": "https://www.bilibili.com/video/BV1ug411T77a"
+   },
+   {
+    "bvid": "BV1q4Nbe1Ebs",
+    "title": "两年了，朋友终于认为我该宣传了",
+    "author": "小号乱吹",
+    "play": 1973215,
+    "danmaku": 572,
+    "duration": 47,
+    "pic": "https://i1.hdslb.com/bfs/archive/97e758a312b6e569457aee5193d4bca6cd8c2da7.jpg",
+    "pubdate": 1738900652,
+    "url": "https://www.bilibili.com/video/BV1q4Nbe1Ebs"
+   },
+   {
+    "bvid": "BV1pM4y1h76b",
+    "title": "两年半时间画出这么几分钟动画",
+    "author": "赵唤鸑鷟残飞坠",
+    "play": 1930398,
+    "danmaku": 1893,
+    "duration": 116,
+    "pic": "https://i0.hdslb.com/bfs/archive/b9eda4d6ecb2ac4ac9cddc2a41dd8183bb0794e4.jpg",
+    "pubdate": 1683086400,
+    "url": "https://www.bilibili.com/video/BV1pM4y1h76b"
+   },
+   {
+    "bvid": "BV1yg411D7Sx",
+    "title": "原来这就是古早动画片不好混的原因！来自上世纪的审美碾压！！",
+    "author": "红山楂糖葫芦",
+    "play": 1865448,
+    "danmaku": 3875,
+    "duration": 161,
+    "pic": "https://i1.hdslb.com/bfs/archive/c116670ce6ca6c9f7cfc84d0772fdafc377dbb52.jpg",
+    "pubdate": 1661421988,
+    "url": "https://www.bilibili.com/video/BV1yg411D7Sx"
+   }
+  ]
+ },
+ "story": {
+  "source": "bilibili",
+  "keywords": [
+   "睡前故事 动画",
+   "绘本动画 儿童故事"
+  ],
+  "fetchedAt": 1794473418782,
+  "items": [
+   {
+    "bvid": "BV1xbpPzbEsd",
+    "title": "大坏狐狸的故事抽象中配 03",
+    "author": "Coulson不讲李",
+    "play": 7607544,
+    "danmaku": 696,
+    "duration": 129,
+    "pic": "https://i0.hdslb.com/bfs/archive/bc1b8f6e4b23ad2406b1a7369374bce94c84ce52.jpg",
+    "pubdate": 1757908800,
+    "url": "https://www.bilibili.com/video/BV1xbpPzbEsd"
+   },
+   {
+    "bvid": "BV1WWgh6WE9D",
+    "title": "大坏狐狸的故事抽象中配 大结局",
+    "author": "Coulson不讲李",
+    "play": 6301033,
+    "danmaku": 658,
+    "duration": 224,
+    "pic": "https://i2.hdslb.com/bfs/archive/f7faa6655814883bce29d44f7590f51e8a7ec413.jpg",
+    "pubdate": 1784866434,
+    "url": "https://www.bilibili.com/video/BV1WWgh6WE9D"
+   },
+   {
+    "bvid": "BV1kmrhYiE1h",
+    "title": "大坏狐狸的故事抽象中配 01",
+    "author": "Coulson不讲李",
+    "play": 3859094,
+    "danmaku": 926,
+    "duration": 104,
+    "pic": "https://i0.hdslb.com/bfs/archive/7d3b1a4c6da95cc6700573d8ba41d566113acff5.jpg",
+    "pubdate": 1736326800,
+    "url": "https://www.bilibili.com/video/BV1kmrhYiE1h"
+   },
+   {
+    "bvid": "BV128411L7oA",
+    "title": "吃不健康的食物会怎么样？熊猫姐姐儿童益智早教儿歌动画片",
+    "author": "熊猫姐姐早教",
+    "play": 3703225,
+    "danmaku": 86,
+    "duration": 91,
+    "pic": "https://i1.hdslb.com/bfs/archive/6c77ed27c26561f5d57579dc7c0e7be54f8f2a25.jpg",
+    "pubdate": 1669509000,
+    "url": "https://www.bilibili.com/video/BV128411L7oA"
+   },
+   {
+    "bvid": "BV1UG411M7j6",
+    "title": "怎么样安全坐电梯呢？熊猫姐姐儿童益智早教儿歌动画片",
+    "author": "熊猫姐姐早教",
+    "play": 3295599,
+    "danmaku": 70,
+    "duration": 89,
+    "pic": "https://i1.hdslb.com/bfs/archive/9034124d613e723b30a14af205b25c5628aa80f8.jpg",
+    "pubdate": 1669881600,
+    "url": "https://www.bilibili.com/video/BV1UG411M7j6"
+   },
+   {
+    "bvid": "BV1t4iqY2EGV",
+    "title": "看似繁荣的世界背后，其实蛰伏着未知的黑暗，但这都不是你一拳解决不了的",
+    "author": "伍哥漫剧",
+    "play": 3279042,
+    "danmaku": 5,
+    "duration": 357,
+    "pic": "https://i0.hdslb.com/bfs/archive/2bc33f6a877c33efb1b9f5fd89ed2de5973b2c24.jpg",
+    "pubdate": 1733462527,
+    "url": "https://www.bilibili.com/video/BV1t4iqY2EGV"
+   },
+   {
+    "bvid": "BV1y14y1E7Hy",
+    "title": "是谁嗯嗯在我的头上？熊猫姐姐儿童益智早教儿歌动画片",
+    "author": "熊猫姐姐早教",
+    "play": 3140012,
+    "danmaku": 88,
+    "duration": 104,
+    "pic": "https://i1.hdslb.com/bfs/archive/ab7337741d823706ac1fe7bb13622448f2e5419f.jpg",
+    "pubdate": 1669969061,
+    "url": "https://www.bilibili.com/video/BV1y14y1E7Hy"
+   },
+   {
+    "bvid": "BV13T421Y77s",
+    "title": "儿童故事《总是憋尿尿的后果》3-6岁儿童睡前故事，有声绘本",
+    "author": "汤圆妈讲故事",
+    "play": 3104528,
+    "danmaku": 65,
+    "duration": 321,
+    "pic": "https://i2.hdslb.com/bfs/archive/380d4eac1855586475bdde4e6558ba2bf0353d1e.jpg",
+    "pubdate": 1718706668,
+    "url": "https://www.bilibili.com/video/BV13T421Y77s"
+   },
+   {
+    "bvid": "BV1zz4y1c7oB",
+    "title": "【海仙公】细思极恐的真实故事",
+    "author": "大口大口吃米饭",
+    "play": 2823734,
+    "danmaku": 3546,
+    "duration": 295,
+    "pic": "https://i1.hdslb.com/bfs/archive/b68c4e3e98af1eff7753985906063bbd8c7117c8.jpg",
+    "pubdate": 1700618400,
+    "url": "https://www.bilibili.com/video/BV1zz4y1c7oB"
+   },
+   {
+    "bvid": "BV1gN25BuE4x",
+    "title": "大坏狐狸的故事抽象中配 04",
+    "author": "Coulson不讲李",
+    "play": 2530613,
+    "danmaku": 232,
+    "duration": 130,
+    "pic": "https://i0.hdslb.com/bfs/archive/e0442b36d66286a5897a8e2a407c310488923054.jpg",
+    "pubdate": 1764906867,
+    "url": "https://www.bilibili.com/video/BV1gN25BuE4x"
+   },
+   {
+    "bvid": "BV1ze411N7DL",
+    "title": "你认识挖掘机吗？熊猫姐姐儿童益智早教儿歌动画片",
+    "author": "熊猫姐姐早教",
+    "play": 2387366,
+    "danmaku": 43,
+    "duration": 97,
+    "pic": "https://i1.hdslb.com/bfs/archive/bfd3cccd6487a9a2f02b57468c618292810f4afe.jpg",
+    "pubdate": 1670027400,
+    "url": "https://www.bilibili.com/video/BV1ze411N7DL"
+   },
+   {
+    "bvid": "BV1ke411w7ZP",
+    "title": "你吃过哪些味道奇怪的食物？熊猫姐姐儿童益智早教儿歌动画片",
+    "author": "熊猫姐姐早教",
+    "play": 2073416,
+    "danmaku": 39,
+    "duration": 111,
+    "pic": "https://i1.hdslb.com/bfs/archive/e7e790727dc418d0fda87cb145a64561fe6cf202.jpg",
+    "pubdate": 1671062400,
+    "url": "https://www.bilibili.com/video/BV1ke411w7ZP"
+   }
+  ]
+ },
+ "explainer": {
+  "source": "bilibili",
+  "keywords": [
+   "科普动画",
+   "知识科普 动画短片"
+  ],
+  "fetchedAt": 1794473424615,
+  "items": [
+   {
+    "bvid": "BV1Jb4y1F7ts",
+    "title": "阔剑地雷、跳雷、蝴蝶雷、反坦克地雷等等都是怎么工作的？",
+    "author": "叮咚呛先生",
+    "play": 14790748,
+    "danmaku": 6743,
+    "duration": 217,
+    "pic": "https://i1.hdslb.com/bfs/archive/b8218f879e261ac04ad6d921c6bf64d69f8a5e1d.jpg",
+    "pubdate": 1704189600,
+    "url": "https://www.bilibili.com/video/BV1Jb4y1F7ts"
+   },
+   {
+    "bvid": "BV136Eg6hEUh",
+    "title": "太阳系八大行星公转周期",
+    "author": "宇宙奇观之星球动画",
+    "play": 10596719,
+    "danmaku": 682,
+    "duration": 70,
+    "pic": "https://i0.hdslb.com/bfs/archive/4f625c618878a165b880313fc6584252a38b70ad.jpg",
+    "pubdate": 1780911556,
+    "url": "https://www.bilibili.com/video/BV136Eg6hEUh"
+   },
+   {
+    "bvid": "BV1WYUABME1b",
+    "title": "动画演示2000年前的生死局！约瑟夫问题？",
+    "author": "今日知识",
+    "play": 9280276,
+    "danmaku": 354,
+    "duration": 152,
+    "pic": "https://i2.hdslb.com/bfs/archive/ed964e6ebc4d36115b87105bcbf6ad3aab5029a7.jpg",
+    "pubdate": 1763882783,
+    "url": "https://www.bilibili.com/video/BV1WYUABME1b"
+   },
+   {
+    "bvid": "BV1F7xWzJEDp",
+    "title": "一个人类竟然找到了外星人的巢穴❗️两个瘾君子的幻想❓",
+    "author": "鱼C-小甲鱼",
+    "play": 8909722,
+    "danmaku": 506,
+    "duration": 191,
+    "pic": "https://i2.hdslb.com/bfs/archive/cc765ba99e093f85191568e4bced1bf185afbdec.jpg",
+    "pubdate": 1759555217,
+    "url": "https://www.bilibili.com/video/BV1F7xWzJEDp"
+   },
+   {
+    "bvid": "BV1TM4y1d7Y5",
+    "title": "Blender | 超强的心脏3D动画",
+    "author": "偶魔数字OmooLab",
+    "play": 8666387,
+    "danmaku": 4571,
+    "duration": 20,
+    "pic": "https://i2.hdslb.com/bfs/archive/43f4e1c0f906244c5c6ca540e42f86523691c78a.jpg",
+    "pubdate": 1677848400,
+    "url": "https://www.bilibili.com/video/BV1TM4y1d7Y5"
+   },
+   {
+    "bvid": "BV1qa411C7Cr",
+    "title": "涨知识：大象篇",
+    "author": "唐唐小光头",
+    "play": 8221695,
+    "danmaku": 351,
+    "duration": 87,
+    "pic": "https://i0.hdslb.com/bfs/archive/dcf8d1233a6ecaf59cd6b3d93cba30f5bb92f01e.jpg",
+    "pubdate": 1645177788,
+    "url": "https://www.bilibili.com/video/BV1qa411C7Cr"
+   },
+   {
+    "bvid": "BV15n5e6ZEwL",
+    "title": "万万没想到，脚下寻常道路，居然划分出这么多专属叫法！",
+    "author": "走遍中国博物馆",
+    "play": 7800251,
+    "danmaku": 2319,
+    "duration": 49,
+    "pic": "https://i0.hdslb.com/bfs/archive/00dec7e06329e7872463324c072bcf8b8836bfe5.jpg",
+    "pubdate": 1778814859,
+    "url": "https://www.bilibili.com/video/BV15n5e6ZEwL"
+   },
+   {
+    "bvid": "BV18z421i7h4",
+    "title": "身体：救赎之道，就在其中",
+    "author": "进击的金厂长",
+    "play": 7768690,
+    "danmaku": 1482,
+    "duration": 142,
+    "pic": "https://i0.hdslb.com/bfs/archive/64f79bbfec0c7f11bd49b5b3fd52ff3b5ea6e5b3.jpg",
+    "pubdate": 1723024111,
+    "url": "https://www.bilibili.com/video/BV18z421i7h4"
+   },
+   {
+    "bvid": "BV18MMuz7EBL",
+    "title": "身体：给我…支棱起来！！！",
+    "author": "进击的金厂长",
+    "play": 7694772,
+    "danmaku": 4456,
+    "duration": 439,
+    "pic": "https://i1.hdslb.com/bfs/archive/24af5de8d1522690c0f7a68fe0413d0b5b79b5da.jpg",
+    "pubdate": 1749809114,
+    "url": "https://www.bilibili.com/video/BV18MMuz7EBL"
+   },
+   {
+    "bvid": "BV1K6JqzJE5k",
+    "title": "救命！我的肚子要爆炸了！（下集！）",
+    "author": "土豆逗严肃科普",
+    "play": 7233580,
+    "danmaku": 44,
+    "duration": 102,
+    "pic": "https://i2.hdslb.com/bfs/archive/2b9cbc62819387f1dbc3fd1361389a1ab57274f5.jpg",
+    "pubdate": 1747799349,
+    "url": "https://www.bilibili.com/video/BV1K6JqzJE5k"
+   },
+   {
+    "bvid": "BV1Kh4y1C7Tv",
+    "title": "按摩动画演示",
+    "author": "医学炸了",
+    "play": 6944099,
+    "danmaku": 1877,
+    "duration": 58,
+    "pic": "https://i2.hdslb.com/bfs/archive/f87425039f8760dafef1d2d8d4dd99632283a3a0.jpg",
+    "pubdate": 1690901400,
+    "url": "https://www.bilibili.com/video/BV1Kh4y1C7Tv"
+   },
+   {
+    "bvid": "BV1CaWoeDErn",
+    "title": "中世纪欧洲是如何上厕所的？一个比一个辣眼睛！既奇葩又不卫生",
+    "author": "科学探世界",
+    "play": 6889965,
+    "danmaku": 129,
+    "duration": 68,
+    "pic": "https://i2.hdslb.com/bfs/archive/d807a3d1129e0110b0d9168f924116202249a054.jpg",
+    "pubdate": 1724470704,
+    "url": "https://www.bilibili.com/video/BV1CaWoeDErn"
+   }
+  ]
+ },
+ "talk": {
+  "source": "bilibili",
+  "keywords": [
+   "口播 干货 职场",
+   "口播 知识分享 短视频"
+  ],
+  "fetchedAt": 1794473430458,
+  "items": [
+   {
+    "bvid": "BV15KZsBBEyC",
+    "title": "揭秘网传违禁词，你中招了吗？",
+    "author": "kk是大神",
+    "play": 473553,
+    "danmaku": 187,
+    "duration": 66,
+    "pic": "https://i1.hdslb.com/bfs/archive/19a097a61b9aa97e34d6205c57a8528e6c30db7c.jpg",
+    "pubdate": 1771335000,
+    "url": "https://www.bilibili.com/video/BV15KZsBBEyC"
+   },
+   {
+    "bvid": "BV1hz421h7HM",
+    "title": "教你一个口播百分百上热门的方法。",
+    "author": "墨鱼日记-每月有课",
+    "play": 99201,
+    "danmaku": 26,
+    "duration": 137,
+    "pic": "https://i0.hdslb.com/bfs/archive/56bf0f30d3f76c967a9ce6333f6becbc04d2f028.jpg",
+    "pubdate": 1717237800,
+    "url": "https://www.bilibili.com/video/BV1hz421h7HM"
+   },
+   {
+    "bvid": "BV196421f77n",
+    "title": "刚入职就被PUA连花字都做不好，那就学！IP剪辑师、流量剪辑师必备技巧！花字包装、排版样式、字幕安全区等知识分享",
+    "author": "虚空光影",
+    "play": 57525,
+    "danmaku": 21,
+    "duration": 331,
+    "pic": "https://i2.hdslb.com/bfs/archive/bd04cadc1d124e217444a75725b531e3b62a15a9.jpg",
+    "pubdate": 1717916196,
+    "url": "https://www.bilibili.com/video/BV196421f77n"
+   },
+   {
+    "bvid": "BV111421179x",
+    "title": "粉丝想看看500/条的口播视频，安排~",
+    "author": "小梅不会剪辑",
+    "play": 57398,
+    "danmaku": 22,
+    "duration": 74,
+    "pic": "https://i0.hdslb.com/bfs/archive/dfd99e42baed48d2d629e8ea599b78219d5a1c71.jpg",
+    "pubdate": 1717118062,
+    "url": "https://www.bilibili.com/video/BV111421179x"
+   },
+   {
+    "bvid": "BV1mF411v7Lm",
+    "title": "录制口播对着提词器读文案，还是觉得不够自然？教给你秘密武器",
+    "author": "传媒Q老板",
+    "play": 41599,
+    "danmaku": 5,
+    "duration": 79,
+    "pic": "https://i1.hdslb.com/bfs/archive/6f0ea933e9e4631211dad6b543e877bbb32708eb.jpg",
+    "pubdate": 1642318475,
+    "url": "https://www.bilibili.com/video/BV1mF411v7Lm"
+   },
+   {
+    "bvid": "BV11C4y1Y75Q",
+    "title": "【剪辑干货】新手必看！7年经验剪辑师的口播剪辑技巧",
+    "author": "夏之茉莉_",
+    "play": 38004,
+    "danmaku": 2,
+    "duration": 124,
+    "pic": "https://i0.hdslb.com/bfs/archive/77126be181b9870f735c498de9e6d0888f9a591f.jpg",
+    "pubdate": 1704978000,
+    "url": "https://www.bilibili.com/video/BV11C4y1Y75Q"
+   },
+   {
+    "bvid": "BV1pV4y1A7DK",
+    "title": "口播视频怎么做?牢记这三要素！",
+    "author": "阿橘kila",
+    "play": 21049,
+    "danmaku": 3,
+    "duration": 223,
+    "pic": "https://i0.hdslb.com/bfs/archive/ad0e5fd7c709bcdb6180819a077fddc6e3ebf02d.jpg",
+    "pubdate": 1671016480,
+    "url": "https://www.bilibili.com/video/BV1pV4y1A7DK"
+   },
+   {
+    "bvid": "BV1UHRbBAEw9",
+    "title": "芒果后期教你正确用音效~",
+    "author": "后期老毛-干货版",
+    "play": 19678,
+    "danmaku": 0,
+    "duration": 18,
+    "pic": "https://i0.hdslb.com/bfs/archive/d33d782ae994e6a1e4226567d4496f762d020d67.jpg",
+    "pubdate": 1778076835,
+    "url": "https://www.bilibili.com/video/BV1UHRbBAEw9"
+   },
+   {
+    "bvid": "BV1ZFsKeeEPC",
+    "title": "退休人员，要早了解早作准备！",
+    "author": "薪火传金城",
+    "play": 13557,
+    "danmaku": 5,
+    "duration": 135,
+    "pic": "https://i2.hdslb.com/bfs/archive/4fc79a62db80f22d87f11a5bb6b9c672c1aa6a24.jpg",
+    "pubdate": 1724817071,
+    "url": "https://www.bilibili.com/video/BV1ZFsKeeEPC"
+   },
+   {
+    "bvid": "BV1sa411z7mf",
+    "title": "拍摄口播，如何花最少的钱布光",
+    "author": "传媒Q老板",
+    "play": 9852,
+    "danmaku": 0,
+    "duration": 109,
+    "pic": "https://i2.hdslb.com/bfs/archive/3a5e2882c15f7ab20f56b7ad7cc1c0067a9d2e64.jpg",
+    "pubdate": 1641357518,
+    "url": "https://www.bilibili.com/video/BV1sa411z7mf"
+   },
+   {
+    "bvid": "BV1kEGEzKEee",
+    "title": "口播视频怎么拍",
+    "author": "浩然实体短视频",
+    "play": 8709,
+    "danmaku": 2,
+    "duration": 44,
+    "pic": "https://i2.hdslb.com/bfs/archive/a7634fb0288532a079e739521c49b93b895348f3.jpg",
+    "pubdate": 1751952276,
+    "url": "https://www.bilibili.com/video/BV1kEGEzKEee"
+   },
+   {
+    "bvid": "BV1PK4y1M7D2",
+    "title": "我拍了1000个视频，总结出来的口播视频技巧",
+    "author": "宁老师短视频",
+    "play": 8150,
+    "danmaku": 0,
+    "duration": 49,
+    "pic": "https://i1.hdslb.com/bfs/archive/55117ef2665f7e522d3d9a9c26b47b3e7c5604cf.jpg",
+    "pubdate": 1625373971,
+    "url": "https://www.bilibili.com/video/BV1PK4y1M7D2"
+   }
+  ]
+ },
+ "heal": {
+  "source": "bilibili",
+  "keywords": [
+   "治愈系动画短片",
+   "暖心 治愈 动画 温柔"
+  ],
+  "fetchedAt": 1794473436277,
+  "items": [
+   {
+    "bvid": "BV1Hx4y1b7G9",
+    "title": "红巨星妄想霸占太阳系",
+    "author": "车厘子动画",
+    "play": 10134217,
+    "danmaku": 219,
+    "duration": 99,
+    "pic": "https://i2.hdslb.com/bfs/archive/1e28460038e8a02fbf1fde75af7bf48f7ff2133d.jpg",
+    "pubdate": 1717813800,
+    "url": "https://www.bilibili.com/video/BV1Hx4y1b7G9"
+   },
+   {
+    "bvid": "BV1Xs411W7T2",
+    "title": "【治愈萌向动画短片】小鸟与蚯蚓",
+    "author": "混事者TAT",
+    "play": 8899933,
+    "danmaku": 1751,
+    "duration": 75,
+    "pic": "https://i1.hdslb.com/bfs/archive/5e73dba685ee287887c560eb1b7da31e392e7cb7.jpg",
+    "pubdate": 1479869212,
+    "url": "https://www.bilibili.com/video/BV1Xs411W7T2"
+   },
+   {
+    "bvid": "BV1qa4y1n7nt",
+    "title": "超治愈短片，看完整个人都暴躁了",
+    "author": "在7楼",
+    "play": 2428534,
+    "danmaku": 2426,
+    "duration": 94,
+    "pic": "https://i2.hdslb.com/bfs/archive/b965a3ceb103267757090e61482936b770490930.jpg",
+    "pubdate": 1609567175,
+    "url": "https://www.bilibili.com/video/BV1qa4y1n7nt"
+   },
+   {
+    "bvid": "BV1zbdQBSENt",
+    "title": "“愿每一份孩子的牵挂，都能被温柔接住”小企鹅公益广告",
+    "author": "咕嘎_小企鹅",
+    "play": 2013385,
+    "danmaku": 93,
+    "duration": 79,
+    "pic": "https://i0.hdslb.com/bfs/archive/63b273e2445e667bd72e34eef54258b790f78c8a.jpg",
+    "pubdate": 1776782977,
+    "url": "https://www.bilibili.com/video/BV1zbdQBSENt"
+   },
+   {
+    "bvid": "BV1ikGizCEKp",
+    "title": "猫章鱼逃跑…却变成火车怪物！？（超燃转折+意外结局）| 奇幻动画短片 #动画短片   #奇幻   #猫猫   #怪物   #黑童话   #原创动画",
+    "author": "bili_建宇2004",
+    "play": 1471601,
+    "danmaku": 0,
+    "duration": 333,
+    "pic": "https://i1.hdslb.com/bfs/archive/8f2fe6107a504e4f48579ac595999e86efdcff49.jpg",
+    "pubdate": 1746105577,
+    "url": "https://www.bilibili.com/video/BV1ikGizCEKp"
+   },
+   {
+    "bvid": "BV18e411C7LT",
+    "title": "神奇的乳霜：复活、返老还童、财富的秘密，不一样的乳霜，世界有这个该多好#动画 #治愈系 #感悟人生",
+    "author": "柠檬柚子mm",
+    "play": 1468002,
+    "danmaku": 1,
+    "duration": 83,
+    "pic": "https://i0.hdslb.com/bfs/archive/1463133afc21ab490c3da2a2187c7d40955bcb8a.png",
+    "pubdate": 1702997106,
+    "url": "https://www.bilibili.com/video/BV18e411C7LT"
+   },
+   {
+    "bvid": "BV1Qj411m7GZ",
+    "title": "治愈系-蛋黄哥大冒险2",
+    "author": "账号已注销",
+    "play": 1378674,
+    "danmaku": 3,
+    "duration": 74,
+    "pic": "https://i1.hdslb.com/bfs/archive/383d3033534a5dab1adcd396f9cbb0c0d36a4bc7.jpg",
+    "pubdate": 1688177042,
+    "url": "https://www.bilibili.com/video/BV1Qj411m7GZ"
+   },
+   {
+    "bvid": "BV1Mr421F7GH",
+    "title": "留守老人收到一个远方的快递，那是儿子寄来的节日礼物",
+    "author": "灿洋动漫",
+    "play": 1324182,
+    "danmaku": 0,
+    "duration": 125,
+    "pic": "https://i0.hdslb.com/bfs/archive/b10375f682bb41977f613ab494f8cee95cd27270.jpg",
+    "pubdate": 1718285703,
+    "url": "https://www.bilibili.com/video/BV1Mr421F7GH"
+   },
+   {
+    "bvid": "BV1wB4y1577Z",
+    "title": "有一种分贝，能被心脏听见",
+    "author": "魔镜小公主",
+    "play": 1305387,
+    "danmaku": 45,
+    "duration": 84,
+    "pic": "https://i1.hdslb.com/bfs/archive/7aca4c88a66b3d00d1641c682544855ae2959f9a.jpg",
+    "pubdate": 1661248505,
+    "url": "https://www.bilibili.com/video/BV1wB4y1577Z"
+   },
+   {
+    "bvid": "BV1rc41137RX",
+    "title": "看完心情会变好哦~",
+    "author": "李白尼的猜想",
+    "play": 1294692,
+    "danmaku": 1242,
+    "duration": 251,
+    "pic": "https://i1.hdslb.com/bfs/archive/4a8c090a2d4cbef67ec60d723be0314c232c1779.jpg",
+    "pubdate": 1686063839,
+    "url": "https://www.bilibili.com/video/BV1rc41137RX"
+   },
+   {
+    "bvid": "BV1nW4y1x78x",
+    "title": "“仅此105秒，无法超越的绝美画面!！”",
+    "author": "血小板゚゚゚゚゚゚",
+    "play": 1273239,
+    "danmaku": 1398,
+    "duration": 106,
+    "pic": "https://i1.hdslb.com/bfs/archive/0914dd38e628ef7d56fba10a35397de2049c0326.jpg",
+    "pubdate": 1668720000,
+    "url": "https://www.bilibili.com/video/BV1nW4y1x78x"
+   },
+   {
+    "bvid": "BV1gf4y1K7CN",
+    "title": "治愈系动画：男人之间的爱情",
+    "author": "蛋仔派对小萨",
+    "play": 1245000,
+    "danmaku": 20,
+    "duration": 103,
+    "pic": "https://i1.hdslb.com/bfs/archive/d8f4c76931dfcafa17cf082d6cf35018f10ab4d4.jpg",
+    "pubdate": 1637478700,
+    "url": "https://www.bilibili.com/video/BV1gf4y1K7CN"
+   }
+  ]
+ },
+ "free": {
+  "source": "bilibili",
+  "keywords": [
+   "AI动画短片",
+   "原创动画短片"
+  ],
+  "fetchedAt": 1794473442059,
+  "items": [
+   {
+    "bvid": "BV1b44y1q7Cb",
+    "title": "《崩坏3》动画短片「薪炎永燃」",
+    "author": "崩坏3第一偶像爱酱",
+    "play": 26190153,
+    "danmaku": 300502,
+    "duration": 476,
+    "pic": "https://i1.hdslb.com/bfs/archive/f664f5dc247a078350a5c65a34b84d15c7be1f14.jpg",
+    "pubdate": 1625803213,
+    "url": "https://www.bilibili.com/video/BV1b44y1q7Cb"
+   },
+   {
+    "bvid": "BV1fY4y1F7GL",
+    "title": "《崩坏3》动画短片「因你而在的故事」",
+    "author": "崩坏3第一偶像爱酱",
+    "play": 25121419,
+    "danmaku": 535053,
+    "duration": 506,
+    "pic": "https://i2.hdslb.com/bfs/archive/a87673b961d302042ecd9e73b1b99644a809a109.jpg",
+    "pubdate": 1660276800,
+    "url": "https://www.bilibili.com/video/BV1fY4y1F7GL"
+   },
+   {
+    "bvid": "BV15YdBB6Efz",
+    "title": "楚人美游记 1-5 合集：当楚人美被孙悟空拐去取经【UP动画】",
+    "author": "安奇米苏",
+    "play": 25055332,
+    "danmaku": 7694,
+    "duration": 559,
+    "pic": "https://i0.hdslb.com/bfs/archive/c710f4f7ea8f9f1bd84be03a2c341d2afd3ccb86.jpg",
+    "pubdate": 1776389037,
+    "url": "https://www.bilibili.com/video/BV15YdBB6Efz"
+   },
+   {
+    "bvid": "BV1bY411b7k9",
+    "title": "《崩坏3》动画短片「阿波卡利斯如是说」",
+    "author": "崩坏3第一偶像爱酱",
+    "play": 20179027,
+    "danmaku": 233246,
+    "duration": 531,
+    "pic": "https://i1.hdslb.com/bfs/archive/26dca8543c9841ebd17be1daa3903c43623fbedc.jpg",
+    "pubdate": 1642737614,
+    "url": "https://www.bilibili.com/video/BV1bY411b7k9"
+   },
+   {
+    "bvid": "BV15rsoeqEJP",
+    "title": "女生的速度 VS 男生的速度",
+    "author": "面粉社长",
+    "play": 18874550,
+    "danmaku": 18602,
+    "duration": 130,
+    "pic": "https://i0.hdslb.com/bfs/archive/513339c37e98a8164e14b12090587dd2c2199b78.jpg",
+    "pubdate": 1727428364,
+    "url": "https://www.bilibili.com/video/BV15rsoeqEJP"
+   },
+   {
+    "bvid": "BV1Ch4y1X78A",
+    "title": "【轰】爸爸的爱，沉默但震耳欲聋",
+    "author": "米尼麦泥轰",
+    "play": 16666587,
+    "danmaku": 5694,
+    "duration": 162,
+    "pic": "https://i1.hdslb.com/bfs/archive/f4004ed82f24c29bf73f0b113418ae4ec4cf16ee.jpg",
+    "pubdate": 1686967200,
+    "url": "https://www.bilibili.com/video/BV1Ch4y1X78A"
+   },
+   {
+    "bvid": "BV1p7QeB8EeZ",
+    "title": "短片《榜样》·致敬雷锋",
+    "author": "编导李让",
+    "play": 15560306,
+    "danmaku": 20945,
+    "duration": 124,
+    "pic": "https://i1.hdslb.com/bfs/archive/2f8799f3a0c798a1bda6811f550dd4abda031570.jpg",
+    "pubdate": 1776130526,
+    "url": "https://www.bilibili.com/video/BV1p7QeB8EeZ"
+   },
+   {
+    "bvid": "BV1PPxXeGEsA",
+    "title": "女生出门 VS 男生出门",
+    "author": "面粉社长",
+    "play": 15497257,
+    "danmaku": 3625,
+    "duration": 134,
+    "pic": "https://i0.hdslb.com/bfs/archive/b3e9c4ca17d9eaf38493cd48b5b6e1303d47c3c7.jpg",
+    "pubdate": 1727946328,
+    "url": "https://www.bilibili.com/video/BV1PPxXeGEsA"
+   },
+   {
+    "bvid": "BV1rVxsehE9m",
+    "title": "小 时 候 最 爽 的 一 集",
+    "author": "进击的金厂长",
+    "play": 15198365,
+    "danmaku": 19475,
+    "duration": 149,
+    "pic": "https://i0.hdslb.com/bfs/archive/aeea0b8522e60cf5f6cf830c7b1da93a4678da13.jpg",
+    "pubdate": 1727773200,
+    "url": "https://www.bilibili.com/video/BV1rVxsehE9m"
+   },
+   {
+    "bvid": "BV1yksVztEXX",
+    "title": "神狗护主，第1-2集精品动画",
+    "author": "灰灰漫漫",
+    "play": 15126214,
+    "danmaku": 416,
+    "duration": 332,
+    "pic": "https://i1.hdslb.com/bfs/archive/377297ed1467ba4c15a09658c2bbed6a5e678adc.jpg",
+    "pubdate": 1761274800,
+    "url": "https://www.bilibili.com/video/BV1yksVztEXX"
+   },
+   {
+    "bvid": "BV1kDHbz4EwX",
+    "title": "《小束恋曲》P2：你明明点的是外卖，可收到的却是...",
+    "author": "正经的阿束",
+    "play": 14620016,
+    "danmaku": 514,
+    "duration": 395,
+    "pic": "https://i2.hdslb.com/bfs/archive/3758a05e770f4c57e12bfb950ee4a2e92766810c.jpg",
+    "pubdate": 1757558192,
+    "url": "https://www.bilibili.com/video/BV1kDHbz4EwX"
+   },
+   {
+    "bvid": "BV1uj421D7m8",
+    "title": "【轰】上班感觉身体硬硬的，原来是死啦！！",
+    "author": "米尼麦泥轰",
+    "play": 14391767,
+    "danmaku": 4447,
+    "duration": 155,
+    "pic": "https://i2.hdslb.com/bfs/archive/d82b4c4c6eb233743b4ff2e7571180e1c4db89b2.jpg",
+    "pubdate": 1708836013,
+    "url": "https://www.bilibili.com/video/BV1uj421D7m8"
+   }
+  ]
+ }
+}

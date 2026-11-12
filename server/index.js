@@ -3,6 +3,7 @@ const os = require('os');
 const fs = require('fs');
 const providers = require('./providers');
 const { publicFeatured } = require('./featured');
+const discover = require('./discover');
 const edits = require('./edits');
 const editRender = require('./edit-render');
 const express = require('express');
@@ -47,6 +48,20 @@ app.get('/api/meta', (req, res) => {
     ttsMode: s.tts.mode,
   });
 });
+
+/* ---------- 热门相关视频（B 站，按播放量） ---------- */
+app.get(
+  '/api/discover',
+  wrap(async (req, res) => {
+    const id = String(req.query.template || 'free');
+    if (!TEMPLATES.some((t) => t.id === id)) return res.status(400).json({ error: '未知模板' });
+    try {
+      res.json(await discover.hot(id));
+    } catch (e) {
+      res.status(502).json({ error: `暂时拿不到热门视频（需要能访问 B 站）：${e.message}` });
+    }
+  }),
+);
 
 /* ---------- 设置 ---------- */
 app.get('/api/settings', (req, res) => res.json(settingsStore.masked(settingsStore.load())));

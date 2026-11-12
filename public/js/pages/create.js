@@ -1,4 +1,4 @@
-import { featuredCardsHtml, handleCoverErrors, openFeatured, playInCard, stopInCard, PLATFORMS } from '../featured.js';
+import { featuredCardsHtml, hotCardsHtml, handleCoverErrors, openFeatured, playInCard, playHotInCard, stopInCard, PLATFORMS } from '../featured.js';
 import { $, $$, api, esc, state, toast, icon, paintIcons, tplOf, tplColor, VISUAL, mockParts, voiceChoices, previewVoice, previewBtnHtml } from '../core.js';
 
 let tplId = 'poem';
@@ -6,6 +6,8 @@ let form = null;
 let busy = false;
 let exts = { skills: [], mcp: [] };
 let featPlatform = '全部';
+let featTab = 'hot'; // hot = B 站热门动画；demo = 做同款示范
+const hotCache = new Map(); // 模板 id -> /api/discover 结果（页面会话内缓存，服务端另有 30 分钟缓存）
 let featAll = false; // false = 只看当前模板的同类精选；true = 所有模板
 
 /** 当前模板可用的技能（已启用 + 适用于该模板） */
@@ -140,7 +142,7 @@ export async function mount(root) {
       <button class="tpl-nav next" type="button" data-nav="1" aria-label="向右滚动" hidden>${icon('back')}</button>
     </div>
     <div id="composer"></div>
-    ${featured.length ? '<div id="featured"></div>' : ''}
+    <div id="featured"></div>
   </div>`;
 
   const tplsEl = $('#tpls', root);
@@ -220,20 +222,61 @@ export async function mount(root) {
 
   // ---- 创作精选 ----
   // 精选随当前模板联动：选「古诗词动画」就只推荐诗词类；「自由创作」不限题材，展示全部
+  // 两个页签：「热门动画」= B 站同主题视频按播放量排序、可原地播放；「做同款示范」= 我们的示范模板
+  let hotList = [];
+  let hotSeq = 0;
+  const paintHot = async () => {
+    const grid = $('#featGrid', featEl);
+    const note = $('#hotNote', featEl);
+    const id = tplId;
+    const seq = ++hotSeq;
+    let data = hotCache.get(id);
+    if (!data) {
+      grid.innerHTML = `<div class="empty hot-loading"><i class="spin"></i><b>正在获取热门视频…</b></div>`;
+      try {
+        data = await api(`/api/discover?template=${encodeURIComponent(id)}`);
+        hotCache.set(id, data);
+      } catch (err) {
+        if (seq !== hotSeq) return;
+        hotList = [];
+        grid.innerHTML = `<div class="empty"><b>暂时拿不到热门视频</b><p>${esc(err.message)}</p><button class="btn ghost sm" data-hot-retry>重试</button></div>`;
+        return;
+      }
+    }
+    if (seq !== hotSeq || tplId !== id) return; // 等待期间用户已经换了模板
+    hotList = data.items;
+    grid.className = 'feat-grid hot-grid';
+    grid.innerHTML = hotCardsHtml(hotList);
+    if (note) {
+      const d = new Date(data.fetchedAt).toLocaleDateString('zh-CN');
+      note.textContent = `来源 B 站公开搜索「${data.keywords.join(' / ')}」，按播放量从高到低${
+        data.stale ? `；B 站暂时限制了访问，当前是 ${d} 的数据快照，稍后会自动刷新` : ''
+      }`;
+    }
+  };
   const paintFeatured = () => {
     if (!featEl) return;
+    hotSeq++;
     const t = tplOf(tplId);
+    const hot = featTab === 'hot';
     const scoped = tplId !== 'free' && !featAll;
     const list = featured.filter((f) => (!scoped || f.template === tplId) && (featPlatform === '全部' || f.platform === featPlatform));
     featEl.innerHTML = `<div class="section-title feat-head">
-        <div><h2>创作精选${scoped ? ` · ${esc(t.name)}` : ''}</h2><span class="sub">${
-          scoped ? `和「${esc(t.name)}」同类型的示范，` : ''
-        }可直接播放看效果，点「做同款」一键套用模板、文案、画幅和画风</span></div>
-        <div class="chips" id="featFilter">${PLATFORMS.map((p) => `<button class="chip ${p === featPlatform ? 'on' : ''}" data-plat="${p}">${p}</button>`).join('')}${
-          tplId === 'free' ? '' : `<span class="chip-sep"></span><button class="chip ${featAll ? 'on' : ''}" data-scope>看全部模板</button>`
-        }</div>
+        <div><h2>创作精选${tplId !== 'free' && (hot || scoped) ? ` · ${esc(t.name)}` : ''}</h2><span class="sub" id="hotNote">${
+          hot ? '' : `${scoped ? `和「${esc(t.name)}」同类型的示范，` : ''}可直接播放看效果，点「做同款」一键套用模板、文案、画幅和画风`
+        }</span></div>
+        <div class="chips" id="featFilter">
+          <button class="chip ${hot ? 'on' : ''}" data-tab="hot">热门动画 · 按播放量</button>
+          <button class="chip ${hot ? '' : 'on'}" data-tab="demo">做同款示范</button>${
+            hot
+              ? ''
+              : `<span class="chip-sep"></span>${PLATFORMS.map((p) => `<button class="chip ${p === featPlatform ? 'on' : ''}" data-plat="${p}">${p}</button>`).join('')}${
+                  tplId === 'free' ? '' : `<span class="chip-sep"></span><button class="chip ${featAll ? 'on' : ''}" data-scope>看全部模板</button>`
+                }`
+          }</div>
       </div>
-      <div class="feat-grid" id="featGrid">${featuredCardsHtml(list)}</div>`;
+      <div class="feat-grid" id="featGrid">${hot ? '' : featuredCardsHtml(list)}</div>`;
+    if (hot) paintHot();
   };
   const useFeatured = (item) => {
     resetForm(item.template);
@@ -248,6 +291,23 @@ export async function mount(root) {
   if (featEl) {
     handleCoverErrors(featEl);
     featEl.addEventListener('click', async (e) => {
+      const tab = e.target.closest('[data-tab]');
+      if (tab) {
+        featTab = tab.dataset.tab;
+        return paintFeatured();
+      }
+      if (e.target.closest('[data-hot-retry]')) return paintHot();
+      const hotCard = e.target.closest('[data-hot]');
+      if (hotCard) {
+        if (e.target.closest('[data-stop]')) return stopInCard(hotCard);
+        if (e.target.closest('[data-hplay]')) {
+          const v = hotList.find((x) => x.bvid === hotCard.dataset.hot);
+          if (!v) return;
+          $$('.feat', featEl).forEach((c) => c !== hotCard && stopInCard(c));
+          playHotInCard(hotCard, v);
+        }
+        return;
+      }
       const pl = e.target.closest('[data-plat]');
       if (pl) {
         featPlatform = pl.dataset.plat;

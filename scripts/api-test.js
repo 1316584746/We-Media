@@ -183,6 +183,18 @@ async function waitDone(id, timeoutMs = 180000) {
   const fp = await api('POST', '/api/projects', { template: f0.template, title: f0.title, script: f0.script, options: { style: f0.style, orientation: f0.orientation, visual: 'image' } });
   ok(fp.status === 200 && fp.json.scenes.length >= 3, `用精选内容能直接创建项目（${fp.json.scenes?.length} 个镜头）`);
   await api('DELETE', `/api/projects/${fp.json.id}`);
+  /* ---------- 热门相关视频（B 站，依赖外网，联网失败时只校验错误格式） ---------- */
+  const bad = await api('GET', '/api/discover?template=__nope__');
+  ok(bad.status === 400, '未知模板的热门视频请求返回 400');
+  const hot = await api('GET', '/api/discover?template=poem');
+  if (hot.status === 200) {
+    const it = hot.json.items;
+    ok(it.length >= 6 && it.every((v) => v.bvid && v.title && v.pic && v.url.includes(v.bvid) && v.play > 0), `热门视频 ${it.length} 条，字段完整`);
+    ok(it.every((v, i) => i === 0 || it[i - 1].play >= v.play), '热门视频按播放量从高到低');
+    ok(it.every((v) => !/<|&quot;/.test(v.title)), '标题已去掉搜索高亮标签');
+  } else {
+    ok(hot.status === 502 && /B 站/.test(hot.json.error), `联网失败时返回可读错误（${hot.status}）：${hot.json.error}`);
+  }
   /* ---------- 音色试听 ---------- */
   const pv = await fetch(BASE + '/api/tts/preview', {
     method: 'POST',
