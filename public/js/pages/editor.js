@@ -36,6 +36,7 @@ export async function mount(root, [id]) {
       <span class="save-state" id="saveState"></span>
       <span class="spacer"></span>
       <div class="top-progress" id="topProg" hidden><div class="bar"><i></i></div><span></span></div>
+      <button class="btn" id="btnCut" hidden title="把成片放进剪辑器，继续精修">${icon('scissors')}<span class="t">去剪辑</span></button>
       <a class="btn" id="btnDl" hidden>${icon('download')}<span class="t">下载成片</span></a>
       <button class="btn primary" id="btnGen"></button>
     </header>
@@ -132,6 +133,7 @@ export async function mount(root, [id]) {
       $('span', el.topProg).textContent = `${p.stage} · ${p.progress}%`;
     }
     el.dl.hidden = !p.result;
+    $('#btnCut', root).hidden = !p.result;
     if (p.result) {
       el.dl.href = p.result;
       el.dl.setAttribute('download', `${p.title}.mp4`);
@@ -547,6 +549,17 @@ export async function mount(root, [id]) {
     markDirty();
   });
   el.gen.addEventListener('click', generate);
+  $('#btnCut', root).addEventListener('click', async (ev) => {
+    const b = ev.currentTarget;
+    b.disabled = true;
+    try {
+      const e = await api('/api/edits', { method: 'POST', body: { name: `${p.title} · 剪辑`, fromProject: p.id } });
+      location.hash = `#/e/${e.id}`;
+    } catch (err) {
+      toast(`无法打开剪辑：${err.message}`, 'err');
+      b.disabled = false;
+    }
+  });
   el.add.addEventListener('click', addScene);
   el.stageTabs.addEventListener('click', (e) => {
     const b = e.target.closest('[data-t]');

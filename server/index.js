@@ -3,6 +3,8 @@ const os = require('os');
 const fs = require('fs');
 const providers = require('./providers');
 const { publicFeatured } = require('./featured');
+const edits = require('./edits');
+const editRender = require('./edit-render');
 const express = require('express');
 const settingsStore = require('./settings');
 const pipeline = require('./pipeline');
@@ -24,6 +26,7 @@ app.use((req, res, next) => {
 app.use(express.json({ limit: '2mb' }));
 app.use(express.static(path.join(settingsStore.ROOT, 'public')));
 app.use('/output', express.static(pipeline.OUTPUT_DIR));
+app.use('/edit-files', express.static(edits.EDIT_DIR)); // 剪辑素材 / 导出（支持 Range，预览要拖动进度）
 
 const wrap = (fn) => (req, res) =>
   Promise.resolve()
@@ -123,6 +126,78 @@ app.post(
 app.post(
   '/api/projects/:id/scenes/:sid/reset',
   wrap((req, res) => res.json(pipeline.resetSceneById(req.params.id, req.params.sid))),
+);
+
+/* ---------- 视频剪辑 ---------- */
+app.get('/api/edits', (req, res) => res.json(edits.list()));
+app.post('/api/edits', wrap(async (req, res) => res.json(await edits.create(req.body || {}))));
+app.get('/api/edits/:id', wrap(async (req, res) => res.json(edits.view(edits.read(req.params.id)))));
+app.put('/api/edits/:id', wrap(async (req, res) => res.json(await edits.update(req.params.id, req.body || {}))));
+app.delete(
+  '/api/edits/:id',
+  wrap(async (req, res) => {
+    if (edits.exporting.has(req.params.id)) throw edits.httpError(409, '正在导出，稍后再删除');
+    edits.remove(req.params.id);
+    res.json({ ok: true });
+  }),
+);
+
+// 上传素材：原始二进制直接流式落盘（不经过 JSON 解析），文件名放在 ?name=
+const MAX_UPLOAD = 4 * 1024 * 1024 * 1024;
+app.post(
+  '/api/edits/:id/media',
+  wrap(async (req, res) => {
+    const id = req.params.id;
+    edits.read(id);
+    const name = String(req.query.name || 'media').slice(0, 160);
+    if (!edits.kindOfExt(path.extname(name).slice(1).toLowerCase())) throw edits.httpError(400, `不支持的文件类型：${path.extname(name) || name}（支持视频、音频、图片）`);
+    if (Number(req.headers['content-length']) > MAX_UPLOAD) throw edits.httpError(413, '文件太大（上限 4GB）');
+    const tmp = path.join(edits.dirOf(id), `upload-${Date.now()}-${Math.random().toString(36).slice(2, 6)}.part`);
+    let bytes = 0;
+    try {
+      await new Promise((resolve, reject) => {
+        const out = fs.createWriteStream(tmp);
+        req.on('data', (c) => {
+          bytes += c.length;
+          if (bytes > MAX_UPLOAD) req.destroy(new Error('文件太大'));
+        });
+        req.on('error', reject);
+        req.on('aborted', () => reject(new Error('上传中断')));
+        out.on('error', reject);
+        out.on('finish', resolve);
+        req.pipe(out);
+      });
+      if (!bytes) throw edits.httpError(400, '收到的文件是空的');
+      res.json(await edits.addMedia(id, tmp, name));
+    } finally {
+      fs.rm(tmp, { force: true }, () => {});
+    }
+  }),
+);
+app.delete('/api/edits/:id/media/:mid', wrap(async (req, res) => res.json(await edits.removeMedia(req.params.id, req.params.mid))));
+app.post(
+  '/api/edits/:id/media/from-project',
+  wrap(async (req, res) => {
+    edits.read(req.params.id);
+    res.json(await edits.importProject(req.params.id, String((req.body || {}).projectId || '')));
+  }),
+);
+app.post(
+  '/api/edits/:id/export',
+  wrap(async (req, res) => {
+    await editRender.startExport(req.params.id);
+    res.json(edits.view(edits.read(req.params.id)));
+  }),
+);
+app.get(
+  '/api/edits/:id/download',
+  wrap(async (req, res) => {
+    const e = edits.read(req.params.id);
+    if (e.export?.status !== 'done' || !e.export.file) throw edits.httpError(404, '还没有导出成片');
+    const abs = path.join(edits.dirOf(e.id), e.export.file);
+    if (!fs.existsSync(abs)) throw edits.httpError(404, '成片文件已丢失，请重新导出');
+    res.download(abs, `${e.name.replace(/[\\/:*?"<>|]+/g, '_')}.mp4`);
+  }),
 );
 
 /* ---------- 扩展：技能 / MCP ---------- */

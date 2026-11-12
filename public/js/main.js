@@ -3,10 +3,14 @@ import * as createPage from './pages/create.js';
 import * as projectsPage from './pages/projects.js';
 import * as editorPage from './pages/editor.js';
 import * as settingsPage from './pages/settings.js';
+import * as editsPage from './pages/edits.js';
+import * as cutterPage from './pages/cutter.js';
 
 const ROUTES = [
   [/^#?\/?$/, createPage, 'create'],
   [/^#\/projects$/, projectsPage, 'projects'],
+  [/^#\/edits$/, editsPage, 'edits'],
+  [/^#\/e\/(e_[a-z0-9]+)$/, cutterPage, 'edits'],
   [/^#\/p\/([\w-]+)$/, editorPage, 'editor'],
   [/^#\/settings(?:\/(\w+))?$/, settingsPage, 'settings'],
 ];
@@ -25,6 +29,7 @@ async function render() {
   const [m, page, nav] = match || [[''], createPage, 'create'];
   if (nav !== 'settings') state.lastApp = hash; // 设置页「返回」回到这里
   document.body.classList.toggle('in-editor', nav === 'editor');
+  document.body.classList.toggle('in-cutter', /^#\/e\//.test(hash));
   document.body.classList.toggle('in-settings', nav === 'settings');
   $$('[data-nav]').forEach((a) => a.classList.toggle('active', a.dataset.nav === nav));
   const view = $('#view');

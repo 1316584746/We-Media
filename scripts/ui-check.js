@@ -132,6 +132,14 @@ const ok = (c, m) => {
   ok(await js(`document.querySelector('#stageTabs .on').dataset.t === 'final'`), '完成后自动切到成片预览');
   await shot('ui-editor-done');
 
+  // 成片 → 去剪辑
+  ok(await js(`!document.querySelector('#btnCut').hidden`), '成片完成后出现「去剪辑」按钮');
+  await click('#btnCut');
+  ok(await waitFor(`/^#\\/e\\/e_/.test(location.hash) && !!document.querySelector('.tl-clip.v')`, 15000), '点「去剪辑」直接进入剪辑器，成片已放在时间线上');
+  const fromEid = (await js('location.hash')).replace('#/e/', '');
+  await fetch(`${BASE}/api/edits/${fromEid}`, { method: 'DELETE' });
+  await goto(`#/p/${pid}`);
+
   // ---- 项目页：搜索 / 复制 / 删除 ----
   await goto('#/projects');
   ok(await js(`document.querySelectorAll('.proj').length >= 1`), '项目页有卡片');
@@ -230,6 +238,143 @@ const ok = (c, m) => {
   ok(await js(`document.querySelector('.st-back').getAttribute('href') === '#/projects'`), '返回链接指向进入设置前的页面');
   await click('.st-back');
   ok(await waitFor(`location.hash === '#/projects' && getComputedStyle(document.querySelector('.rail')).display !== 'none'`, 3000), '返回后恢复主导航');
+  // ---- 剪辑：列表 → 新建 → 导入素材 → 剪辑 → 导出 ----
+  const ff = require('../server/ffmpeg');
+  const cutDir = fs.mkdtempSync(path.join(TMP, 'cut-'));
+  const mk = (n) => path.join(cutDir, n);
+  await ff.run(['-f', 'lavfi', '-i', 'testsrc=size=640x360:rate=25:duration=6', '-f', 'lavfi', '-i', 'sine=frequency=440:duration=6', '-c:v', 'libx264', '-pix_fmt', 'yuv420p', '-c:a', 'aac', '-shortest', mk('clip.mp4')]);
+  await ff.run(['-f', 'lavfi', '-i', 'sine=frequency=220:duration=8', mk('music.mp3')]);
+  await ff.run(['-f', 'lavfi', '-i', 'color=c=0x2255aa:s=800x600:d=1', '-frames:v', '1', mk('pic.png')]);
+  const cut = (expr) => js(`(()=>{const c=document.querySelector('#view').__cutter;return ${expr}})()`);
+
+  await goto('#/projects');
+  ok(await js(`[...document.querySelectorAll('.rail-nav a')].map(a=>a.dataset.nav).join()==='create,edits,projects,settings' || [...document.querySelectorAll('.rail-nav a')].some(a=>a.dataset.nav==='edits')`), '主导航里有「剪辑」入口');
+  await click('.rail-nav [data-nav="edits"]');
+  ok(await waitFor(`location.hash === '#/edits' && document.querySelector('.rail-nav a.active').dataset.nav === 'edits'`, 3000), '点「剪辑」进入列表页并高亮');
+  await shot('ui-edits-list');
+  await click('#btnNew');
+  await waitFor(`!!document.querySelector('dialog.dlg[open] #nName')`, 3000);
+  await setVal('#nName', 'UI 自测剪辑');
+  await click('#nRatio [data-r="16:9"]');
+  await click('dialog.dlg [data-ok]');
+  ok(await waitFor(`/^#\\/e\\/e_/.test(location.hash) && !!document.querySelector('.ct')`, 5000), '新建后进入剪辑编辑器');
+  const eid = (await js('location.hash')).replace('#/e/', '');
+  ok(await js(`getComputedStyle(document.querySelector('.rail')).display === 'none' && document.querySelectorAll('.tl-track').length === 3`), '编辑器全屏（隐藏主导航），有 文字/视频/音频 三条轨道');
+  ok(await js(`document.querySelector('#ctName').value === 'UI 自测剪辑'`), '工程名回填');
+
+  // 通过真实的文件选择器上传：视频 + 音频 + 图片
+  const doc = await send('DOM.getDocument', { depth: 1 });
+  const inp = await send('DOM.querySelector', { nodeId: doc.result.root.nodeId, selector: '#libFile' });
+  await send('DOM.setFileInputFiles', { nodeId: inp.result.nodeId, files: [mk('clip.mp4'), mk('music.mp3'), mk('pic.png')] });
+  ok(await waitFor(`document.querySelectorAll('.lib-item[data-id]').length === 3`, 40000), '三个素材（视频/音频/图片）上传完成并出现在素材库');
+  ok(await js(`document.querySelectorAll('.lib-thumb.video img').length === 1 && document.querySelectorAll('.lib-thumb.image img').length === 1`), '视频与图片素材有缩略图');
+  await shot('ui-cutter-library');
+
+  const addBy = (kind) => js(`(()=>{const it=document.querySelector('.lib-thumb.${kind}').closest('.lib-item');it.querySelector('[data-add]').click();return true})()`);
+  await addBy('video');
+  ok(await cut(`c.clips.length === 1 && c.clips[0].track === 'v' && Math.abs(c.clips[0].dur - 6) < 0.3`), '点＋把视频加到视频轨（时长约 6 秒）');
+  ok(await js(`!!document.querySelector('.tl-clip.v .tl-tiles i') && !!document.querySelector('.tl-clip.v .tl-wave')`), '视频片段显示胶片条和音轨波形');
+  await addBy('audio');
+  ok(await cut(`c.clips.some(x=>x.track==='a')`), '音频加到音频轨');
+  await addBy('image');
+  ok(await cut(`c.clips.filter(x=>x.track==='v').length === 2 && c.clips.filter(x=>x.track==='v')[1].start >= 5.7`), '图片接在视频后面（视频轨自动首尾相接）');
+
+  // 分割 / 撤销 / 重做
+  const mouse = (type, x, y) => send('Input.dispatchMouseEvent', { type, x, y, button: 'left', buttons: type === 'mouseReleased' ? 0 : 1, clickCount: 1 });
+  const clickClip = async (n) => {
+    const p = JSON.parse(await js(`(()=>{const el=[...document.querySelectorAll('.tl-clip.v')].sort((a,b)=>a.offsetLeft-b.offsetLeft)[${n}];const r=el.getBoundingClientRect();return JSON.stringify({x:r.left+r.width/2,y:r.top+r.height/2})})()`));
+    await mouse('mousePressed', p.x, p.y);
+    await mouse('mouseReleased', p.x, p.y);
+  };
+  await cut(`c.player.seek(2.5)`);
+  await clickClip(0);
+  ok(await js(`!document.querySelector('#btnSplit').disabled`), '播放头在片段中间时「分割」可用');
+  await click('#btnSplit');
+  ok(await cut(`c.clips.filter(x=>x.track==='v').length === 3`), '分割成两段（共 3 个视频片段）');
+  await click('#btnUndo');
+  ok(await cut(`c.clips.filter(x=>x.track==='v').length === 2`), '撤销分割');
+  await click('#btnRedo');
+  ok(await cut(`c.clips.filter(x=>x.track==='v').length === 3`), '重做分割');
+
+  // 拖拽裁剪：把第一段右端往左拖 60px
+  const hr = JSON.parse(await js(`(()=>{const r=document.querySelector('.tl-clip.v .h-r').getBoundingClientRect();return JSON.stringify({x:r.left+r.width/2,y:r.top+r.height/2})})()`));
+  const d0 = await cut(`c.clips.filter(x=>x.track==='v').sort((a,b)=>a.start-b.start)[0].dur`);
+  await mouse('mouseMoved', hr.x, hr.y);
+  await mouse('mousePressed', hr.x, hr.y);
+  for (let i = 1; i <= 6; i++) await mouse('mouseMoved', hr.x - i * 10, hr.y);
+  await mouse('mouseReleased', hr.x - 60, hr.y);
+  await sleep(300);
+  const d1 = await cut(`c.clips.filter(x=>x.track==='v').sort((a,b)=>a.start-b.start)[0].dur`);
+  ok(d1 < d0 - 0.3, `拖动右端裁剪：第一段 ${d0}s → ${d1}s`);
+  ok(await cut(`(()=>{const v=c.clips.filter(x=>x.track==='v').sort((a,b)=>a.start-b.start);return v.every((x,i)=>i===0?x.start===0:Math.abs(x.start-(v[i-1].start+v[i-1].dur))<0.002)})()`), '裁剪后视频轨自动补位，没有空隙');
+
+  // 点标尺定位播放头
+  const rr = JSON.parse(await js(`(()=>{const r=document.querySelector('#tlRuler').getBoundingClientRect();return JSON.stringify({x:r.left+160,y:r.top+10})})()`));
+  await mouse('mousePressed', rr.x, rr.y);
+  await mouse('mouseReleased', rr.x, rr.y);
+  ok(await cut(`Math.abs(c.player.t - 2) < 0.15`), '点击标尺：播放头定位到对应时间（80px/秒）');
+
+  // 文字
+  await cut(`c.player.seek(0.5)`);
+  await click('#btnAddText');
+  ok(await cut(`c.clips.some(x=>x.track==='t')`) && (await waitFor(`!!document.querySelector('#inspText')`, 2000)), '添加文字，右侧出现文字属性');
+  await setVal('#inspText', '这是UI自测字幕');
+  ok(await waitFor(`!!document.querySelector('.ct-text') && document.querySelector('.ct-text').textContent === '这是UI自测字幕'`, 2000), '预览画面里实时显示字幕');
+  await setVal('[data-prop="size"]', '9');
+  await setVal('[data-prop="y"]', '30');
+  ok(await cut(`(()=>{const t=c.clips.find(x=>x.track==='t');return t.size===9&&t.y===30})()`), '字号/位置滑块生效');
+  await shot('ui-cutter-text');
+
+  // 变速
+  await clickClip(0);
+  ok(await waitFor(`!!document.querySelector('[data-speed="2"]')`, 2000), '选中视频片段，出现变速面板');
+  const durBefore = await cut(`c.clips.find(x=>x.id===c.sel).dur`);
+  await click('[data-speed="2"]');
+  ok(await cut(`(()=>{const x=c.clips.find(x=>x.id===c.sel);return x.speed===2&&Math.abs(x.dur-${durBefore}/2)<0.02})()`), `2x 变速：时长 ${durBefore}s 减半`);
+  await click('#btnUndo');
+  ok(await cut(`c.clips.find(x=>x.id===c.sel).speed === 1`), '撤销变速');
+  await click('[data-speed="2"]');
+
+  // 自动保存
+  ok(await waitFor(`document.querySelector('#ctSave').textContent === '已保存'`, 5000), '改动自动保存');
+  const srvEdit = await (await fetch(`${BASE}/api/edits/${eid}`)).json();
+  ok(srvEdit.clips.length === (await cut(`c.clips.length`)) && srvEdit.clips.some((x) => x.track === 't' && x.text === '这是UI自测字幕') && srvEdit.clips.some((x) => x.speed === 2), '服务端存了完整的时间线');
+  await cut(`c.player.seek(0.8)`);
+  await sleep(500);
+  await shot('ui-cutter');
+
+  // 快捷键：空格播放 / 暂停
+  await js(`document.activeElement && document.activeElement.blur()`);
+  await send('Input.dispatchKeyEvent', { type: 'keyDown', key: ' ', code: 'Space', text: ' ' });
+  await send('Input.dispatchKeyEvent', { type: 'keyUp', key: ' ', code: 'Space' });
+  ok(await waitFor(`document.querySelector('#view').__cutter.player.playing`, 2000), '空格键开始播放');
+  ok(await waitFor(`document.querySelector('#view').__cutter.player.t > 0.9`, 4000), '播放头随播放前进');
+  await send('Input.dispatchKeyEvent', { type: 'keyDown', key: ' ', code: 'Space', text: ' ' });
+  await send('Input.dispatchKeyEvent', { type: 'keyUp', key: ' ', code: 'Space' });
+  ok(await waitFor(`!document.querySelector('#view').__cutter.player.playing`, 2000), '再按空格暂停');
+
+  // 导出
+  await click('#btnExport');
+  ok(await waitFor(`!!document.querySelector('dialog.export-dlg[open]')`, 3000), '点导出弹出进度窗口');
+  ok(await waitFor(`!!document.querySelector('dialog.export-dlg .exp-video')`, 90000), '导出完成并可预览');
+  await shot('ui-cutter-export');
+  const dl = await fetch(`${BASE}/api/edits/${eid}/download`);
+  const dlBuf = Buffer.from(await dl.arrayBuffer());
+  ok(dl.status === 200 && dlBuf.length > 5000 && dlBuf.slice(4, 8).toString() === 'ftyp', `下载导出的 mp4（${Math.round(dlBuf.length / 1024)} KB）`);
+  await click('dialog.export-dlg [data-close]');
+
+  // 返回列表：卡片 → 删除
+  await click('.ct-top a.icon-btn');
+  ok(await waitFor(`location.hash === '#/edits' && document.querySelectorAll('.proj').length >= 1`, 4000), '返回剪辑列表，看到工程卡片');
+  ok(await js(`!!document.querySelector('.proj .proj-cover img') && document.querySelector('.badge.done') !== null`), '卡片有封面并标记已导出');
+  await shot('ui-edits-list2');
+  const cardsBefore = await js(`document.querySelectorAll('.proj').length`);
+  await click('.proj [data-del]');
+  await waitFor(`!!document.querySelector('dialog.dlg[open]')`, 3000);
+  await click('dialog.dlg button[value="yes"]');
+  const gone = await waitFor(`document.querySelectorAll('.proj').length === ${cardsBefore - 1}`, 4000);
+  ok(gone, `删除剪辑工程${gone ? '' : '（' + (await js(`[...document.querySelectorAll('.toast')].map(t=>t.textContent).join('|') + ' dlg=' + document.querySelectorAll('dialog[open]').length + ' cards=' + document.querySelectorAll('.proj').length`)) + '）'}`);
+
   // ---- 移动端宽度 ----
   await send('Emulation.setDeviceMetricsOverride', { width: 390, height: 844, deviceScaleFactor: 2, mobile: true });
   await goto('#/');
