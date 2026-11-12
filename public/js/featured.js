@@ -92,27 +92,16 @@ export function hotCardsHtml(items) {
     .join('');
 }
 
-/* 按平台分组：每组内部按播放量从高到低。
- * 目前只有 B 站有开放的搜索 + 官方外嵌播放器，能把视频直接拉进来；
- * 抖音 / 小红书 / 视频号没有开放的榜单、搜索与嵌入接口（要登录 + 动态签名，抓取违反平台协议），
- * 暂时在各自的分组里如实标注「未接入」，不放跳转链接。接入合规数据源后，往 groups 里加 items 即可。 */
-const PLAT_GROUPS = [
-  { key: 'bili', name: 'B 站', note: '按播放量从高到低，点 ▶ 直接在卡片里播放' },
-  { key: 'dy', name: '抖音', note: '' },
-  { key: 'xhs', name: '小红书', note: '' },
-  { key: 'wx', name: '视频号', note: '' },
-];
+/* 按平台分组：每组内部按播放量从高到低。目前只有 B 站有开放的搜索 + 官方外嵌播放器，
+ * 能把视频直接拉进来；其他平台没有合规的数据源，不展示空分组。接入后在 PLAT_GROUPS 里加一项即可。 */
+const PLAT_GROUPS = [{ key: 'bili', name: 'B 站', note: '按播放量从高到低，点 ▶ 直接在卡片里播放' }];
 export function hotGroupsHtml(items) {
   return PLAT_GROUPS.map((g) => {
     const list = g.key === 'bili' ? items : [];
-    const head = `<div class="hot-group-head"><b class="plat-name ${g.key}">${g.name}</b><span class="n">${list.length ? `${list.length} 条 · ${g.note}` : '未接入'}</span></div>`;
-    const body = list.length
-      ? `<div class="feat-grid hot-grid">${hotCardsHtml(list)}</div>`
-      : `<div class="hot-group-empty">${g.name}没有开放的视频榜单和嵌入接口，暂时拉不到真实播放量，这一组先空着；接入合规的数据源后会在这里按播放量排序展示。</div>`;
-    return `<section class="hot-group ${list.length ? '' : 'off'}">${head}${body}</section>`;
-  }).join('');
+    if (!list.length) return '';
+    return `<section class="hot-group"><div class="hot-group-head"><b class="plat-name ${g.key}">${g.name}</b><span class="n">${list.length} 条 · ${g.note}</span></div><div class="feat-grid hot-grid">${hotCardsHtml(list)}</div></section>`;
+  }).join('') || '<div class="empty"><b>暂无内容</b></div>';
 }
-
 /** 在卡片画面区内嵌 B 站官方外嵌播放器（16:9 正好铺满封面位置） */
 export function playHotInCard(card, v) {
   const media = $('.feat-media', card);

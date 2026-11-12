@@ -250,7 +250,7 @@ const ok = (c, m) => {
     ok(await js(`JSON.stringify([...document.querySelectorAll('.hot')].map(c=>c.dataset.hot)) === ${JSON.stringify(JSON.stringify(hotApi.items.map((v) => v.bvid)))}`), '页面顺序与接口一致');
     ok(await js(`[...document.querySelectorAll('.hot')].every(c => c.querySelector('.hot-play') && c.querySelector('.hot-dur') && !c.querySelector('a[href]'))`), '每张卡片有播放量、时长，且没有跳转到平台的链接');
     ok(await js(`!document.querySelector('#hotNote').textContent.includes('来源') && document.querySelector('[data-tab="hot"]').textContent.trim() === '热门动画'`), '热门动画页签不再有说明文字');
-    ok(await js(`(() => { const g = [...document.querySelectorAll('.hot-group')]; const names = g.map(x => x.querySelector('.plat-name').textContent.trim()); return JSON.stringify(names) === '[\"B 站\",\"抖音\",\"小红书\",\"视频号\"]' && g[0].querySelectorAll('.hot').length > 0 && g.slice(1).every(x => x.classList.contains('off') && !x.querySelector('.hot')) && !document.querySelector('.plat-links') && !document.querySelector('#featGrid a[href]'); })()`), '按平台分组（B 站 / 抖音 / 小红书 / 视频号），B 站有视频，没有「跳转到平台」的关键词链接');
+    ok(await js(`(() => { const g = [...document.querySelectorAll('.hot-group')]; const names = g.map(x => x.querySelector('.plat-name').textContent.trim()); return JSON.stringify(names) === '[\"B 站\"]' && g[0].querySelectorAll('.hot').length > 0 && !document.querySelector('.plat-links') && !document.querySelector('#featGrid a[href]'); })()`), '按平台分组（目前只有 B 站一组，没有空的「未接入」分组），B 站有视频，没有「跳转到平台」的关键词链接');
     await js(`document.querySelector('.hot-groups').scrollIntoView({block:'start'})`);
     await sleep(300);
     await shot('ui-hot-groups');
