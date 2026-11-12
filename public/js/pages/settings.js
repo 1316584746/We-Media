@@ -1,5 +1,8 @@
 import { $, $$, api, esc, icon, paintIcons, state, toast, loadMeta, paintRailStatus, previewVoice, stopPreview } from '../core.js';
 import { mountPanel } from './extensions.js';
+import { MODE_LABEL, costHtml, describe, overviewHtml, kindOf } from '../pricing.js';
+
+const modeOpts = (name) => Object.entries(MODE_LABEL[name]).map(([v, t]) => `<option value="${v}">${t}</option>`).join('');
 
 const getByPath = (obj, p) => p.split('.').reduce((o, k) => (o == null ? o : o[k]), obj);
 function setByPath(obj, p, v) {
@@ -46,6 +49,7 @@ const PANES = `
 </div></div>
 
 <div class="st-pane" data-sec="model"><h2 class="st-h">模型</h2><p class="st-desc">分镜、文生图、配音、视频生成用到的模型与密钥，只保存在本机 <code class="mono">data/settings.json</code>，不会上传。</p>
+<details class="cost-all" id="costAll"></details>
 <section class="st-blk"><div class="st-sub"><span>阿里百炼一键配置</span></div><div class="st-inner">
   <label class="lbl-sm">API Key <span class="hint">一个 Key 同时用于分镜、文生图、配音、图生视频。填入后点「套用」，再保存。</span></label>
   <div class="quick-row"><input id="dashKey" type="password" placeholder="sk-xxxxxxxx" autocomplete="off" /><button type="button" class="btn" id="btnApplyDash">套用</button></div>
@@ -56,38 +60,32 @@ const PANES = `
   <div class="field"><label>Base URL（OpenAI 兼容）</label><input name="llm.baseUrl" /></div>
   <div class="row2">
     <div class="field"><label>API Key</label><input name="llm.apiKey" type="password" autocomplete="off" /></div>
-    <div class="field"><label>模型</label><input name="llm.model" /></div>
+    <div class="field"><label>模型</label><input name="llm.model" list="llmModels" /></div>
   </div>
+  <datalist id="llmModels"><option value="qwen-plus" label="0.8 / 2 元每百万 token"></option><option value="qwen-max" label="2.4 / 9.6 元每百万 token"></option><option value="qwen3.5-plus" label="0.8 / 4.8 元每百万 token"></option><option value="qwen3.7-plus" label="2 / 8 元每百万 token，新用户 100 万 token 免费"></option></datalist>
+  <div class="cost" data-cost="llm"></div>
 </div></section>
 
 <section class="st-blk" data-blk="image"><div class="st-sub"><span>文生图</span><span class="badge" data-badge="image"></span></div><div class="st-inner">
   <div class="field"><label>模式</label>
-    <select name="image.mode">
-      <option value="mock">mock（测试，渐变底图）</option>
-      <option value="dashscope">阿里百炼 qwen-image / 万相</option>
-      <option value="custom">自定义请求模板</option>
-    </select>
+    <select name="image.mode">${modeOpts('image.mode')}</select>
   </div>
+  <div class="cost" data-cost="image"></div>
   <div class="field"><label>Base URL（留空用官方默认）</label><input name="image.baseUrl" /></div>
   <div class="row3">
     <div class="field"><label>API Key</label><input name="image.apiKey" type="password" autocomplete="off" /></div>
     <div class="field"><label>模型</label><input name="image.model" list="imageModels" /></div>
     <div class="field"><label>并发数</label><input name="image.concurrency" type="number" min="1" /></div>
   </div>
-  <datalist id="imageModels"><option value="qwen-image-2.0"></option><option value="qwen-image-2.0-pro"></option><option value="qwen-image-3.0"></option><option value="z-image-turbo"></option></datalist>
+  <datalist id="imageModels"><option value="qwen-image-2.0" label="0.2 元/张"></option><option value="qwen-image-2.0-pro" label="0.5 元/张"></option><option value="qwen-image-3.0" label="0.18 元/张，新用户 10 张免费"></option><option value="qwen-image-3.0-pro" label="0.25 元/张，新用户 10 张免费"></option><option value="z-image-turbo" label="价格见百炼官网"></option></datalist>
   <div class="field"><label>自定义模板 JSON（仅 custom 模式）</label><textarea name="image.custom" rows="6" class="mono" placeholder='{"request":{"method":"POST","url":"https://...","headers":{"Authorization":"Bearer {{apiKey}}"},"body":{"model":"{{model}}","prompt":"{{prompt}}","size":"{{size}}"}},"responseType":"url","path":"data[0].url"}'></textarea></div>
 </div></section>
 
 <section class="st-blk" data-blk="tts"><div class="st-sub"><span>配音</span><span class="badge" data-badge="tts"></span></div><div class="st-inner">
   <div class="field"><label>模式</label>
-    <select name="tts.mode">
-      <option value="mock">mock（测试，提示音）</option>
-      <option value="edge">Edge 在线朗读（免费，无需 Key）</option>
-      <option value="dashscope">阿里百炼 qwen3-tts</option>
-      <option value="openai">OpenAI 兼容 /audio/speech</option>
-      <option value="custom">自定义请求模板</option>
-    </select>
+    <select name="tts.mode">${modeOpts('tts.mode')}</select>
   </div>
+  <div class="cost" data-cost="tts"></div>
   <div class="row2">
     <div class="field"><label>默认 Edge 音色（edge 模式）</label>
       <div class="voice-row"><select name="tts.edgeVoice">
@@ -111,19 +109,13 @@ const PANES = `
 
 <section class="st-blk" data-blk="video"><div class="st-sub"><span>视频生成</span><span class="badge" data-badge="video"></span></div><div class="st-inner">
   <div class="field"><label>模式</label>
-    <select name="video.mode">
-      <option value="mock">mock（测试）</option>
-      <option value="dashscope_i2v">阿里百炼 万相2.7 图生视频（配合「图生视频」）</option>
-      <option value="dashscope">阿里百炼 万相 文生视频</option>
-      <option value="openai">OpenAI Sora（sora-2 / sora-2-pro）</option>
-      <option value="ark">火山方舟 Seedance</option>
-      <option value="custom">自定义请求模板</option>
-    </select>
+    <select name="video.mode">${modeOpts('video.mode')}</select>
   </div>
+  <div class="cost" data-cost="video"></div>
   <div class="field"><label>Base URL（留空用官方默认）</label><input name="video.baseUrl" /></div>
   <div class="row3">
     <div class="field"><label>API Key</label><input name="video.apiKey" type="password" autocomplete="off" /></div>
-    <div class="field"><label>模型 / 接入点 ID</label><input name="video.model" /></div>
+    <div class="field"><label>模型 / 接入点 ID</label><input name="video.model" list="videoModels" /></div>
     <div class="field"><label>清晰度（影响费用）</label>
       <select name="video.resolution"><option value="720P">720P（推荐，便宜）</option><option value="1080P">1080P</option></select>
     </div>
@@ -132,14 +124,19 @@ const PANES = `
     <div class="field"><label>并发数</label><input name="video.concurrency" type="number" min="1" /></div>
     <div class="field"><label>单段时长（秒，仅文生视频）</label><input name="video.duration" type="number" /></div>
   </div>
+  <datalist id="videoModels"><option value="wan2.7-i2v" label="图生视频 720P 0.6 / 1080P 1 元每秒"></option><option value="wan2.6-i2v" label="图生视频 720P 0.6 / 1080P 1 元每秒"></option><option value="wan2.7-t2v" label="文生视频 720P 0.6 / 1080P 1 元每秒"></option><option value="wan2.2-t2v-plus" label="文生视频 480P 0.14 / 1080P 0.7 元每秒"></option><option value="doubao-seedance-1-0-lite-t2v-250428" label="约 0.2 元每秒（按 token 计费）"></option></datalist>
   <div class="field"><label>自定义模板 JSON（仅 custom 模式）</label><textarea name="video.custom" rows="8" class="mono"></textarea></div>
 </div></section></div>`;
 
 /** 每个模型块右上角的状态：[文字, badge 样式] */
-function badgeOf(s, key) {
-  if (key === 'llm') return s.llm.enabled && s.llm.apiKey ? ['已启用', 'done'] : ['未启用', 'warn'];
-  const mode = s[key].mode;
-  return mode === 'mock' ? ['mock 占位', 'warn'] : [mode === 'edge' ? '免费' : '已配置', 'done'];
+function badgeOf(cfg, key) {
+  if (key === 'llm') return cfg.enabled && cfg.apiKey ? ['收费 · 已启用', 'paid'] : ['未启用', 'warn'];
+  const kind = kindOf(key, cfg);
+  if (kind === 'free') return ['免费', 'done'];
+  if (kind === 'test') return ['mock 占位', 'warn'];
+  if (kind === 'dead') return ['已停用', 'error'];
+  if (kind === 'vary') return ['按服务商计费', 'paid'];
+  return [cfg.apiKey ? '收费 · 已配置' : '收费 · 未填 Key', cfg.apiKey ? 'paid' : 'warn'];
 }
 
 export async function mount(root, params = []) {
@@ -203,14 +200,37 @@ export async function mount(root, params = []) {
       return `<button type="button" data-sec="${k}" class="${k === section ? 'on' : ''}"><span>${n}</span>${c ? `<span class="n">${c}</span>` : ''}</button>`;
     }).join('');
   };
+  // 费用说明、状态徽标都读表单里的当前值，改了就实时更新（不用先保存）
+  const cfgOf = (k) => {
+    const out = {};
+    $$(`[name^="${k}."]`, form).forEach((el) => {
+      const key = el.name.slice(k.length + 1);
+      out[key] = el.type === 'checkbox' ? el.checked : el.value;
+    });
+    return out;
+  };
   const paintBadges = () => {
     ['llm', 'image', 'tts', 'video'].forEach((k) => {
-      const [txt, cls] = badgeOf(s, k);
+      const [txt, cls] = badgeOf(cfgOf(k), k);
       const el = $(`[data-badge="${k}"]`, root);
       el.textContent = txt;
       el.className = `badge ${cls}`;
     });
   };
+  const paintCosts = () => {
+    ['llm', 'image', 'tts', 'video'].forEach((k) => {
+      const box = $(`[data-cost="${k}"]`, root);
+      const cfg = cfgOf(k);
+      box.className = `cost cost-${describe(k, cfg).kind}`;
+      box.innerHTML = costHtml(k, cfg, esc);
+    });
+    paintBadges();
+  };
+  $('#costAll', root).innerHTML = overviewHtml(esc);
+  const soraOpt = field('video.mode').querySelector('[value="openai"]');
+  if (soraOpt) soraOpt.disabled = s.video.mode !== 'openai'; // 已停用：除非原来就选着，否则不让新选
+  form.addEventListener('input', paintCosts);
+  form.addEventListener('change', paintCosts);
   const showSection = (k) => {
     section = k;
     $$('.st-pane', root).forEach((p) => (p.hidden = p.dataset.sec !== k));
@@ -218,7 +238,7 @@ export async function mount(root, params = []) {
     paintNav();
     history.replaceState(null, '', `#/settings/${k}`); // 不触发路由重绘，未保存的修改不会丢
   };
-  paintBadges();
+  paintCosts();
   showSection(section);
   $('#setNav', root).addEventListener('click', (e) => {
     const b = e.target.closest('[data-sec]');
@@ -264,6 +284,7 @@ export async function mount(root, params = []) {
       else el.value = v;
     });
     $('#dashKey', root).value = '';
+    paintCosts();
     $('#saveHint', root).textContent = '已套用百炼推荐配置，点「保存设置」生效';
   });
 

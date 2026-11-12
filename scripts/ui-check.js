@@ -229,6 +229,26 @@ const ok = (c, m) => {
   ok(await js(`document.querySelectorAll('[data-blk]').length === 4 && document.querySelectorAll('[data-badge]').length === 4`), '模型分区有 4 个块，各带状态');
   ok(await js(`!!document.querySelector('[data-preview="edge"]') && !!document.querySelector('[data-preview="remote"]')`), '配音设置里 Edge 音色和百炼音色都有试听按钮');
   await shot('ui-settings-model');
+  // 费用说明：下拉里带【免费】/【收费】标签，选了之后有费用卡片，Sora 已停用
+  ok(await js(`document.querySelectorAll('.cost').length === 4 && [...document.querySelectorAll('[name="tts.mode"] option')].some(o=>o.textContent.startsWith('【免费】'))`), '配音下拉带【免费】标签，每个环节有费用说明卡片');
+  ok(await js(`(()=>{const o=document.querySelector('[name="video.mode"] [value="openai"]');return o.textContent.startsWith('【已停用】') && o.disabled})()`), 'Sora 选项标为已停用且不能新选');
+  await setVal('[name="video.mode"]', 'dashscope_i2v');
+  await setVal('[name="video.model"]', 'wan2.7-i2v');
+  await setVal('[name="video.resolution"]', '720P');
+  ok(await js(`document.querySelector('[data-cost="video"]').textContent.includes('0.6 元 / 秒') && document.querySelector('[data-cost="video"]').textContent.includes('18.0 元')`), '视频选万相图生视频 720P：显示 0.6 元/秒，30 秒约 18 元');
+  await js(`document.querySelector('[data-blk="video"]').scrollIntoView()`);
+  await sleep(300);
+  await shot('ui-settings-video-cost');
+  await setVal('[name="video.resolution"]', '1080P');
+  ok(await js(`document.querySelector('[data-cost="video"]').textContent.includes('1 元 / 秒')`), '切到 1080P：费用卡片实时变成 1 元/秒');
+  await setVal('[name="tts.mode"]', 'edge');
+  ok(await js(`document.querySelector('[data-cost="tts"]').classList.contains('cost-free') && document.querySelector('[data-badge="tts"]').textContent === '免费'`), '配音选 Edge：卡片和徽标都显示免费');
+  await js(`document.querySelector('#costAll').open = true`);
+  ok(await js(`document.querySelectorAll('#costAll .cost-table tbody tr').length >= 12`), '费用一览表可展开');
+  await shot('ui-settings-cost');
+  await js(`document.querySelector('#costAll').open = false`);
+  await setVal('[name="video.mode"]', 'mock');
+  await setVal('[name="tts.mode"]', 'mock');
   await setVal('[name="llm.model"]', 'qwen-max-ui');
   await click('#setNav [data-sec="skills"]');
   await click('#setNav [data-sec="model"]');
