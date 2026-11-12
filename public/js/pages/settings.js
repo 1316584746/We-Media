@@ -162,6 +162,29 @@ export async function mount(root, params = []) {
   </div>`;
   paintIcons(root);
 
+  // 密钥输入框右侧加「眼睛」：点一下在显示 / 隐藏之间切换
+  $$('input[type="password"]', root).forEach((inp) => {
+    const wrap = document.createElement('span');
+    wrap.className = 'pw-wrap';
+    inp.replaceWith(wrap);
+    const eye = document.createElement('button');
+    eye.type = 'button';
+    eye.className = 'pw-eye';
+    const paint = () => {
+      const shown = inp.type === 'text';
+      eye.innerHTML = icon(shown ? 'eye' : 'eyeoff');
+      eye.title = shown ? '隐藏' : '显示';
+      eye.setAttribute('aria-label', eye.title);
+      eye.classList.toggle('on', shown);
+    };
+    eye.addEventListener('click', () => {
+      inp.type = inp.type === 'text' ? 'password' : 'text';
+      paint();
+    });
+    wrap.append(inp, eye);
+    paint();
+  });
+
   const form = $('#form', root);
   const field = (name) => form.querySelector(`[name="${name}"]`);
 

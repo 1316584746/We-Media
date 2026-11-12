@@ -330,6 +330,17 @@ const ok = (c, m) => {
   ok(await js(`document.querySelectorAll('[data-blk]').length === 4 && document.querySelectorAll('[data-badge]').length === 4`), '模型分区有 4 个块，各带状态');
   ok(await js(`!!document.querySelector('[data-preview="edge"]') && !!document.querySelector('[data-preview="remote"]')`), '配音设置里 Edge 音色和百炼音色都有试听按钮');
   await shot('ui-settings-model');
+  // API Key 输入框带「眼睛」：默认隐藏，点一下显示，再点隐藏
+  ok(await js(`document.querySelectorAll('.pw-eye').length >= 5 && [...document.querySelectorAll('input[name$=".apiKey"], #dashKey')].every(i => i.type === 'password' && i.parentElement.classList.contains('pw-wrap'))`), '所有 API Key 输入框默认隐藏，右侧有眼睛按钮');
+  await setVal('[name="video.apiKey"]', 'sk-test-eye-1234');
+  await click('[name="video.apiKey"] + .pw-eye');
+  ok(await js(`(()=>{const i=document.querySelector('[name="video.apiKey"]');const b=i.nextElementSibling;return i.type==='text' && i.value==='sk-test-eye-1234' && b.classList.contains('on') && b.title==='隐藏'})()`), '点眼睛：明文显示，图标变为「隐藏」');
+  await js(`document.querySelector('[data-blk="video"]').scrollIntoView()`);
+  await sleep(300);
+  await shot('ui-settings-eye');
+  await click('[name="video.apiKey"] + .pw-eye');
+  ok(await js(`(()=>{const i=document.querySelector('[name="video.apiKey"]');return i.type==='password' && i.nextElementSibling.title==='显示'})()`), '再点一次：重新隐藏');
+  await setVal('[name="video.apiKey"]', '');
   // 费用说明：下拉里带【免费】/【收费】标签，选了之后有费用卡片，Sora 已停用
   ok(await js(`document.querySelectorAll('.cost').length === 4 && [...document.querySelectorAll('[name="tts.mode"] option')].some(o=>o.textContent.startsWith('【免费】'))`), '配音下拉带【免费】标签，每个环节有费用说明卡片');
   ok(await js(`(()=>{const o=document.querySelector('[name="video.mode"] [value="openai"]');return o.textContent.startsWith('【已停用】') && o.disabled})()`), 'Sora 选项标为已停用且不能新选');

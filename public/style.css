@@ -40,7 +40,7 @@ h1, h2, h3, h4, p { margin: 0; }
 ::-webkit-scrollbar-thumb { background: #2c333d; border-radius: 10px; border: 2px solid transparent; background-clip: content-box; }
 ::-webkit-scrollbar-thumb:hover { background: #3a4351; background-clip: content-box; border: 2px solid transparent; }
 [hidden] { display: none !important; }
-.ic svg, .btn svg, .icon-btn svg { width: 1em; height: 1em; stroke: currentColor; fill: none; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; display: block; }
+.ic svg, .btn svg, .icon-btn svg, .pw-eye svg { width: 1em; height: 1em; stroke: currentColor; fill: none; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; display: block; }
 
 /* ============ 应用外壳 ============ */
 #app { display: flex; min-height: 100vh; }
@@ -419,6 +419,11 @@ body.in-settings .main { margin-left: 0; padding-bottom: 0; }
 .st-inner .hint { margin: 0; }
 .lbl-sm { display: flex; flex-direction: column; gap: 3px; font-size: 14px; font-weight: 500; }
 .lbl-sm .hint { font-weight: 400; }
+.pw-wrap { position: relative; display: block; flex: 1; min-width: 0; }
+.pw-wrap input { width: 100%; padding-right: 44px; }
+.pw-eye { position: absolute; right: 5px; top: 50%; transform: translateY(-50%); width: 32px; height: 32px; display: grid; place-items: center; border: 0; border-radius: 8px; background: transparent; color: var(--muted); cursor: pointer; font-size: 17px; }
+.pw-eye:hover { background: var(--panel2); color: var(--text); }
+.pw-eye.on { color: var(--accent); }
 .quick-row { display: flex; gap: 10px; }
 .quick-row input { flex: 1; }
 .st-host .toolbar { margin-bottom: 4px; }
