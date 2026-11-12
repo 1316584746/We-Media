@@ -74,7 +74,19 @@ const ok = (c, m) => {
   await sleep(1500);
 
   // ---- 创作页 ----
-  ok(await js(`document.querySelectorAll('.tpl').length === 5`), '创作页有 5 个模板');
+  ok(await js(`document.querySelectorAll('.tpl').length === 6`), '创作页有 6 个模板（含心灵鸡汤）');
+  // 模板行可以左右滚动：出现右箭头，点击后向右滚，再出现左箭头
+  ok(await waitFor(`!document.querySelector('.tpl-nav.next').hidden && document.querySelector('.tpl-nav.prev').hidden`, 3000), '模板一行放不下时可滚动：只显示向右的箭头');
+  await click('.tpl-nav.next');
+  ok(await waitFor(`document.querySelector('#tpls').scrollLeft > 100 && !document.querySelector('.tpl-nav.prev').hidden`, 3000), '点右箭头向右滚动，随后出现向左的箭头');
+  await shot('ui-create-tpl-scroll');
+  await click('[data-tpl="heal"]');
+  ok(await js(`document.querySelector('.tpl.on').dataset.tpl === 'heal' && document.querySelector('#tpls').scrollLeft > 100`), '选「心灵鸡汤」后选中状态保留，滚动位置不被重置');
+  ok(await js(`document.querySelector('[data-seg="orientation"] .on').dataset.v === 'portrait' && document.querySelectorAll('[data-sample]').length === 3`), '心灵鸡汤默认竖屏，有 3 条示例文案');
+  await click('[data-sample="0"]');
+  ok(await js(`document.querySelector('[data-k="script"]').value.includes('晚安') && document.querySelector('[data-k="style"]').value.includes('治愈')`), '填入治愈系示例文案，画风为治愈系');
+  await click('[data-tpl="poem"]');
+  await sleep(300);
   await click('[data-tpl="story"]');
   ok(await js(`document.querySelector('.tpl.on').dataset.tpl === 'story'`), '切换到故事绘本模板');
   await click('[data-sample="0"]');

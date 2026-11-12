@@ -135,7 +135,11 @@ export async function mount(root) {
 
   root.innerHTML = `<div class="page">
     <div class="hero"><h1>想做一支什么视频？</h1><p>选一个模板，写下文案，剩下的分镜、画面、配音、字幕、成片交给 AI</p></div>
-    <div class="tpl-grid" id="tpls"></div>
+    <div class="tpl-rail" id="tplRail">
+      <button class="tpl-nav prev" type="button" data-nav="-1" aria-label="向左滚动" hidden>${icon('back')}</button>
+      <div class="tpl-grid" id="tpls"></div>
+      <button class="tpl-nav next" type="button" data-nav="1" aria-label="向右滚动" hidden>${icon('back')}</button>
+    </div>
     <div id="composer"></div>
     ${featured.length ? '<div id="featured"></div>' : ''}
     ${
@@ -160,7 +164,66 @@ export async function mount(root) {
   const tplsEl = $('#tpls', root);
   const featEl = $('#featured', root);
   const compEl = $('#composer', root);
-  const paintTpls = () => (tplsEl.innerHTML = templatesHtml());
+  const rail = $('#tplRail', root);
+  const updateRail = () => {
+    const max = tplsEl.scrollWidth - tplsEl.clientWidth;
+    const can = max > 4;
+    $$('.tpl-nav', rail).forEach((b) => {
+      b.hidden = !can || (b.dataset.nav === '-1' ? tplsEl.scrollLeft < 4 : tplsEl.scrollLeft > max - 4);
+    });
+    rail.classList.toggle('can-l', can && tplsEl.scrollLeft >= 4);
+    rail.classList.toggle('can-r', can && tplsEl.scrollLeft <= max - 4);
+  };
+  // 把选中的模板卡片滚进可视区（只滚这一行，不动整个页面）
+  const revealSelected = (smooth = false) => {
+    const on = $('.tpl.on', tplsEl);
+    if (!on) return;
+    const l = on.offsetLeft - tplsEl.offsetLeft;
+    const r = l + on.offsetWidth;
+    if (l < tplsEl.scrollLeft) tplsEl.scrollTo({ left: l - 8, behavior: smooth ? 'smooth' : 'auto' });
+    else if (r > tplsEl.scrollLeft + tplsEl.clientWidth) tplsEl.scrollTo({ left: r - tplsEl.clientWidth + 8, behavior: smooth ? 'smooth' : 'auto' });
+  };
+  const paintTpls = () => {
+    const x = tplsEl.scrollLeft; // 重绘不要把滚动位置弄丢
+    tplsEl.innerHTML = templatesHtml();
+    tplsEl.scrollLeft = x;
+    revealSelected(true);
+    updateRail();
+    requestAnimationFrame(updateRail); // 首次绘制时容器可能还没挂进页面，下一帧再量一次
+  };
+  tplsEl.addEventListener('scroll', updateRail, { passive: true });
+  new ResizeObserver(updateRail).observe(tplsEl);
+  rail.addEventListener('click', (e) => {
+    const b = e.target.closest('.tpl-nav');
+    if (b) tplsEl.scrollBy({ left: Number(b.dataset.nav) * Math.max(220, tplsEl.clientWidth * 0.8), behavior: 'smooth' });
+  });
+  // 鼠标按住拖动滚动（触屏 / 触控板本来就能滚）；拖动后不当成点击
+  let drag = null;
+  tplsEl.addEventListener('mousedown', (e) => {
+    if (e.button !== 0) return;
+    drag = { x: e.clientX, left: tplsEl.scrollLeft, moved: false };
+  });
+  const onMove = (e) => {
+    if (!drag) return;
+    const dx = e.clientX - drag.x;
+    if (!drag.moved && Math.abs(dx) < 6) return;
+    drag.moved = true;
+    tplsEl.classList.add('dragging');
+    tplsEl.scrollLeft = drag.left - dx;
+  };
+  const onUp = () => {
+    if (drag?.moved) setTimeout(() => (drag = null), 0);
+    else drag = null;
+    tplsEl.classList.remove('dragging');
+  };
+  window.addEventListener('mousemove', onMove);
+  window.addEventListener('mouseup', onUp);
+  tplsEl.addEventListener('click', (e) => {
+    if (drag?.moved) {
+      e.stopImmediatePropagation();
+      e.preventDefault();
+    }
+  }, true);
   const paintComposer = () => {
     compEl.innerHTML = composerHtml();
     paintIcons(compEl);
@@ -288,5 +351,10 @@ export async function mount(root) {
     }
   });
 
-  return { unmount() {} };
+  return {
+    unmount() {
+      window.removeEventListener('mousemove', onMove);
+      window.removeEventListener('mouseup', onUp);
+    },
+  };
 }
