@@ -163,13 +163,13 @@ function extractJson(text) {
 }
 
 const SHOT_CYCLE = ['远景', '中景', '特写', '背影', '全景', '近景'];
-const DEFAULT_MOTION = '画面中的人物与景物自然缓慢地运动，水面泛起涟漪，花草随风轻摆，薄雾缓缓流动，镜头缓慢推进';
 
 /**
- * 为每句诗生成镜头：景别 + 画面提示词，并给出贯穿全片的角色/场景设定（保证画面一致）。
- * 失败/未配置 LLM 时回退到规则模板。
+ * 为每个分句生成镜头：景别 + 画面提示词 + 动作描述，并给出贯穿全片的角色/场景设定（保证画面一致）。
+ * template 决定分镜师角色、回退文案与默认动作；失败/未配置 LLM 时回退到规则模板。
  */
-async function buildShots({ llm, title, author, poem, verses, style }) {
+async function buildShots({ llm, template, title, author, script, verses, style }) {
+  const DEFAULT_MOTION = template.defaultMotion;
   const compose = (shot, body, character, setting) =>
     [
       style,
@@ -187,7 +187,7 @@ async function buildShots({ llm, title, author, poem, verses, style }) {
       const shot = i === 0 ? '远景' : SHOT_CYCLE[i % SHOT_CYCLE.length];
       return {
         shot,
-        prompt: compose(shot, `诗句意境：${v.text.replace(/[。，]+$/, '')}，画面唯美`),
+        prompt: compose(shot, `${template.fallbackPrefix}${v.text.replace(/[。，！？；,.!?;]+$/, '')}，画面唯美`),
         motion: DEFAULT_MOTION,
       };
     }),
@@ -199,16 +199,16 @@ async function buildShots({ llm, title, author, poem, verses, style }) {
       {
         role: 'system',
         content:
-          '你是古诗词动画短片的分镜师。根据诗词，为每一句诗设计一个镜头，输出严格的 JSON：' +
-          '{"character":"贯穿全片的主角外观与服饰固定描述（年龄、发型、衣着；诗中没有人物则为空字符串）",' +
+          `你是${template.role}。根据文本，为每一个${template.unit}设计一个镜头，输出严格的 JSON：` +
+          '{"character":"贯穿全片的主角/主体外观固定描述（年龄、发型、衣着、造型；没有固定主角则为空字符串）",' +
           '"setting":"统一的季节、时间、光线与环境基调",' +
           '"shots":[{"shot":"远景|全景|中景|近景|特写|背影 之一","prompt":"该镜头的画面描述，50-90字，写清主体、动作、构图、光影","motion":"该镜头里画面如何动起来，30-60字，写清人物动作、景物动态（水波、风、云雾、花叶摇曳）和运镜，动作要自然舒缓"}]}。' +
-          'shots 的数量必须与诗句数完全一致；第一个镜头用远景交代环境；镜头类型要交替变化；' +
+          `shots 的数量必须与${template.unit}数完全一致；第一个镜头建立整体环境；镜头类型要交替变化；` +
           '各镜头的角色、画风、色调必须保持一致；画面里不要出现任何文字。只输出 JSON。',
       },
       {
         role: 'user',
-        content: `诗名：${title || '无题'}\n作者：${author || '佚名'}\n全诗：${poem}\n统一画风：${style}\n分句（共${verses.length}个镜头）：\n${verses
+        content: `标题：${title || '无题'}\n${author ? `作者：${author}\n` : ''}全文：${script}\n统一画风：${style}\n分句（共${verses.length}个镜头）：\n${verses
           .map((v, i) => `${i + 1}. ${v.text}`)
           .join('\n')}`,
       },
@@ -234,6 +234,14 @@ async function buildShots({ llm, title, author, poem, verses, style }) {
 }
 
 /* ----------------------------- TTS ----------------------------- */
+
+/** 项目级音色覆盖：edge 用 *Neural 音色 ID，其他服务用各自的音色名；类型不匹配时忽略 */
+function ttsWithVoice(cfg, voice) {
+  if (!voice) return cfg;
+  const isEdgeVoice = /Neural$/.test(voice);
+  if (cfg.mode === 'edge') return isEdgeVoice ? { ...cfg, edgeVoice: voice } : cfg;
+  return isEdgeVoice ? cfg : { ...cfg, voice };
+}
 
 async function synthesizeSpeech({ cfg, text, outFile }) {
   fs.mkdirSync(path.dirname(outFile), { recursive: true });
@@ -399,6 +407,7 @@ async function generateClip({ cfg, render, prompt, outFile, imageFile, duration,
 module.exports = {
   buildShots,
   synthesizeSpeech,
+  ttsWithVoice,
   makeSilence,
   generateImage,
   generateClip,

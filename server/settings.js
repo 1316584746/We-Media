@@ -2,7 +2,7 @@ const fs = require('fs');
 const path = require('path');
 
 const ROOT = path.join(__dirname, '..');
-const DATA_DIR = path.join(ROOT, 'data');
+const DATA_DIR = process.env.WM_DATA_DIR || path.join(ROOT, 'data');
 const FILE = path.join(DATA_DIR, 'settings.json');
 const MASK = '********';
 const KEY_SECTIONS = ['llm', 'tts', 'image', 'video'];
