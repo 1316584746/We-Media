@@ -57,12 +57,12 @@ function composerHtml() {
   const llmOn = state.settings.llm.enabled && state.settings.llm.apiKey;
   const extHtml =
     sk.length || servers.length
-      ? `<div class="field"><span class="lbl">扩展 <a href="#/extensions" class="hint" style="text-decoration:underline">管理</a></span>
+      ? `<div class="field"><span class="lbl">扩展 <a href="#/settings/skills" class="hint" style="text-decoration:underline">管理</a></span>
           ${sk.length ? `<div class="chips">${sk.map((s) => `<button class="chip ${form.skills.includes(s.id) ? 'on' : ''}" data-skill="${s.id}" title="${esc(s.description || '')}">${esc(s.name)}</button>`).join('')}</div>` : ''}
           ${servers.length ? `<label class="switch" style="margin-top:6px"><input type="checkbox" data-k="useTools" ${form.useTools ? 'checked' : ''} />工具增强：分镜前用 MCP 工具检索资料（${servers.length} 个服务）</label>` : ''}
           ${llmOn ? '' : '<span class="opt-note">技能和工具增强需要先在设置里启用「分镜 LLM」才会生效。</span>'}
         </div>`
-      : `<div class="field"><span class="lbl">扩展</span><span class="opt-note">还没有技能或 MCP 服务。<a href="#/extensions" style="text-decoration:underline">去导入</a>后，可以在这里勾选使用。</span></div>`;
+      : `<div class="field"><span class="lbl">扩展</span><span class="opt-note">还没有技能或 MCP 服务。<a href="#/settings/skills" style="text-decoration:underline">去导入</a>后，可以在这里勾选使用。</span></div>`;
   return `
   <div class="card composer">
     <div class="col">

@@ -1,7 +1,5 @@
 import { $, $$, api, esc, state, toast, icon, paintIcons, relTime, confirmDlg } from '../core.js';
 
-let tab = 'skills';
-
 /* ---------------- 通用表单对话框 ---------------- */
 function formModal({ title, body, okText = '保存', wide = true, onMount, onOk }) {
   return new Promise((resolve) => {
@@ -157,9 +155,7 @@ function skillsHtml(list) {
   const toolbar = `<div class="toolbar">
       <button class="btn primary" data-act="import-skill">${icon('download')}导入技能</button>
       <button class="btn" data-act="new-skill">${icon('plus')}新建技能</button>
-      <span class="spacer"></span>
-    </div>
-    <div class="notice info" style="margin-bottom:16px"><span>技能是写给<b>分镜 AI</b> 的额外指引（SKILL.md 格式）。在「创作」页创建项目时勾选后，会附加到分镜提示词里。需要先在设置里启用「分镜 LLM」。</span></div>`;
+    </div>`;
   if (!list.length) {
     return `${toolbar}<div class="empty"><b>还没有技能</b>导入一个 SKILL.md，或者自己写一条分镜规范。<br>例如「古诗词多用留白构图」「口播镜头节奏要快」。</div>`;
   }
@@ -266,9 +262,7 @@ function mcpHtml(list) {
   const toolbar = `<div class="toolbar">
       <button class="btn primary" data-act="import-mcp">${icon('download')}导入 JSON</button>
       <button class="btn" data-act="new-mcp">${icon('plus')}添加服务</button>
-      <span class="spacer"></span>
-    </div>
-    <div class="notice info" style="margin-bottom:16px"><span>MCP 服务给分镜 AI 提供「工具」（搜索、读网页、查资料……）。创建项目时打开<b>工具增强</b>，AI 会在分镜前按需调用这些工具检索背景资料。需要先启用「分镜 LLM」，且所选模型支持函数调用。</span></div>`;
+    </div>`;
   if (!list.length) {
     return `${toolbar}<div class="empty"><b>还没有 MCP 服务</b>粘贴你的 mcp.json 一键导入，或手动添加一个服务。<br>想先试试？示例服务在 <code class="mono">scripts/sample-mcp-server.js</code>（命令 <code class="mono">node</code>，参数填它的绝对路径）。</div>`;
   }
@@ -303,20 +297,20 @@ function mcpHtml(list) {
 }
 
 /* ---------------- 页面 ---------------- */
-export async function mount(root) {
+/**
+ * 把「技能」或「MCP 服务」面板挂到 root 上（设置页的两个分区共用）。
+ * onChange(data) 在每次重新读取后调用，用来刷新侧边栏里的数量。
+ */
+export async function mountPanel(root, kind, onChange) {
   let data = { skills: [], mcp: [] };
   let alive = true;
-
-  root.innerHTML = `<div class="page">
-    <div class="page-head"><h1>扩展</h1><span class="sub">导入技能、接入 MCP 服务，扩展分镜 AI 的能力</span></div>
-    <div class="tabs-row"><div class="seg" id="tabs"></div></div>
-    <div id="panel"></div>
-  </div>`;
-  paintIcons(root);
+  const panel = document.createElement('div');
+  panel.className = 'ext-panel';
+  root.appendChild(panel);
 
   const paint = () => {
-    $('#tabs', root).innerHTML = `<button data-t="skills" class="${tab === 'skills' ? 'on' : ''}">技能 · ${data.skills.length}</button><button data-t="mcp" class="${tab === 'mcp' ? 'on' : ''}">MCP 服务 · ${data.mcp.length}</button>`;
-    $('#panel', root).innerHTML = tab === 'skills' ? skillsHtml(data.skills) : mcpHtml(data.mcp);
+    panel.innerHTML = kind === 'skills' ? skillsHtml(data.skills) : mcpHtml(data.mcp);
+    paintIcons(panel);
   };
   const load = async () => {
     try {
@@ -324,17 +318,12 @@ export async function mount(root) {
     } catch (e) {
       return toast(`读取失败：${e.message}`, 'err');
     }
-    if (alive) paint();
+    if (!alive) return;
+    paint();
+    onChange?.(data);
   };
 
-  $('#tabs', root).addEventListener('click', (e) => {
-    const b = e.target.closest('[data-t]');
-    if (!b) return;
-    tab = b.dataset.t;
-    paint();
-  });
-
-  $('#panel', root).addEventListener('click', async (e) => {
+  panel.addEventListener('click', async (e) => {
     const btn = e.target.closest('[data-act]');
     if (!btn || btn.type === 'checkbox') return;
     const act = btn.dataset.act;
@@ -373,7 +362,7 @@ export async function mount(root) {
     }
   });
 
-  $('#panel', root).addEventListener('change', async (e) => {
+  panel.addEventListener('change', async (e) => {
     const act = e.target.dataset.act;
     if (act !== 'toggle-skill' && act !== 'toggle-mcp') return;
     const id = e.target.closest('[data-id]').dataset.id;

@@ -147,8 +147,10 @@ const ok = (c, m) => {
   await shot('ui-projects');
 
   // ---- 扩展页：技能 / MCP ----
-  await goto('#/extensions');
-  ok(await js(`document.querySelectorAll('[data-nav]').length === 4`), '侧边栏有 4 个入口（含扩展）');
+  await goto('#/extensions'); // 旧地址应跳到设置 → 技能
+  ok(await waitFor(`location.hash === '#/settings/skills'`, 3000), '旧的 #/extensions 地址跳转到设置·技能');
+  ok(await js(`getComputedStyle(document.querySelector('.rail')).display === 'none' && document.querySelectorAll('#setNav button').length === 4`), '设置页是二级页：隐藏主导航，左侧有 4 个分区');
+  ok(await js(`document.querySelector('#setNav .on').dataset.sec === 'skills' && document.querySelector('#saveBar').hidden`), '技能分区默认选中，无保存栏');
   await click('[data-act="import-skill"]');
   await waitFor(`!!document.querySelector('dialog.dlg[open]')`, 3000);
   ok(await js(`document.querySelector('[data-ok]').disabled === true`), '导入技能：解析前「导入」不可点');
@@ -164,7 +166,7 @@ const ok = (c, m) => {
   await click('.ext [data-act="toggle-skill"]');
   await waitFor(`!document.querySelector('.ext').classList.contains('off')`, 3000);
 
-  await click('#tabs [data-t="mcp"]');
+  await click('#setNav [data-sec="mcp"]');
   await click('[data-act="import-mcp"]');
   await waitFor(`!!document.querySelector('dialog.dlg[open]')`, 3000);
   const samplePath = require('path').resolve(__dirname, 'sample-mcp-server.js');
@@ -188,11 +190,21 @@ const ok = (c, m) => {
   for (const m of extNow.mcp) await fetch(`${BASE}/api/mcp/${m.id}`, { method: 'DELETE' });
   for (const s of extNow.skills) await fetch(`${BASE}/api/skills/${s.id}`, { method: 'DELETE' });
 
-  // ---- 设置页 ----
+  // ---- 设置页（二级页） ----
+  await goto('#/projects');
   await goto('#/settings');
-  await click('[data-tab="tts"]');
-  ok(await js(`document.querySelector('.set-pane.on').dataset.pane === 'tts'`), '设置页切换页签');
-
+  ok(await js(`document.querySelector('#setNav .on').dataset.sec === 'model' && !document.querySelector('#saveBar').hidden`), '设置默认进入「模型」并显示保存栏');
+  ok(await js(`document.querySelectorAll('[data-blk]').length === 4 && document.querySelectorAll('[data-badge]').length === 4`), '模型分区有 4 个块，各带状态');
+  await shot('ui-settings-model');
+  await setVal('[name="llm.model"]', 'qwen-max-ui');
+  await click('#setNav [data-sec="skills"]');
+  await click('#setNav [data-sec="model"]');
+  ok(await js(`document.querySelector('[name="llm.model"]').value === 'qwen-max-ui'`), '切换分区不丢未保存的修改');
+  await click('#setNav [data-sec="prefs"]');
+  ok(await js(`!!document.querySelector('[name="render.fps"]') && document.querySelector('[data-sec="prefs"].st-pane').hidden === false`), '偏好分区');
+  ok(await js(`document.querySelector('.st-back').getAttribute('href') === '#/projects'`), '返回链接指向进入设置前的页面');
+  await click('.st-back');
+  ok(await waitFor(`location.hash === '#/projects' && getComputedStyle(document.querySelector('.rail')).display !== 'none'`, 3000), '返回后恢复主导航');
   // ---- 移动端宽度 ----
   await send('Emulation.setDeviceMetricsOverride', { width: 390, height: 844, deviceScaleFactor: 2, mobile: true });
   await goto('#/');
@@ -201,6 +213,9 @@ const ok = (c, m) => {
   await goto(`#/p/${pid}`);
   await sleep(600);
   await shot('ui-mobile-editor');
+  await goto('#/settings');
+  await sleep(500);
+  await shot('ui-mobile-settings');
 
   ok(errors.length === 0, `页面无控制台错误${errors.length ? '：' + errors.slice(0, 3).join(' | ') : ''}`);
   console.log(failed ? `\n${failed} 项失败` : '\n全部通过');

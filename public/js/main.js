@@ -1,16 +1,14 @@
-import { $, $$, loadMeta, loadSettings, paintIcons, paintRailStatus, toast } from './core.js';
+import { $, $$, state, loadMeta, loadSettings, paintIcons, paintRailStatus, toast } from './core.js';
 import * as createPage from './pages/create.js';
 import * as projectsPage from './pages/projects.js';
 import * as editorPage from './pages/editor.js';
 import * as settingsPage from './pages/settings.js';
-import * as extensionsPage from './pages/extensions.js';
 
 const ROUTES = [
-  [/^#\/extensions$/, extensionsPage, 'extensions'],
   [/^#?\/?$/, createPage, 'create'],
   [/^#\/projects$/, projectsPage, 'projects'],
   [/^#\/p\/([\w-]+)$/, editorPage, 'editor'],
-  [/^#\/settings$/, settingsPage, 'settings'],
+  [/^#\/settings(?:\/(\w+))?$/, settingsPage, 'settings'],
 ];
 
 let current = null;
@@ -21,9 +19,12 @@ async function render() {
   if (current?.unmount) await current.unmount();
   current = null;
   const hash = location.hash || '#/';
+  if (hash === '#/extensions') return void location.replace('#/settings/skills'); // 旧地址
   const match = ROUTES.map(([re, page, nav]) => [hash.match(re), page, nav]).find(([m]) => m);
   const [m, page, nav] = match || [[''], createPage, 'create'];
+  if (nav !== 'settings') state.lastApp = hash; // 设置页「返回」回到这里
   document.body.classList.toggle('in-editor', nav === 'editor');
+  document.body.classList.toggle('in-settings', nav === 'settings');
   $$('[data-nav]').forEach((a) => a.classList.toggle('active', a.dataset.nav === nav));
   const view = $('#view');
   view.innerHTML = '';

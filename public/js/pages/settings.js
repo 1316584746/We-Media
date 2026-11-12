@@ -1,4 +1,5 @@
-import { $, $$, api, state, toast, loadMeta, paintRailStatus } from '../core.js';
+import { $, $$, api, esc, icon, paintIcons, state, toast, loadMeta, paintRailStatus } from '../core.js';
+import { mountPanel } from './extensions.js';
 
 const getByPath = (obj, p) => p.split('.').reduce((o, k) => (o == null ? o : o[k]), obj);
 function setByPath(obj, p, v) {
@@ -17,18 +18,19 @@ const PRESETS = {
 const KNOWN_BASES = ['https://api.openai.com/v1', 'https://dashscope.aliyuncs.com', 'https://ark.cn-beijing.volces.com'];
 const VOICE_PRESETS = { dashscope: 'Ethan', openai: 'alloy' };
 
-const TABS = [
-  ['general', '通用'],
-  ['llm', '分镜 LLM'],
-  ['image', '文生图'],
-  ['tts', '配音'],
-  ['video', '视频生成'],
+const SECTIONS = [
+  ['model', '模型'],
+  ['skills', '技能'],
+  ['mcp', 'MCP 服务'],
+  ['prefs', '偏好'],
 ];
+const SECTION_DESC = {
+  skills: '技能是写给分镜 AI 的额外指引（SKILL.md 格式）。在「创作」页创建项目时勾选后，会附加到分镜提示词里；需要先在「模型」里启用分镜 LLM。',
+  mcp: 'MCP 服务给分镜 AI 提供「工具」（搜索、读网页、查资料……）。创建项目时打开「工具增强」，AI 会在分镜前按需调用它们检索背景资料；需要启用分镜 LLM，且模型支持函数调用。',
+};
 
 const PANES = `
-<fieldset class="set-pane card on" data-pane="general">
-  <h3>通用默认值</h3>
-  <p class="hint">新建项目时的默认值；每个项目可以在编辑器里单独调整。</p>
+<div class="st-pane" data-sec="prefs"><h2 class="st-h">偏好</h2><p class="st-desc">新建项目时的默认值；每个项目可以在编辑器里单独调整。</p><div class="st-inner">
   <div class="field"><label>默认画面方式</label>
     <select name="render.visual">
       <option value="i2v">图生视频：先画插画定角色，再让画面动起来（推荐，真动画）</option>
@@ -41,10 +43,14 @@ const PANES = `
     <div class="field"><label>诗词每镜头句数</label><input name="render.linesPerScene" type="number" min="1" max="4" /></div>
   </div>
   <label class="switch"><input type="checkbox" name="render.subtitles" />默认烧录字幕</label>
-</fieldset>
+</div></div>
 
-<fieldset class="set-pane card" data-pane="llm">
-  <h3>分镜 LLM</h3>
+<div class="st-pane" data-sec="model"><h2 class="st-h">模型</h2><p class="st-desc">分镜、文生图、配音、视频生成用到的模型与密钥，只保存在本机 <code class="mono">data/settings.json</code>，不会上传。</p>
+<section class="st-blk"><div class="st-sub"><span>阿里百炼一键配置</span></div><div class="st-inner">
+  <label class="lbl-sm">API Key <span class="hint">一个 Key 同时用于分镜、文生图、配音、图生视频。填入后点「套用」，再保存。</span></label>
+  <div class="quick-row"><input id="dashKey" type="password" placeholder="sk-xxxxxxxx" autocomplete="off" /><button type="button" class="btn" id="btnApplyDash">套用</button></div>
+</div></section>
+<section class="st-blk" data-blk="llm"><div class="st-sub"><span>分镜 LLM</span><span class="badge" data-badge="llm"></span></div><div class="st-inner">
   <p class="hint">用大模型把文案拆成镜头，并保证各镜头角色、画风一致。不启用则用规则模板生成画面描述。</p>
   <label class="switch"><input type="checkbox" name="llm.enabled" />启用 LLM 分镜</label>
   <div class="field"><label>Base URL（OpenAI 兼容）</label><input name="llm.baseUrl" /></div>
@@ -52,10 +58,9 @@ const PANES = `
     <div class="field"><label>API Key</label><input name="llm.apiKey" type="password" autocomplete="off" /></div>
     <div class="field"><label>模型</label><input name="llm.model" /></div>
   </div>
-</fieldset>
+</div></section>
 
-<fieldset class="set-pane card" data-pane="image">
-  <h3>文生图</h3>
+<section class="st-blk" data-blk="image"><div class="st-sub"><span>文生图</span><span class="badge" data-badge="image"></span></div><div class="st-inner">
   <div class="field"><label>模式</label>
     <select name="image.mode">
       <option value="mock">mock（测试，渐变底图）</option>
@@ -71,10 +76,9 @@ const PANES = `
   </div>
   <datalist id="imageModels"><option value="qwen-image-2.0"></option><option value="qwen-image-2.0-pro"></option><option value="qwen-image-3.0"></option><option value="z-image-turbo"></option></datalist>
   <div class="field"><label>自定义模板 JSON（仅 custom 模式）</label><textarea name="image.custom" rows="6" class="mono" placeholder='{"request":{"method":"POST","url":"https://...","headers":{"Authorization":"Bearer {{apiKey}}"},"body":{"model":"{{model}}","prompt":"{{prompt}}","size":"{{size}}"}},"responseType":"url","path":"data[0].url"}'></textarea></div>
-</fieldset>
+</div></section>
 
-<fieldset class="set-pane card" data-pane="tts">
-  <h3>配音</h3>
+<section class="st-blk" data-blk="tts"><div class="st-sub"><span>配音</span><span class="badge" data-badge="tts"></span></div><div class="st-inner">
   <div class="field"><label>模式</label>
     <select name="tts.mode">
       <option value="mock">mock（测试，提示音）</option>
@@ -103,10 +107,9 @@ const PANES = `
     <div class="field"><label>音色（百炼如 Ethan / Cherry）</label><input name="tts.voice" /></div>
   </div>
   <div class="field"><label>自定义模板 JSON（仅 custom 模式）</label><textarea name="tts.custom" rows="6" class="mono" placeholder='{"request":{"method":"POST","url":"https://...","headers":{"Authorization":"Bearer {{apiKey}}"},"body":{"text":"{{text}}","voice":"{{voice}}"}},"responseType":"binary"}'></textarea></div>
-</fieldset>
+</div></section>
 
-<fieldset class="set-pane card" data-pane="video">
-  <h3>视频生成</h3>
+<section class="st-blk" data-blk="video"><div class="st-sub"><span>视频生成</span><span class="badge" data-badge="video"></span></div><div class="st-inner">
   <div class="field"><label>模式</label>
     <select name="video.mode">
       <option value="mock">mock（测试）</option>
@@ -130,31 +133,37 @@ const PANES = `
     <div class="field"><label>单段时长（秒，仅文生视频）</label><input name="video.duration" type="number" /></div>
   </div>
   <div class="field"><label>自定义模板 JSON（仅 custom 模式）</label><textarea name="video.custom" rows="8" class="mono"></textarea></div>
-</fieldset>`;
+</div></section></div>`;
 
-function tabState(s, tab) {
-  if (tab === 'general') return '';
-  if (tab === 'llm') return s.llm.enabled && s.llm.apiKey ? ['已启用', ''] : ['未启用', 'mock'];
-  const mode = s[tab].mode;
-  return mode === 'mock' ? ['mock', 'mock'] : [mode === 'edge' ? '免费' : '已配置', ''];
+/** 每个模型块右上角的状态：[文字, badge 样式] */
+function badgeOf(s, key) {
+  if (key === 'llm') return s.llm.enabled && s.llm.apiKey ? ['已启用', 'done'] : ['未启用', 'warn'];
+  const mode = s[key].mode;
+  return mode === 'mock' ? ['mock 占位', 'warn'] : [mode === 'edge' ? '免费' : '已配置', 'done'];
 }
 
-export async function mount(root) {
+export async function mount(root, params = []) {
   const s = await api('/api/settings');
   state.settings = s;
+  let ext = await api('/api/extensions').catch(() => ({ skills: [], mcp: [] }));
+  let section = SECTIONS.some(([k]) => k === params[0]) ? params[0] : 'model';
 
-  root.innerHTML = `<div class="page">
-    <div class="page-head"><h1>设置</h1><span class="sub">模型与密钥只保存在本机 <code class="mono">data/settings.json</code>，不会上传</span></div>
-    <div class="card quick">
-      <div><b>阿里百炼一键配置</b><div class="hint">一个 Key 同时用于分镜、文生图、配音、图生视频。填入后点「套用」，再点保存。</div></div>
-      <div class="quick-row"><input id="dashKey" type="password" placeholder="sk-xxxxxxxx" autocomplete="off" /><button type="button" class="btn" id="btnApplyDash">套用</button></div>
-    </div>
-    <form id="form" class="set-layout">
-      <nav class="set-nav" id="setNav"></nav>
-      <div id="panes">${PANES}</div>
-    </form>
-    <div class="save-bar"><button class="btn primary lg" id="btnSave" type="button">保存设置</button><span class="hint" id="saveHint"></span></div>
+  const extPane = (key, title) => `<div class="st-pane" data-sec="${key}" hidden>
+      <h2 class="st-h">${title}</h2><p class="st-desc">${SECTION_DESC[key]}</p><div class="st-host" id="host-${key}"></div></div>`;
+  root.innerHTML = `<div class="st-shell">
+    <aside class="st-side"><div class="st-cap">设置</div><nav id="setNav"></nav></aside>
+    <section class="st-main">
+      <a class="st-back" href="${esc(state.lastApp || '#/')}">${icon('back')}返回</a>
+      <div class="st-title"><h1>设置</h1><span class="sub">本地应用 · 数据只保存在这台电脑</span></div>
+      <div class="st-card">
+        <form id="form" autocomplete="off" onsubmit="return false">${PANES}</form>
+        ${extPane('skills', '技能')}
+        ${extPane('mcp', 'MCP 服务')}
+      </div>
+      <div class="save-bar" id="saveBar"><button class="btn primary lg" id="btnSave" type="button">保存设置</button><span class="hint" id="saveHint"></span></div>
+    </section>
   </div>`;
+  paintIcons(root);
 
   const form = $('#form', root);
   const field = (name) => form.querySelector(`[name="${name}"]`);
@@ -166,22 +175,43 @@ export async function mount(root) {
     else el.value = v ?? '';
   });
 
-  const paintNav = (active) => {
-    $('#setNav', root).innerHTML = TABS.map(([k, n]) => {
-      const st = tabState(s, k);
-      return `<button type="button" data-tab="${k}" class="${k === active ? 'on' : ''}"><span>${n}</span>${st ? `<span class="st ${st[1]}">${st[0]}</span>` : ''}</button>`;
+  const count = (k) => (k === 'skills' ? ext.skills.length : k === 'mcp' ? ext.mcp.length : null);
+  const paintNav = () => {
+    $('#setNav', root).innerHTML = SECTIONS.map(([k, n]) => {
+      const c = count(k);
+      return `<button type="button" data-sec="${k}" class="${k === section ? 'on' : ''}"><span>${n}</span>${c ? `<span class="n">${c}</span>` : ''}</button>`;
     }).join('');
   };
-  const showTab = (k) => {
-    $$('.set-pane', root).forEach((p) => p.classList.toggle('on', p.dataset.pane === k));
-    paintNav(k);
+  const paintBadges = () => {
+    ['llm', 'image', 'tts', 'video'].forEach((k) => {
+      const [txt, cls] = badgeOf(s, k);
+      const el = $(`[data-badge="${k}"]`, root);
+      el.textContent = txt;
+      el.className = `badge ${cls}`;
+    });
   };
-  showTab('general');
+  const showSection = (k) => {
+    section = k;
+    $$('.st-pane', root).forEach((p) => (p.hidden = p.dataset.sec !== k));
+    $('#saveBar', root).hidden = k !== 'model' && k !== 'prefs';
+    paintNav();
+    history.replaceState(null, '', `#/settings/${k}`); // 不触发路由重绘，未保存的修改不会丢
+  };
+  paintBadges();
+  showSection(section);
   $('#setNav', root).addEventListener('click', (e) => {
-    const b = e.target.closest('[data-tab]');
-    if (b) showTab(b.dataset.tab);
+    const b = e.target.closest('[data-sec]');
+    if (b) showSection(b.dataset.sec);
   });
 
+  const onExtChange = (d) => {
+    ext = d;
+    paintNav();
+  };
+  const panels = await Promise.all([
+    mountPanel($('#host-skills', root), 'skills', onExtChange),
+    mountPanel($('#host-mcp', root), 'mcp', onExtChange),
+  ]);
   Object.entries(PRESETS).forEach(([sel, { field: target, map }]) => {
     field(sel).addEventListener('change', (e) => {
       const input = field(target);
@@ -237,7 +267,7 @@ export async function mount(root) {
       state.settings = saved;
       await loadMeta();
       paintRailStatus();
-      paintNav($('#setNav .on', root)?.dataset.tab || 'general');
+      paintBadges();
       $('#saveHint', root).textContent = '';
       toast('设置已保存', 'ok');
     } catch (e) {
@@ -245,5 +275,5 @@ export async function mount(root) {
     }
   });
 
-  return { unmount() {} };
+  return { unmount() { panels.forEach((p) => p?.unmount?.()); } };
 }

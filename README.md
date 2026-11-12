@@ -96,7 +96,7 @@ WM_KEY=sk-xxxx node scripts/setup-dashscope.js     # 需先 npm start
 
 ## 扩展：技能（Skills）与 MCP
 
-在左侧「扩展」页管理，数据保存在本机 `data/extensions.json`（已 gitignore）。
+在「设置 → 技能 / MCP 服务」里管理，数据保存在本机 `data/extensions.json`（已 gitignore）。
 
 - **技能**：一份 `SKILL.md`（frontmatter 里的 `name` / `description` + 正文）。可粘贴、选文件或填 URL 导入，也可以手写。
   创建项目时勾选的技能会注入「分镜 LLM」的系统提示词，用来约束分镜风格、镜头语言、改写规则等。可设置只适用于某些模板。
