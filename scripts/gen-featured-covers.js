@@ -35,7 +35,7 @@ const only = args.filter((a) => !a.startsWith('--'));
         // 百炼文生图有限流（429）：退避后重试
         for (let attempt = 1; ; attempt++) {
           try {
-            await providers.generateImage({ cfg, render: { orientation: 'portrait' }, prompt: `${f.coverPrompt}，${styleOf(f.styleName)}`, outFile: tmp });
+            await providers.generateImage({ cfg, render: { orientation: f.orientation }, prompt: `${f.coverPrompt}，${styleOf(f.styleName)}`, outFile: tmp });
             break;
           } catch (e) {
             if (attempt >= 4 || !/429|rate|Throttling/i.test(e.message)) throw e;
@@ -43,7 +43,7 @@ const only = args.filter((a) => !a.startsWith('--'));
           }
         }
         // 统一压成宽 540 的 jpg，仓库里每张几十 KB
-        await ff.run(['-y', '-i', tmp, '-vf', 'scale=540:-2', '-q:v', '4', path.join(OUT, `${f.id}.jpg`)]);
+        await ff.run(['-y', '-i', tmp, '-vf', f.orientation === 'portrait' ? 'scale=540:-2' : 'scale=960:-2', '-q:v', '4', path.join(OUT, `${f.id}.jpg`)]);
         fs.rmSync(tmp, { force: true });
         console.log(`OK    ${f.id}`);
       } catch (e) {

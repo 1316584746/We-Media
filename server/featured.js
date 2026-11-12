@@ -7,7 +7,11 @@
  * styleName：对应 templates.js 里 STYLE_PRESETS 的 name
  * coverPrompt：生成封面用的画面描述（scripts/gen-featured-covers.js 读取，不会下发给前端）
  */
+const fs = require('fs');
+const path = require('path');
 const { STYLE_PRESETS } = require('./templates');
+
+const DIR = path.join(__dirname, '..', 'public', 'featured');
 
 const FEATURED = [
   {
@@ -121,13 +125,252 @@ const FEATURED = [
       '你每天喝的咖啡，其实是一颗果实的种子。\n咖啡树结出红色的果子，人们叫它咖啡樱桃。\n采摘之后，果肉被剥去，种子晾晒发酵。\n烘焙时，生豆在高温里慢慢变成深褐色，香气随之释放。\n研磨、冲泡，一杯咖啡才终于来到你的手上。',
     coverPrompt: '一棵挂满红色咖啡果的咖啡树，旁边是烘焙好的深褐色咖啡豆和一杯冒着热气的咖啡，暖色调扁平插画，竖构图',
   },
+
+  /* ---------------- 古诗词 ---------------- */
+  {
+    id: 'jingyesi',
+    platform: '抖音风',
+    topic: '古诗词',
+    template: 'poem',
+    orientation: 'portrait',
+    styleName: '国风水彩',
+    title: '静夜思',
+    author: '李白',
+    desc: '最短的乡愁：四句诗，一轮明月，一个人的思念。',
+    script: '床前明月光，疑是地上霜。\n举头望明月，低头思故乡。',
+    coverPrompt: '深夜的窗前，一束清冷的月光洒在木床前的地面上，像铺了一层白霜，窗外挂着一轮明月，国风水彩意境，竖构图',
+  },
+  {
+    id: 'dengguanque',
+    platform: '小红书风',
+    topic: '古诗词',
+    template: 'poem',
+    orientation: 'landscape',
+    styleName: '国风水彩',
+    title: '登鹳雀楼',
+    author: '王之涣',
+    desc: '大开大合的气象，适合横屏慢慢铺开的壮阔画面。',
+    script: '白日依山尽，黄河入海流。\n欲穷千里目，更上一层楼。',
+    coverPrompt: '夕阳落在远山后面，浩荡的黄河向东流入大海，近处一座古楼，一位古人在高处极目远眺，国风水彩，气势开阔，横构图',
+  },
+  {
+    id: 'jiangxue',
+    platform: '抖音风',
+    topic: '古诗词',
+    template: 'poem',
+    orientation: 'landscape',
+    styleName: '国风水彩',
+    title: '江雪',
+    author: '柳宗元',
+    desc: '大片留白的清冷意境，一叶孤舟一个钓翁。',
+    script: '千山鸟飞绝，万径人踪灭。\n孤舟蓑笠翁，独钓寒江雪。',
+    coverPrompt: '大雪覆盖的群山，江面一叶孤舟，舟上一位披蓑戴笠的老翁独自垂钓，天地一片苍茫的白，大面积留白，国风水墨水彩，横构图',
+  },
+
+  /* ---------------- 故事绘本 ---------------- */
+  {
+    id: 'star-pond',
+    platform: '小红书风',
+    topic: '睡前故事',
+    template: 'story',
+    orientation: 'portrait',
+    styleName: '儿童绘本',
+    title: '掉进池塘的星星',
+    author: '',
+    desc: '温柔的小童话：一颗星星、一只小青蛙和一个晚安。',
+    script:
+      '夜深了，一颗小星星不小心从天上滑了下来，扑通一声掉进了池塘。\n小青蛙被吓了一跳，探出头来问：你是谁呀？\n小星星委屈地说：我找不到回家的路了。\n小青蛙想了想，爬上最高的荷叶，举起双手托住了星星。\n星星一点点亮起来，越飞越高，终于回到了夜空。\n从那以后，每当池塘安静下来，水面上总会闪着一点点光。',
+    coverPrompt: '夜晚的荷塘，一颗发光的小星星掉在水面上，一只小青蛙站在荷叶上抬头看着它，水面泛起金色的涟漪，满天繁星，温暖的儿童绘本插画，竖构图',
+  },
+
+  /* ---------------- 知识科普 ---------------- */
+  {
+    id: 'rainbow',
+    platform: '小红书风',
+    topic: '自然科普',
+    template: 'explainer',
+    orientation: 'landscape',
+    styleName: '扁平插画',
+    title: '彩虹是怎么出现的',
+    author: '',
+    desc: '雨后一抬头就能看到的现象，三十秒讲明白。',
+    script:
+      '雨后的天空，为什么会出现彩虹？\n因为空气中还漂浮着无数细小的水滴。\n阳光照进水滴时，会发生折射，把白光拆成七种颜色。\n光线在水滴内部反射一次，再折射出来，颜色就彻底分开了。\n所以，背对太阳、面朝雨幕，你才最容易看见彩虹。',
+    coverPrompt: '雨后初晴的草原，天空中一道清晰明亮的彩虹，远处有小山和一朵朵白云，简洁明快的扁平插画，色彩清新，横构图',
+  },
+  {
+    id: 'yawn',
+    platform: '抖音风',
+    topic: '生活科普',
+    template: 'explainer',
+    orientation: 'portrait',
+    styleName: '扁平插画',
+    title: '为什么别人打哈欠你也想打',
+    author: '',
+    desc: '一个人人都有过的小现象，用一个问题钩住观众。',
+    script:
+      '为什么看到别人打哈欠，你也会忍不住打一个？\n科学家发现，这和大脑里的镜像神经元有关。\n看到别人做动作时，这些神经元会被同步激活。\n它让我们能够理解他人，也让我们更容易感同身受。\n所以，会被哈欠传染，说明你很有同理心。',
+    coverPrompt: '几个卡通人物围坐在一起，其中一个在打哈欠，旁边的人也跟着打哈欠，头顶有简洁的大脑和连线图标，明亮的扁平插画，竖构图',
+  },
+
+  /* ---------------- 口播短视频 ---------------- */
+  {
+    id: 'interview',
+    platform: '抖音风',
+    topic: '职场干货',
+    template: 'talk',
+    orientation: 'portrait',
+    styleName: '电影写实',
+    title: '面试自我介绍，三步就够',
+    author: '',
+    desc: '结论先行的职场口播：一分钟说清楚你是谁。',
+    script:
+      '面试自我介绍，别再背简历了。\n第一步，一句话说清你是谁，做过什么。\n第二步，挑一个最能证明你的成绩，用数字说话。\n第三步，说说你为什么想来这家公司。\n控制在一分钟以内，面试官记住的，就是你。',
+    coverPrompt: '明亮的现代办公室，一张整洁的桌子上有笔记本电脑、简历和一杯咖啡，窗外是城市天际线，电影感摄影，浅景深，竖构图',
+  },
+  {
+    id: 'sleep-habit',
+    platform: '小红书风',
+    topic: '生活干货',
+    template: 'talk',
+    orientation: 'portrait',
+    styleName: '电影写实',
+    title: '睡不好？先改掉这三个习惯',
+    author: '',
+    desc: '生活方式类口播：问题、原因、方法，一气呵成。',
+    script:
+      '总是睡不好，可能不是你的问题，是习惯的问题。\n第一，睡前一小时别刷手机，蓝光会让大脑以为还是白天。\n第二，晚上别喝咖啡和浓茶，咖啡因能在身体里留六个小时。\n第三，固定起床时间，周末也一样。\n坚持一周，你会发现入睡变得容易多了。',
+    coverPrompt: '安静的卧室夜晚，床头一盏暖黄色的小夜灯，整洁的白色床品，手机被放在远处的桌子上，窗外是夜色，电影感摄影，温暖柔和，竖构图',
+  },
+  {
+    id: 'save-money',
+    platform: '抖音风',
+    topic: '理财干货',
+    template: 'talk',
+    orientation: 'portrait',
+    styleName: '电影写实',
+    title: '月光族存钱的三个小办法',
+    author: '',
+    desc: '轻松上手的理财小技巧，观点清晰、节奏利落。',
+    script:
+      '每个月都存不下钱？试试这三个小办法。\n第一，发工资当天，先转走百分之二十，剩下的再花。\n第二，记账不用复杂，只记超过一百块的支出。\n第三，下单前等二十四小时，冲动消费会少一半。\n存钱不是省出来的，是设计出来的。',
+    coverPrompt: '木质桌面上一个玻璃存钱罐，里面装着硬币，旁边是一本打开的记账本和一支笔，窗边的自然光，电影感写实，浅景深，竖构图',
+  },
+
+  /* ---------------- 心灵鸡汤 ---------------- */
+  {
+    id: 'heal-slow',
+    platform: '小红书风',
+    topic: '睡前安慰',
+    template: 'heal',
+    orientation: 'portrait',
+    styleName: '治愈柔光',
+    title: '给今天有点累的你',
+    author: '',
+    desc: '睡前听一听：今天辛苦了，允许自己慢下来。',
+    script:
+      '今天过得不太好，也没关系。\n不是每一天都要闪闪发光，有些日子，能好好吃完一顿饭，就已经很了不起。\n你已经走了很远的路，偶尔停下来歇一歇，没有人会怪你。\n风会吹散今天的疲惫，明天的太阳，照常升起。\n晚安，愿你睡个好觉。',
+    coverPrompt: '傍晚的小房间，窗边一盏暖黄的灯，一只小猫蜷在软垫上睡着，窗外是粉橙色的晚霞和云朵，温柔的治愈系插画，大面积留白，竖构图',
+  },
+  {
+    id: 'heal-bloom',
+    platform: '抖音风',
+    topic: '自我鼓励',
+    template: 'heal',
+    orientation: 'portrait',
+    styleName: '治愈柔光',
+    title: '你有你的花期',
+    author: '',
+    desc: '写给正在和别人比较的你：慢一点，也在开花。',
+    script:
+      '花不会因为别人先开，就怀疑自己的春天。\n你也一样。\n有的人走得快，有的人走得慢，但每个人，都有自己的花期。\n别着急，也别比较。\n把今天好好过完，就是在慢慢开花。',
+    coverPrompt: '清晨的田野小路，路边一株含苞待放的小花，旁边已经盛开了许多花朵，柔和的晨光与薄雾，水彩质感的治愈系插画，竖构图',
+  },
+  {
+    id: 'heal-breath',
+    platform: '小红书风',
+    topic: '缓解焦虑',
+    template: 'heal',
+    orientation: 'portrait',
+    styleName: '治愈柔光',
+    title: '先深呼吸一下',
+    author: '',
+    desc: '焦虑的时候看一看，跟着画面把呼吸放慢。',
+    script:
+      '如果你现在有一点焦虑，请先深呼吸。\n吸气，数到四，再慢慢地把气吐出来。\n你担心的很多事情，其实还没有发生。\n把注意力放回此刻：脚踩着地面，身体被稳稳地接住。\n你很安全，你已经做得很好了。',
+    coverPrompt: '宁静的湖边，清晨的薄雾缓缓升起，湖面平静如镜，岸边有一棵小树和一只白色的小鸟，淡蓝与淡粉的柔和色调，治愈系水彩插画，大面积留白，竖构图',
+  },
+  {
+    id: 'heal-rain',
+    platform: '抖音风',
+    topic: '雨天情绪',
+    template: 'heal',
+    orientation: 'landscape',
+    styleName: '治愈柔光',
+    title: '下雨天，也很温柔',
+    author: '',
+    desc: '把坏天气写成一封温柔的信，适合横屏慢节奏播放。',
+    script:
+      '下雨了，就在家里待一会儿吧。\n泡一杯热茶，看雨点一颗一颗落在窗上。\n不用赶着去哪里，也不用急着变好。\n雨会停的，就像所有难过的日子，终究会过去。\n到那时，你会闻到空气里，干净又温柔的味道。',
+    coverPrompt: '下雨天的窗边，窗玻璃上挂着细小的雨珠，窗台上一杯冒着热气的茶和一盆绿植，一只小猫望着窗外，窗外是朦胧的绿色庭院，治愈系水彩插画，横构图',
+  },
+
+  /* ---------------- 自由创作 ---------------- */
+  {
+    id: 'free-mountain',
+    platform: '小红书风',
+    topic: '山居日常',
+    template: 'free',
+    orientation: 'portrait',
+    styleName: '国风水彩',
+    title: '山里的一天',
+    author: '',
+    desc: '慢生活 vlog 感：从清晨到黄昏，把平凡的一天拍成诗。',
+    script:
+      '清晨，山间的雾还没散，鸟叫声先醒了。\n我在院子里煮了一壶茶，看阳光慢慢爬上屋檐。\n中午，溪水边的石头晒得暖暖的，我坐着发了一会儿呆。\n傍晚，炊烟升起来，远处的山被染成了淡淡的橘色。\n夜里，满天都是星星，原来安静，也是一种富有。',
+    coverPrompt: '清晨的山间小院，薄雾缭绕，青瓦白墙，院里有一张小桌和一壶茶，远处是层叠的青山，国风水彩，宁静悠远，竖构图',
+  },
+  {
+    id: 'free-night',
+    platform: '抖音风',
+    topic: '城市夜景',
+    template: 'free',
+    orientation: 'portrait',
+    styleName: '日系动漫',
+    title: '深夜便利店',
+    author: '',
+    desc: '城市里的小确幸：一盏灯、一碗热汤、一段安静的时光。',
+    script:
+      '深夜十二点，街上的人已经很少了。\n只有街角的便利店，还亮着温暖的灯。\n我买了一碗热腾腾的关东煮，坐在窗边的位置。\n窗外下着细雨，霓虹灯在水洼里一闪一闪。\n原来在这座城市里，也有一个地方，在等晚归的人。',
+    coverPrompt: '深夜细雨中的城市街角，一家亮着暖光的便利店，窗边一位背影的人在吃关东煮，湿漉漉的街道映着霓虹灯，清透的日系动漫风格，竖构图',
+  },
+  {
+    id: 'free-autumn',
+    platform: '小红书风',
+    topic: '季节氛围',
+    template: 'free',
+    orientation: 'landscape',
+    styleName: '儿童绘本',
+    title: '秋天来了',
+    author: '',
+    desc: '一组秋日小景，适合配轻音乐的氛围短片。',
+    script:
+      '风吹过来，树叶一片一片变成了金黄色。\n小路上铺满了落叶，踩上去沙沙作响。\n松鼠忙着把栗子藏进树洞，准备过冬。\n傍晚的夕阳，把整片田野染成了暖橘色。\n秋天，是大自然送给我们的一封金色的信。',
+    coverPrompt: '金黄色的秋天森林小路，满地落叶，一只松鼠抱着栗子站在树根旁，远处是夕阳下的田野，温暖的儿童绘本插画，横构图',
+  },
 ];
 
 const styleOf = (name) => STYLE_PRESETS.find((s) => s.name === name)?.value || STYLE_PRESETS[0].value;
 
 /** 下发给前端：补全画风文案与封面地址，去掉生成封面用的提示词 */
 function publicFeatured() {
-  return FEATURED.map(({ coverPrompt, ...f }) => ({ ...f, style: styleOf(f.styleName), cover: `/featured/${f.id}.jpg` }));
+  // 示范视频由 scripts/gen-featured-videos.js 生成；文件存在才下发地址，前端据此决定显示不显示播放按钮
+  return FEATURED.map(({ coverPrompt, ...f }) => ({
+    ...f,
+    style: styleOf(f.styleName),
+    cover: `/featured/${f.id}.jpg`,
+    video: fs.existsSync(path.join(DIR, `${f.id}.mp4`)) ? `/featured/${f.id}.mp4` : '',
+  }));
 }
 
 module.exports = { FEATURED, publicFeatured, styleOf };

@@ -205,16 +205,41 @@ const ok = (c, m) => {
   await click('[data-skill]');
   ok(await js(`!document.querySelector('[data-skill]').classList.contains('on')`), '点击可取消勾选');
   // 创作精选：筛选、详情、做同款
-  ok(await waitFor(`document.querySelectorAll('.feat').length === 8`, 3000), '创作页展示 8 条创作精选');
+  ok(await js(`!document.querySelector('#recent') && ![...document.querySelectorAll('h2')].some(h=>h.textContent.includes('最近项目'))`), '创作页不再展示「最近项目」');
+  // 精选跟随模板：选「古诗词动画」→ 只推荐诗词
+  await click('[data-tpl="poem"]');
+  ok(await waitFor(`document.querySelectorAll('.feat').length === 4 && document.querySelector('#featured h2').textContent.includes('古诗词')`, 3000), '默认模板是古诗词，精选只展示 4 条诗词');
+  ok(await js(`[...document.querySelectorAll('.feat')].every(c => ['shanju-qiuming','jingyesi','dengguanque','jiangxue'].includes(c.dataset.feat))`), '展示的都是诗词类');
   await click('[data-plat="抖音风"]');
-  ok(await js(`document.querySelectorAll('.feat').length === 4 && [...document.querySelectorAll('.feat-plat')].every(e=>e.textContent==='抖音风')`), '筛选抖音风');
+  ok(await js(`document.querySelectorAll('.feat').length === 2 && [...document.querySelectorAll('.feat-plat')].every(e=>e.textContent==='抖音风')`), '筛选抖音风');
   await click('[data-plat="小红书风"]');
-  ok(await js(`document.querySelectorAll('.feat').length === 4 && [...document.querySelectorAll('.feat-plat')].every(e=>e.textContent==='小红书风')`), '筛选小红书风');
+  ok(await js(`document.querySelectorAll('.feat').length === 2 && [...document.querySelectorAll('.feat-plat')].every(e=>e.textContent==='小红书风')`), '筛选小红书风');
   await click('[data-plat="全部"]');
+  // 示范视频原地播放：卡片不变，只在画面区出现播放器，同一时间只播一个
+  await js(`document.querySelector('#featured').scrollIntoView()`);
+  await click('[data-feat="shanju-qiuming"] [data-play]');
+  ok(await waitFor(`!!document.querySelector('[data-feat="shanju-qiuming"] .feat-media video') && document.querySelectorAll('.feat').length === 4 && !document.querySelector('dialog[open]')`, 3000), '点播放：在当前卡片内出现播放器，不弹窗');
+  ok(await waitFor(`(()=>{const v=document.querySelector('[data-feat="shanju-qiuming"] video');return v && v.readyState>=1 && v.duration>5 && !v.error})()`, 8000), '示范视频能加载，时长正常');
+  await click('[data-feat="jingyesi"] [data-play]');
+  ok(await js(`document.querySelectorAll('.feat video').length === 1 && !!document.querySelector('[data-feat="jingyesi"] video') && !!document.querySelector('[data-feat="shanju-qiuming"] [data-play]')`), '再播另一条：上一条自动恢复成封面，同时只有一个播放器');
+  await sleep(500);
+  await shot('ui-featured-playing');
+  await click('[data-feat="jingyesi"] [data-stop]');
+  ok(await js(`!document.querySelector('.feat video') && !!document.querySelector('[data-feat="jingyesi"] [data-play]')`), '点 ✕ 关闭播放器，恢复封面');
+  // 切换模板 → 精选同步
+  await click('[data-tpl="explainer"]');
+  ok(await waitFor(`document.querySelectorAll('.feat').length === 4 && document.querySelector('#featured h2').textContent.includes('知识科普') && [...document.querySelectorAll('.feat')].every(c=>['sky-blue','coffee-journey','rainbow','yawn'].includes(c.dataset.feat))`, 3000), '切到知识科普，精选同步成科普类');
+  await click('[data-tpl="heal"]');
+  ok(await waitFor(`document.querySelectorAll('.feat').length === 4 && [...document.querySelectorAll('.feat')].every(c=>c.dataset.feat.startsWith('heal-'))`, 3000), '切到心灵鸡汤，精选同步成治愈类');
+  await click('[data-tpl="free"]');
+  ok(await waitFor(`document.querySelectorAll('.feat').length === 24 && !document.querySelector('[data-scope]')`, 3000), '自由创作不限题材：展示全部精选');
+  await click('[data-tpl="explainer"]');
+  await click('[data-scope]');
+  ok(await waitFor(`document.querySelectorAll('.feat').length === 24`, 3000), '「看全部模板」展示全部 24 条');
   await js(`document.querySelector('#featured').scrollIntoView()`);
   await sleep(800);
   await shot('ui-featured');
-  await click('[data-feat="sky-blue"]');
+  await click('[data-feat="sky-blue"] .feat-info');
   ok(await waitFor(`!!document.querySelector('dialog.feat-dlg[open]') && document.querySelector('.fd-script').textContent.includes('散射')`, 3000), '点击卡片打开详情，显示示范文案');
   await sleep(500);
   await shot('ui-featured-dlg');

@@ -1,11 +1,12 @@
-import { featuredCardsHtml, handleCoverErrors, openFeatured, PLATFORMS } from '../featured.js';
-import { $, $$, api, esc, state, toast, icon, paintIcons, tplOf, tplColor, VISUAL, STATUS, relTime, mockParts, voiceChoices, previewVoice, previewBtnHtml } from '../core.js';
+import { featuredCardsHtml, handleCoverErrors, openFeatured, playInCard, stopInCard, PLATFORMS } from '../featured.js';
+import { $, $$, api, esc, state, toast, icon, paintIcons, tplOf, tplColor, VISUAL, mockParts, voiceChoices, previewVoice, previewBtnHtml } from '../core.js';
 
 let tplId = 'poem';
 let form = null;
 let busy = false;
 let exts = { skills: [], mcp: [] };
 let featPlatform = '全部';
+let featAll = false; // false = 只看当前模板的同类精选；true = 所有模板
 
 /** 当前模板可用的技能（已启用 + 适用于该模板） */
 const applicableSkills = (id) => exts.skills.filter((s) => s.enabled && (!s.templates.length || s.templates.includes(id)));
@@ -128,9 +129,7 @@ function composerHtml() {
 
 export async function mount(root) {
   if (!form) resetForm(tplId);
-  const projects = await api('/api/projects').catch(() => []);
   exts = await api('/api/extensions').catch(() => exts);
-  const recent = projects.slice(0, 4);
   const featured = state.meta.featured || [];
 
   root.innerHTML = `<div class="page">
@@ -142,23 +141,6 @@ export async function mount(root) {
     </div>
     <div id="composer"></div>
     ${featured.length ? '<div id="featured"></div>' : ''}
-    ${
-      recent.length
-        ? `<div class="section-title"><h2>最近项目</h2><a href="#/projects">全部项目 →</a></div>
-           <div class="proj-grid" id="recent">${recent
-             .map((p) => {
-               const t = tplOf(p.template);
-               return `<a class="proj" href="#/p/${p.id}">
-                 <div class="proj-cover ${p.orientation === 'portrait' ? 'portrait' : ''}" style="${p.cover ? '' : `background:${tplColor(t)}`}">
-                   ${p.cover ? `<img src="${p.cover}" loading="lazy" alt="" />` : `<span class="glyph">${esc(t.glyph)}</span>`}
-                   <span class="badge ${p.status}">${STATUS[p.status]}</span>
-                 </div>
-                 <div class="proj-info"><div class="t">${esc(p.title)}</div><div class="m"><span>${esc(t.name)}</span><span>${relTime(p.updatedAt)}</span></div></div>
-               </a>`;
-             })
-             .join('')}</div>`
-        : ''
-    }
   </div>`;
 
   const tplsEl = $('#tpls', root);
@@ -237,18 +219,27 @@ export async function mount(root) {
   paintComposer();
 
   // ---- 创作精选 ----
+  // 精选随当前模板联动：选「古诗词动画」就只推荐诗词类；「自由创作」不限题材，展示全部
   const paintFeatured = () => {
     if (!featEl) return;
+    const t = tplOf(tplId);
+    const scoped = tplId !== 'free' && !featAll;
+    const list = featured.filter((f) => (!scoped || f.template === tplId) && (featPlatform === '全部' || f.platform === featPlatform));
     featEl.innerHTML = `<div class="section-title feat-head">
-        <div><h2>创作精选</h2><span class="sub">抖音 / 小红书同类型的热门题材，点「做同款」一键套用模板、文案、画幅和画风</span></div>
-        <div class="chips" id="featFilter">${PLATFORMS.map((p) => `<button class="chip ${p === featPlatform ? 'on' : ''}" data-plat="${p}">${p}</button>`).join('')}</div>
+        <div><h2>创作精选${scoped ? ` · ${esc(t.name)}` : ''}</h2><span class="sub">${
+          scoped ? `和「${esc(t.name)}」同类型的示范，` : ''
+        }可直接播放看效果，点「做同款」一键套用模板、文案、画幅和画风</span></div>
+        <div class="chips" id="featFilter">${PLATFORMS.map((p) => `<button class="chip ${p === featPlatform ? 'on' : ''}" data-plat="${p}">${p}</button>`).join('')}${
+          tplId === 'free' ? '' : `<span class="chip-sep"></span><button class="chip ${featAll ? 'on' : ''}" data-scope>看全部模板</button>`
+        }</div>
       </div>
-      <div class="feat-grid" id="featGrid">${featuredCardsHtml(featured, featPlatform)}</div>`;
+      <div class="feat-grid" id="featGrid">${featuredCardsHtml(list)}</div>`;
   };
   const useFeatured = (item) => {
     resetForm(item.template);
     Object.assign(form, { title: item.title, author: item.author || '', script: item.script, style: item.style, orientation: item.orientation });
     paintTpls();
+    paintFeatured();
     paintComposer();
     compEl.scrollIntoView({ behavior: 'smooth', block: 'start' });
     toast(`已套用「${item.title}」，可以直接改文案，再点「生成分镜并创建项目」`, 'ok');
@@ -262,10 +253,22 @@ export async function mount(root) {
         featPlatform = pl.dataset.plat;
         return paintFeatured();
       }
+      if (e.target.closest('[data-scope]')) {
+        featAll = !featAll;
+        return paintFeatured();
+      }
       const card = e.target.closest('[data-feat]');
       if (!card) return;
       const item = featured.find((f) => f.id === card.dataset.feat);
-      if (item && (await openFeatured(item))) useFeatured(item);
+      if (!item) return;
+      if (e.target.closest('[data-stop]')) return stopInCard(card);
+      if (e.target.closest('video')) return; // 播放器自己的控件
+      if (e.target.closest('[data-play]')) {
+        $$('.feat', featEl).forEach((c) => c !== card && stopInCard(c)); // 同一时间只播一个
+        return playInCard(card, item);
+      }
+      if (e.target.closest('[data-use]')) return useFeatured(item);
+      if (await openFeatured(item)) useFeatured(item);
     });
   }
 
@@ -274,6 +277,7 @@ export async function mount(root) {
     if (!b || b.dataset.tpl === tplId) return;
     resetForm(b.dataset.tpl);
     paintTpls();
+    paintFeatured();
     paintComposer();
   });
 

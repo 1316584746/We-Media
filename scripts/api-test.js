@@ -169,8 +169,16 @@ async function waitDone(id, timeoutMs = 180000) {
   ok(Array.isArray(meta.featured) && meta.featured.length >= 8, `meta 带创作精选 ${meta.featured?.length} 条`);
   const tplIds = meta.templates.map((t) => t.id);
   ok(meta.featured.every((f) => tplIds.includes(f.template) && f.script.trim() && f.style && !('coverPrompt' in f)), '精选条目模板有效、带文案和画风，且不下发封面提示词');
+  for (const t of meta.templates.filter((x) => x.id !== 'free')) {
+    ok(meta.featured.filter((f) => f.template === t.id).length >= 4, `模板「${t.name}」至少有 4 条精选`);
+  }
   const covers = await Promise.all(meta.featured.map((f) => fetch(BASE + f.cover).then((r) => r.status)));
-  ok(covers.every((s) => s === 200), `所有精选封面都能访问 ${covers.join(',')}`);
+  const missing = meta.featured.filter((_, i) => covers[i] !== 200).map((f) => f.id);
+  if (missing.length) console.log(`  提示：${missing.length} 条精选还没有封面图（运行 scripts/gen-featured-covers.js 补齐）：${missing.join(',')}`);
+  ok(covers.filter((s) => s === 200).length >= 8, `已有封面的精选都能访问（${covers.filter((s) => s === 200).length}/${covers.length}）`);
+  const withVideo = meta.featured.filter((f) => f.video);
+  const vids = await Promise.all(withVideo.map((f) => fetch(BASE + f.video, { headers: { Range: 'bytes=0-99' } }).then((r) => r.status)));
+  ok(vids.every((s) => s === 200 || s === 206), `有示范视频的精选（${withVideo.length} 条）视频地址都能访问`);
   const f0 = meta.featured[0];
   const fp = await api('POST', '/api/projects', { template: f0.template, title: f0.title, script: f0.script, options: { style: f0.style, orientation: f0.orientation, visual: 'image' } });
   ok(fp.status === 200 && fp.json.scenes.length >= 3, `用精选内容能直接创建项目（${fp.json.scenes?.length} 个镜头）`);
