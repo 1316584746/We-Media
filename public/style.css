@@ -372,17 +372,16 @@ details.logs pre { margin: 10px 0 0; max-height: 220px; overflow: auto; backgrou
 .feat-grid > .empty { grid-column: 1 / -1; padding: 40px 20px; }
 .hot-loading b { margin: 0; }
 .empty p { margin: 6px 0 12px; color: var(--muted); font-size: 12.5px; }
-.plat-links { margin-top: 22px; padding: 16px 18px; border: 1px solid var(--line); border-radius: var(--r2); background: var(--panel); font-size: 12.5px; color: var(--muted); display: flex; flex-direction: column; gap: 12px; }
-.plat-title { color: var(--text); font-weight: 600; font-size: 14px; }
-.plat-row { display: flex; gap: 12px; align-items: flex-start; }
-.plat-name { flex: 0 0 52px; padding-top: 5px; color: var(--text); }
-.plat-name.dy { color: #25f4ee; }
-.plat-name.xhs { color: #ff4d67; }
-.plat-name.wx { color: #4cc38a; }
-.plat-chips { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; flex: 1; }
-.plat-links .chip { text-decoration: none; }
-.plat-tip { color: var(--muted); font-size: 12px; }
-.plat-input { flex: 1 1 260px; max-width: 420px; height: 32px; padding: 0 12px; border-radius: 8px; border: 1px solid var(--line2); background: var(--bg2); color: var(--text); font-size: 13px; }
+.hot-groups { display: flex; flex-direction: column; gap: 26px; }
+.hot-group-head { display: flex; align-items: baseline; gap: 12px; margin-bottom: 12px; }
+.hot-group-head .plat-name { font-size: 15px; color: var(--text); }
+.hot-group-head .plat-name.bili { color: #4fc3f7; }
+.hot-group-head .plat-name.dy { color: #25f4ee; }
+.hot-group-head .plat-name.xhs { color: #ff4d67; }
+.hot-group-head .plat-name.wx { color: #4cc38a; }
+.hot-group-head .n { color: var(--muted); font-size: 12.5px; }
+.hot-group-empty { padding: 14px 16px; border: 1px dashed var(--line2); border-radius: var(--r2); color: var(--muted); font-size: 12.5px; line-height: 1.6; }
+.hot-group.off { opacity: .85; }
 .chip-sep { width: 1px; height: 18px; background: var(--line2); align-self: center; margin: 0 4px; }
 .feat-info { padding: 11px 13px 13px; }
 .feat-info .t { font-weight: 600; font-size: 14px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }

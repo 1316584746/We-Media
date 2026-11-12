@@ -85,41 +85,32 @@ export function hotCardsHtml(items) {
         <div class="feat-info">
           <div class="t hot-title" title="${esc(v.title)}">${esc(v.title)}</div>
           <div class="m"><span class="hot-play">▶ ${fmtPlay(v.play)}</span><span>${esc(v.author)}</span></div>
-          <div class="m"><span>${fmtDate(v.pubdate)}</span><span class="hot-acts"><a class="hot-open" href="${esc(v.url)}" target="_blank" rel="noopener">在 B 站打开 ↗</a><button type="button" class="hot-use" data-hot-use>做同款</button></span></div>
+          <div class="m"><span>${fmtDate(v.pubdate)}</span><span class="hot-acts"><button type="button" class="hot-use" data-hot-use>做同款</button></span></div>
         </div>
       </div>`,
     )
     .join('');
 }
 
-/* 抖音 / 小红书 / 视频号没有开放的搜索与嵌入接口（抓取违反平台协议且随时失效），
- * 所以只提供「带关键词跳转到平台搜索」，在平台里看；视频号只能在手机微信里搜，这里复制关键词。 */
-const SEARCH_KW = {
-  poem: ['古诗词动画', '国风动画 诗词', '古诗朗诵 动画', '唐诗 意境', '水墨动画', '古风 AI动画', '诗词 氛围感'],
-  story: ['睡前故事动画', '儿童绘本动画', '童话故事', '治愈小故事 动画', 'AI绘本', '寓言故事动画'],
-  explainer: ['科普动画', '冷知识 动画', '一分钟科普', '物理科普 动画', 'AI科普视频', '知识图解'],
-  talk: ['口播干货', '职场口播', '知识口播', '口播文案', '三个技巧 口播', '电影感口播'],
-  heal: ['治愈系动画', '心灵鸡汤', '晚安治愈', '情绪价值 文案', '治愈文案 AI', '温柔晚安 视频'],
-  free: ['AI动画短片', 'AI生成视频', '原创动画短片', 'AI绘本视频', 'AI短剧', 'vlog 氛围感'],
-};
-export const searchUrl = {
-  douyin: (kw) => `https://www.douyin.com/search/${encodeURIComponent(kw)}?type=video`,
-  xhs: (kw) => `https://www.xiaohongshu.com/search_result?keyword=${encodeURIComponent(kw)}&type=51`,
-};
-
-export function platformLinksHtml(tplId) {
-  const kws = SEARCH_KW[tplId] || SEARCH_KW.free;
-  const row = (name, cls, inner) => `<div class="plat-row"><b class="plat-name ${cls}">${name}</b><div class="plat-chips">${inner}</div></div>`;
-  const link = (u, kw) => `<a class="chip" href="${u}" target="_blank" rel="noopener">${esc(kw)} ↗</a>`;
-  return `<div class="plat-links">
-    <div class="plat-title">更多平台的同类视频（点关键词，到平台里看）</div>
-    ${row('抖音', 'dy', kws.map((k) => link(searchUrl.douyin(k), k)).join(''))}
-    ${row('小红书', 'xhs', kws.map((k) => link(searchUrl.xhs(k), k)).join(''))}
-    ${row('视频号', 'wx', kws.map((k) => `<button type="button" class="chip" data-copy-kw="${esc(k)}" title="复制后到微信 搜一搜 → 视频号 粘贴">${esc(k)}</button>`).join('') + '<span class="plat-tip">点击复制，到微信「搜一搜 → 视频号」粘贴</span>')}
-    <div class="plat-row"><b class="plat-name">自己搜</b>
-      <div class="plat-chips"><input id="platKw" class="plat-input" placeholder="输入你想看的题材或关键词，比如：国风 AI 动画" />
-        <button type="button" class="chip" data-go="douyin">抖音</button><button type="button" class="chip" data-go="xhs">小红书</button><button type="button" class="chip" data-go="wx">复制（视频号）</button></div></div>
-  </div>`;
+/* 按平台分组：每组内部按播放量从高到低。
+ * 目前只有 B 站有开放的搜索 + 官方外嵌播放器，能把视频直接拉进来；
+ * 抖音 / 小红书 / 视频号没有开放的榜单、搜索与嵌入接口（要登录 + 动态签名，抓取违反平台协议），
+ * 暂时在各自的分组里如实标注「未接入」，不放跳转链接。接入合规数据源后，往 groups 里加 items 即可。 */
+const PLAT_GROUPS = [
+  { key: 'bili', name: 'B 站', note: '按播放量从高到低，点 ▶ 直接在卡片里播放' },
+  { key: 'dy', name: '抖音', note: '' },
+  { key: 'xhs', name: '小红书', note: '' },
+  { key: 'wx', name: '视频号', note: '' },
+];
+export function hotGroupsHtml(items) {
+  return PLAT_GROUPS.map((g) => {
+    const list = g.key === 'bili' ? items : [];
+    const head = `<div class="hot-group-head"><b class="plat-name ${g.key}">${g.name}</b><span class="n">${list.length ? `${list.length} 条 · ${g.note}` : '未接入'}</span></div>`;
+    const body = list.length
+      ? `<div class="feat-grid hot-grid">${hotCardsHtml(list)}</div>`
+      : `<div class="hot-group-empty">${g.name}没有开放的视频榜单和嵌入接口，暂时拉不到真实播放量，这一组先空着；接入合规的数据源后会在这里按播放量排序展示。</div>`;
+    return `<section class="hot-group ${list.length ? '' : 'off'}">${head}${body}</section>`;
+  }).join('');
 }
 
 /** 在卡片画面区内嵌 B 站官方外嵌播放器（16:9 正好铺满封面位置） */

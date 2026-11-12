@@ -1,4 +1,4 @@
-import { featuredCardsHtml, hotCardsHtml, platformLinksHtml, searchUrl, fmtPlay, handleCoverErrors, openFeatured, playInCard, playHotInCard, stopInCard, PLATFORMS } from '../featured.js';
+import { featuredCardsHtml, hotGroupsHtml, fmtPlay, handleCoverErrors, openFeatured, playInCard, playHotInCard, stopInCard, PLATFORMS } from '../featured.js';
 import { estimate, estimateHtml } from '../pricing.js';
 import { $, $$, api, esc, state, toast, icon, paintIcons, tplOf, tplColor, VISUAL, mockParts, voiceChoices, previewVoice, previewBtnHtml } from '../core.js';
 
@@ -75,7 +75,7 @@ function composerHtml() {
     <div class="col">
       ${
         form.ref
-          ? `<div class="ref-banner"><span>参考视频：<a href="${esc(form.ref.url)}" target="_blank" rel="noopener">${esc(form.ref.title)}</a> · ▶ ${fmtPlay(form.ref.play)}</span>
+          ? `<div class="ref-banner"><span>参考视频：<b>${esc(form.ref.title)}</b> · ▶ ${fmtPlay(form.ref.play)}</span>
               <span class="ref-sp">${
                 llmOn
                   ? `<button type="button" class="btn sm" data-ai-draft ${drafting ? 'disabled' : ''}>${drafting ? '<i class="spin"></i> 正在写…' : 'AI 按此题材写一版文案（约 0.01 元）'}</button>`
@@ -265,8 +265,8 @@ export async function mount(root) {
     }
     if (seq !== hotSeq || tplId !== id) return; // 等待期间用户已经换了模板
     hotList = data.items;
-    grid.className = 'feat-grid hot-grid';
-    grid.innerHTML = hotCardsHtml(hotList);
+    grid.className = 'hot-groups';
+    grid.innerHTML = hotGroupsHtml(hotList);
     if (note && data.stale) {
       // 只在拿不到实时数据时提示，平时不展示任何说明文字
       note.textContent = `B 站暂时限制了访问，当前是 ${new Date(data.fetchedAt).toLocaleDateString('zh-CN')} 的数据快照`;
@@ -291,7 +291,7 @@ export async function mount(root) {
                 }`
           }</div>
       </div>
-      <div class="feat-grid" id="featGrid">${hot ? '' : featuredCardsHtml(list)}</div>${hot ? platformLinksHtml(tplId) : ''}`;
+      <div class="feat-grid" id="featGrid">${hot ? '' : featuredCardsHtml(list)}</div>`;
     if (hot) paintHot();
   };
   const useFeatured = (item) => {
@@ -325,24 +325,6 @@ export async function mount(root) {
         return paintFeatured();
       }
       if (e.target.closest('[data-hot-retry]')) return paintHot();
-      const copyKw = async (kw) => {
-        try {
-          await navigator.clipboard.writeText(kw);
-          toast(`已复制「${kw}」：打开微信 → 搜一搜 → 视频号，粘贴搜索`, 'ok');
-        } catch {
-          toast(`请手动复制关键词：${kw}`, 'err');
-        }
-      };
-      const cp = e.target.closest('[data-copy-kw]');
-      if (cp) return copyKw(cp.dataset.copyKw);
-      const go = e.target.closest('[data-go]');
-      if (go) {
-        const kw = $('#platKw', featEl).value.trim();
-        if (!kw) return toast('先输入想搜的关键词', 'err');
-        if (go.dataset.go === 'wx') return copyKw(kw);
-        window.open(searchUrl[go.dataset.go](kw), '_blank', 'noopener');
-        return;
-      }
       const hotCard = e.target.closest('[data-hot]');
       if (hotCard) {
         if (e.target.closest('[data-hot-use]')) {
