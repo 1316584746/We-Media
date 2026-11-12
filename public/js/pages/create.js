@@ -1,4 +1,4 @@
-import { $, $$, api, esc, state, toast, icon, paintIcons, tplOf, tplColor, VISUAL, STATUS, relTime, mockParts, voiceChoices } from '../core.js';
+import { $, $$, api, esc, state, toast, icon, paintIcons, tplOf, tplColor, VISUAL, STATUS, relTime, mockParts, voiceChoices, previewVoice, previewBtnHtml } from '../core.js';
 
 let tplId = 'poem';
 let form = null;
@@ -108,7 +108,7 @@ function composerHtml() {
           .join('')}</div>
         <textarea data-k="style" rows="2" style="min-height:52px">${esc(form.style)}</textarea>
       </div>
-      <div class="field"><span class="lbl">配音</span>${voiceSel}</div>
+      <div class="field"><span class="lbl">配音</span><div class="voice-row">${voiceSel}${previewBtnHtml()}</div></div>
       ${extHtml}
       <div style="display:flex;gap:18px;flex-wrap:wrap">
         <label class="switch"><input type="checkbox" data-k="subtitles" ${form.subtitles ? 'checked' : ''} />字幕</label>
@@ -189,6 +189,8 @@ export async function mount(root) {
     form[k] = e.target.type === 'checkbox' ? e.target.checked : e.target.value;
   });
   compEl.addEventListener('click', async (e) => {
+    const pv = e.target.closest('[data-preview]');
+    if (pv) return previewVoice(pv, { voice: form.voice });
     const seg = e.target.closest('[data-seg] button');
     if (seg) {
       form[seg.parentElement.dataset.seg] = seg.dataset.v;

@@ -16,7 +16,7 @@ const ok = (c, m) => {
 };
 
 (async () => {
-  const proc = spawn(EDGE, ['--headless=new', '--disable-gpu', '--remote-debugging-port=9333', '--window-size=1440,900', `--user-data-dir=${path.join(TMP, 'profile')}`, 'about:blank'], { stdio: 'ignore' });
+  const proc = spawn(EDGE, ['--headless=new', '--disable-gpu', '--autoplay-policy=no-user-gesture-required', '--remote-debugging-port=9333', '--window-size=1440,900', `--user-data-dir=${path.join(TMP, 'profile')}`, 'about:blank'], { stdio: 'ignore' });
   let targets;
   for (let i = 0; i < 30; i++) {
     try {
@@ -184,6 +184,12 @@ const ok = (c, m) => {
   ok(await js(`document.querySelector('[data-skill]').classList.contains('on')`), '适用的技能默认勾选');
   await click('[data-skill]');
   ok(await js(`!document.querySelector('[data-skill]').classList.contains('on')`), '点击可取消勾选');
+  // 音色试听：点击进入播放态，再点停止
+  ok(await js(`!!document.querySelector('.voice-row [data-preview]')`), '创作页配音旁有试听按钮');
+  await click('.voice-row [data-preview]');
+  ok(await waitFor(`!!document.querySelector('.voice-row [data-preview].playing')`, 8000), '点击试听后进入播放态');
+  await click('.voice-row [data-preview]');
+  ok(await waitFor(`!document.querySelector('.voice-row [data-preview].playing') && !document.querySelector('.voice-row [data-preview].loading')`, 3000), '再点一次停止');
   await shot('ui-create-ext');
   // 清理
   const extNow = await (await fetch(`${BASE}/api/extensions`)).json();
@@ -195,6 +201,7 @@ const ok = (c, m) => {
   await goto('#/settings');
   ok(await js(`document.querySelector('#setNav .on').dataset.sec === 'model' && !document.querySelector('#saveBar').hidden`), '设置默认进入「模型」并显示保存栏');
   ok(await js(`document.querySelectorAll('[data-blk]').length === 4 && document.querySelectorAll('[data-badge]').length === 4`), '模型分区有 4 个块，各带状态');
+  ok(await js(`!!document.querySelector('[data-preview="edge"]') && !!document.querySelector('[data-preview="remote"]')`), '配音设置里 Edge 音色和百炼音色都有试听按钮');
   await shot('ui-settings-model');
   await setVal('[name="llm.model"]', 'qwen-max-ui');
   await click('#setNav [data-sec="skills"]');

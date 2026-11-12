@@ -1,4 +1,4 @@
-import { $, $$, state, loadMeta, loadSettings, paintIcons, paintRailStatus, toast } from './core.js';
+import { $, $$, state, stopPreview, loadMeta, loadSettings, paintIcons, paintRailStatus, toast } from './core.js';
 import * as createPage from './pages/create.js';
 import * as projectsPage from './pages/projects.js';
 import * as editorPage from './pages/editor.js';
@@ -16,6 +16,7 @@ let renderSeq = 0;
 
 async function render() {
   const seq = ++renderSeq;
+  stopPreview();
   if (current?.unmount) await current.unmount();
   current = null;
   const hash = location.hash || '#/';

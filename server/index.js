@@ -1,4 +1,7 @@
 const path = require('path');
+const os = require('os');
+const fs = require('fs');
+const providers = require('./providers');
 const express = require('express');
 const settingsStore = require('./settings');
 const pipeline = require('./pipeline');
@@ -43,6 +46,32 @@ app.get('/api/meta', (req, res) => {
 /* ---------- 设置 ---------- */
 app.get('/api/settings', (req, res) => res.json(settingsStore.masked(settingsStore.load())));
 app.put('/api/settings', (req, res) => res.json(settingsStore.masked(settingsStore.save(req.body))));
+
+/* ---------- 音色试听 ----------
+ * body: { voice?, text?, tts? }
+ * tts 是设置页里「尚未保存」的配音配置，覆盖已保存的值；脱敏的 key 视为未修改。 */
+const SAMPLE_TEXT = '春风又绿江南岸，明月何时照我还。';
+app.post(
+  '/api/tts/preview',
+  wrap(async (req, res) => {
+    const { voice, text, tts } = req.body || {};
+    const saved = settingsStore.load().tts;
+    const over = { ...(tts || {}) };
+    if (typeof over.apiKey !== 'string' || over.apiKey.startsWith('********') || !over.apiKey) delete over.apiKey;
+    const cfg = providers.ttsWithVoice({ ...saved, ...over }, voice);
+    const sample = String(text || SAMPLE_TEXT).slice(0, 120);
+    const file = path.join(os.tmpdir(), `wm-tts-${Date.now()}-${Math.random().toString(36).slice(2, 8)}.mp3`);
+    try {
+      await providers.synthesizeSpeech({ cfg, text: sample, outFile: file });
+      res.set({ 'Content-Type': 'audio/mpeg', 'Cache-Control': 'no-store', 'X-TTS-Mode': cfg.mode });
+      res.send(fs.readFileSync(file));
+    } catch (e) {
+      throw Object.assign(new Error(`试听失败：${e.message}`), { status: 502 });
+    } finally {
+      fs.rm(file, { force: true }, () => {});
+    }
+  }),
+);
 
 /* ---------- 项目 ---------- */
 app.get('/api/projects', (req, res) => res.json(pipeline.listProjects()));

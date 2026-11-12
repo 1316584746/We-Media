@@ -41,6 +41,7 @@ const PATHS = {
   refresh: '<polyline points="23 4 23 10 17 10"/><path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"/>',
   search: '<circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/>',
   play: '<polygon points="6 4 20 12 6 20 6 4"/>',
+  stop: '<rect x="6" y="6" width="12" height="12" rx="1.5"/>',
   image: '<rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="8.5" cy="8.5" r="1.5"/><polyline points="21 15 16 10 5 21"/>',
   film: '<rect x="2" y="2" width="20" height="20" rx="2.2"/><line x1="7" y1="2" x2="7" y2="22"/><line x1="17" y1="2" x2="17" y2="22"/><line x1="2" y1="12" x2="22" y2="12"/><line x1="2" y1="7" x2="7" y2="7"/><line x1="2" y1="17" x2="7" y2="17"/><line x1="17" y1="17" x2="22" y2="17"/><line x1="17" y1="7" x2="22" y2="7"/>',
 };
@@ -50,6 +51,66 @@ export function paintIcons(root = document) {
     if (!el.firstChild) el.innerHTML = icon(el.dataset.ic);
   });
 }
+
+/* ---------------- 音色试听 ---------------- */
+let previewAudio = null;
+let previewBtn = null;
+const previewCache = new Map(); // 参数 → blob URL，同样的参数不重复请求（避免重复计费）
+
+const setPreviewBtn = (btn, mode) => {
+  if (!btn) return;
+  btn.classList.toggle('loading', mode === 'loading');
+  btn.classList.toggle('playing', mode === 'playing');
+  btn.title = mode === 'playing' ? '停止' : '试听';
+  btn.innerHTML = mode === 'loading' ? '<i class="spin"></i>' : icon(mode === 'playing' ? 'stop' : 'play');
+};
+
+export function stopPreview() {
+  if (previewAudio) {
+    previewAudio.pause();
+    previewAudio.onended = previewAudio.onerror = null;
+    previewAudio = null;
+  }
+  setPreviewBtn(previewBtn, 'idle');
+  previewBtn = null;
+}
+
+/** 试听一个音色。btn 为触发按钮（再点一次停止）；tts 为尚未保存的配音配置。 */
+export async function previewVoice(btn, { voice = '', tts, text } = {}) {
+  if (previewBtn === btn) return stopPreview();
+  stopPreview();
+  previewBtn = btn;
+  setPreviewBtn(btn, 'loading');
+  try {
+    const key = JSON.stringify([voice, tts, text, state.settings?.tts]);
+    let url = previewCache.get(key);
+    if (!url) {
+      const res = await fetch('/api/tts/preview', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ voice, tts, text }),
+      });
+      if (!res.ok) throw new Error((await res.json().catch(() => ({}))).error || `试听失败（HTTP ${res.status}）`);
+      const mock = res.headers.get('X-TTS-Mode') === 'mock';
+      url = URL.createObjectURL(await res.blob());
+      if (mock) toast('当前是 mock 模式，只有提示音；切到 Edge 或百炼才是真人声', '');
+      else previewCache.set(key, url);
+    }
+    if (previewBtn !== btn) return; // 加载期间用户点了别的
+    const audio = new Audio(url);
+    previewAudio = audio;
+    audio.onended = audio.onerror = () => previewBtn === btn && stopPreview();
+    await audio.play();
+    setPreviewBtn(btn, 'playing');
+  } catch (e) {
+    if (previewBtn === btn) stopPreview();
+    toast(e.message, 'err');
+  }
+}
+
+/** 音色下拉框 + 试听按钮（data-preview 由各页面统一监听） */
+export const previewBtnHtml = (extra = '') =>
+  `<button type="button" class="icon-btn preview-btn" data-preview ${extra} title="试听">${icon('play')}</button>`;
 
 /* ---------------- 提示 / 确认 ---------------- */
 export function toast(msg, type = '') {

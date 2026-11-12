@@ -139,6 +139,13 @@ select { appearance: none; background-image: url("data:image/svg+xml,%3Csvg xmln
 .badge.warn { color: var(--warn); background: rgba(246, 178, 60, 0.1); border-color: rgba(246, 178, 60, 0.35); }
 @keyframes pulse { 50% { opacity: 0.25; } }
 @keyframes spin { to { transform: rotate(360deg); } }
+.voice-row { display: flex; gap: 8px; align-items: center; }
+.voice-row > select, .voice-row > input { flex: 1; min-width: 0; }
+.preview-btn { width: 40px; height: 40px; flex: none; border: 1px solid var(--line2); background: var(--panel2); border-radius: 10px; font-size: 14px; color: var(--accent); }
+.preview-btn svg { fill: currentColor; }
+.preview-btn:hover:not(:disabled) { border-color: var(--accent); background: var(--accent-bg); color: var(--accent); }
+.preview-btn.playing { background: var(--accent); border-color: var(--accent); color: #fff; }
+.preview-btn .spin { width: 14px; height: 14px; border-color: rgba(124, 140, 255, 0.3); border-top-color: var(--accent); }
 .spin { width: 18px; height: 18px; border: 2px solid rgba(255, 255, 255, 0.2); border-top-color: #fff; border-radius: 50%; animation: spin 0.8s linear infinite; display: inline-block; }
 .notice { display: flex; gap: 10px; align-items: flex-start; padding: 10px 14px; border-radius: 10px; font-size: 13px; background: rgba(246, 178, 60, 0.08); border: 1px solid rgba(246, 178, 60, 0.3); color: #f3d6a0; }
 .notice.err { background: rgba(255, 107, 120, 0.08); border-color: rgba(255, 107, 120, 0.35); color: #ffc1c7; }

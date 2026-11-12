@@ -1,5 +1,5 @@
 import {
-  $, $$, api, esc, state, toast, icon, paintIcons, tplOf, VISUAL, STATUS, STAGE, KIND, isBusy, fmtDur, debounce, confirmDlg, mockParts, voiceChoices,
+  $, $$, api, esc, state, toast, icon, paintIcons, tplOf, VISUAL, STATUS, STAGE, KIND, isBusy, fmtDur, debounce, confirmDlg, mockParts, voiceChoices, previewVoice, previewBtnHtml, stopPreview,
 } from '../core.js';
 
 const ASSET_KEYS = ['audio', 'image', 'clip', 'segment', 'stage', 'detail', 'duration', 'error'];
@@ -319,7 +319,7 @@ export async function mount(root, [id]) {
         <div class="seg full" data-optseg="visual">
           ${Object.entries(VISUAL).map(([k, v]) => `<button data-v="${k}" class="${o.visual === k ? 'on' : ''}" ${dis}>${v.name}</button>`).join('')}
         </div><span class="hint">${VISUAL[o.visual].desc}</span></div>
-      <div class="field"><span class="lbl">配音</span>${voiceSel}</div>
+      <div class="field"><span class="lbl">配音</span><div class="voice-row">${voiceSel}${previewBtnHtml()}</div></div>
       <label class="switch"><input type="checkbox" data-opt="subtitles" ${o.subtitles ? 'checked' : ''} ${dis} />烧录字幕</label>
     </div>
     <div class="insp-sec"><h4>脚本原文</h4>
@@ -612,6 +612,8 @@ export async function mount(root, [id]) {
     setOption(o, e.target.type === 'checkbox' ? e.target.checked : e.target.value);
   });
   el.insp.addEventListener('click', (e) => {
+    const pv = e.target.closest('[data-preview]');
+    if (pv) return previewVoice(pv, { voice: p.options.voice });
     const seg = e.target.closest('[data-optseg] button');
     if (seg) return setOption(seg.parentElement.dataset.optseg, seg.dataset.v);
     const act = e.target.closest('[data-act]')?.dataset.act;
@@ -627,6 +629,7 @@ export async function mount(root, [id]) {
   return {
     async unmount() {
       alive = false;
+      stopPreview();
       stopPoll();
       queueSave.cancel();
       if (pending) {

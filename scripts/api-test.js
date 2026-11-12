@@ -165,6 +165,17 @@ async function waitDone(id, timeoutMs = 180000) {
   ext = (await api('GET', '/api/extensions')).json;
   ok(!ext.mcp.length && !ext.skills.length, '清理扩展配置');
 
+  /* ---------- 音色试听 ---------- */
+  const pv = await fetch(BASE + '/api/tts/preview', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ tts: { mode: 'mock' }, text: '试听一下' }),
+  });
+  const pvBuf = Buffer.from(await pv.arrayBuffer());
+  ok(pv.status === 200 && pv.headers.get('content-type') === 'audio/mpeg' && pvBuf.length > 1000, `试听返回音频 ${pvBuf.length} 字节`);
+  const pvBad = await api('POST', '/api/tts/preview', { tts: { mode: 'openai', baseUrl: 'http://127.0.0.1:9/v1', apiKey: 'x' } });
+  ok(pvBad.status === 502 && String(pvBad.json.error).includes('试听失败'), `试听失败时返回可读错误：${String(pvBad.json.error).slice(0, 60)}`);
+
   /* ---------- 安全：Host 校验 ---------- */
   const status = await new Promise((resolve) => {
     const u = new URL(BASE);

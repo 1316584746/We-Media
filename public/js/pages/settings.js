@@ -1,4 +1,4 @@
-import { $, $$, api, esc, icon, paintIcons, state, toast, loadMeta, paintRailStatus } from '../core.js';
+import { $, $$, api, esc, icon, paintIcons, state, toast, loadMeta, paintRailStatus, previewVoice, stopPreview } from '../core.js';
 import { mountPanel } from './extensions.js';
 
 const getByPath = (obj, p) => p.split('.').reduce((o, k) => (o == null ? o : o[k]), obj);
@@ -90,13 +90,13 @@ const PANES = `
   </div>
   <div class="row2">
     <div class="field"><label>默认 Edge 音色（edge 模式）</label>
-      <select name="tts.edgeVoice">
+      <div class="voice-row"><select name="tts.edgeVoice">
         <option value="zh-CN-YunxiNeural">云希（男，沉稳）</option>
         <option value="zh-CN-YunjianNeural">云健（男，浑厚）</option>
         <option value="zh-CN-YunyangNeural">云扬（男，新闻播报）</option>
         <option value="zh-CN-XiaoxiaoNeural">晓晓（女，温柔）</option>
         <option value="zh-CN-XiaoyiNeural">晓伊（女，清亮）</option>
-      </select>
+      </select><button type="button" class="icon-btn preview-btn" data-preview="edge" title="试听">${icon('play')}</button></div>
     </div>
     <div class="field"><label>语速（edge / openai，1 为正常）</label><input name="tts.speed" type="number" step="0.1" /></div>
   </div>
@@ -104,7 +104,7 @@ const PANES = `
   <div class="row3">
     <div class="field"><label>API Key</label><input name="tts.apiKey" type="password" autocomplete="off" /></div>
     <div class="field"><label>模型</label><input name="tts.model" /></div>
-    <div class="field"><label>音色（百炼如 Ethan / Cherry）</label><input name="tts.voice" /></div>
+    <div class="field"><label>音色（百炼如 Ethan / Cherry）</label><div class="voice-row"><input name="tts.voice" /><button type="button" class="icon-btn preview-btn" data-preview="remote" title="试听">${icon('play')}</button></div></div>
   </div>
   <div class="field"><label>自定义模板 JSON（仅 custom 模式）</label><textarea name="tts.custom" rows="6" class="mono" placeholder='{"request":{"method":"POST","url":"https://...","headers":{"Authorization":"Bearer {{apiKey}}"},"body":{"text":"{{text}}","voice":"{{voice}}"}},"responseType":"binary"}'></textarea></div>
 </div></section>
@@ -173,6 +173,27 @@ export async function mount(root, params = []) {
     if (el.type === 'checkbox') el.checked = !!v;
     else if (el.name.endsWith('.custom')) el.value = v ? JSON.stringify(v, null, 2) : '';
     else el.value = v ?? '';
+  });
+
+  // 试听：用表单里还没保存的配音配置，改完音色 / Key 就能直接听
+  const ttsFromForm = () => {
+    const out = {};
+    $$('[name^="tts."]', form).forEach((el) => {
+      const k = el.name.slice(4);
+      if (k === 'custom') {
+        try { out.custom = el.value.trim() ? JSON.parse(el.value) : null; } catch { /* 模板写到一半，忽略 */ }
+      } else out[k] = el.type === 'number' ? (el.value === '' ? undefined : Number(el.value)) : el.value;
+    });
+    return out;
+  };
+  form.addEventListener('click', (e) => {
+    const btn = e.target.closest('[data-preview]');
+    if (!btn) return;
+    const tts = ttsFromForm();
+    // edge 按钮：不管当前选的什么模式，都用 Edge 试这个音色；另一个按钮试远程服务（模式还是 edge/mock 时按百炼）
+    if (btn.dataset.preview === 'edge') tts.mode = 'edge';
+    else if (tts.mode === 'edge' || tts.mode === 'mock') tts.mode = 'dashscope';
+    previewVoice(btn, { tts });
   });
 
   const count = (k) => (k === 'skills' ? ext.skills.length : k === 'mcp' ? ext.mcp.length : null);
@@ -275,5 +296,5 @@ export async function mount(root, params = []) {
     }
   });
 
-  return { unmount() { panels.forEach((p) => p?.unmount?.()); } };
+  return { unmount() { stopPreview(); panels.forEach((p) => p?.unmount?.()); } };
 }
