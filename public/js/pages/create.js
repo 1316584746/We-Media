@@ -1,4 +1,4 @@
-import { featuredCardsHtml, hotCardsHtml, handleCoverErrors, openFeatured, playInCard, playHotInCard, stopInCard, PLATFORMS } from '../featured.js';
+import { featuredCardsHtml, hotCardsHtml, platformLinksHtml, handleCoverErrors, openFeatured, playInCard, playHotInCard, stopInCard, PLATFORMS } from '../featured.js';
 import { estimate, estimateHtml } from '../pricing.js';
 import { $, $$, api, esc, state, toast, icon, paintIcons, tplOf, tplColor, VISUAL, mockParts, voiceChoices, previewVoice, previewBtnHtml } from '../core.js';
 
@@ -256,11 +256,9 @@ export async function mount(root) {
     hotList = data.items;
     grid.className = 'feat-grid hot-grid';
     grid.innerHTML = hotCardsHtml(hotList);
-    if (note) {
-      const d = new Date(data.fetchedAt).toLocaleDateString('zh-CN');
-      note.textContent = `来源 B 站公开搜索「${data.keywords.join(' / ')}」，按播放量从高到低${
-        data.stale ? `；B 站暂时限制了访问，当前是 ${d} 的数据快照，稍后会自动刷新` : ''
-      }`;
+    if (note && data.stale) {
+      // 只在拿不到实时数据时提示，平时不展示任何说明文字
+      note.textContent = `B 站暂时限制了访问，当前是 ${new Date(data.fetchedAt).toLocaleDateString('zh-CN')} 的数据快照`;
     }
   };
   const paintFeatured = () => {
@@ -271,11 +269,9 @@ export async function mount(root) {
     const scoped = tplId !== 'free' && !featAll;
     const list = featured.filter((f) => (!scoped || f.template === tplId) && (featPlatform === '全部' || f.platform === featPlatform));
     featEl.innerHTML = `<div class="section-title feat-head">
-        <div><h2>创作精选${tplId !== 'free' && (hot || scoped) ? ` · ${esc(t.name)}` : ''}</h2><span class="sub" id="hotNote">${
-          hot ? '' : `${scoped ? `和「${esc(t.name)}」同类型的示范，` : ''}可直接播放看效果，点「做同款」一键套用模板、文案、画幅和画风`
-        }</span></div>
+        <div><h2>创作精选${tplId !== 'free' && (hot || scoped) ? ` · ${esc(t.name)}` : ''}</h2><span class="sub" id="hotNote"></span></div>
         <div class="chips" id="featFilter">
-          <button class="chip ${hot ? 'on' : ''}" data-tab="hot">热门动画 · 按播放量</button>
+          <button class="chip ${hot ? 'on' : ''}" data-tab="hot">热门动画</button>
           <button class="chip ${hot ? '' : 'on'}" data-tab="demo">做同款示范</button>${
             hot
               ? ''
@@ -284,7 +280,7 @@ export async function mount(root) {
                 }`
           }</div>
       </div>
-      <div class="feat-grid" id="featGrid">${hot ? '' : featuredCardsHtml(list)}</div>`;
+      <div class="feat-grid" id="featGrid">${hot ? '' : featuredCardsHtml(list)}</div>${hot ? platformLinksHtml(tplId) : ''}`;
     if (hot) paintHot();
   };
   const useFeatured = (item) => {
@@ -306,6 +302,16 @@ export async function mount(root) {
         return paintFeatured();
       }
       if (e.target.closest('[data-hot-retry]')) return paintHot();
+      const cp = e.target.closest('[data-copy-kw]');
+      if (cp) {
+        try {
+          await navigator.clipboard.writeText(cp.dataset.copyKw);
+          toast(`已复制「${cp.dataset.copyKw}」：打开微信 → 搜一搜 → 视频号，粘贴搜索`, 'ok');
+        } catch {
+          toast(`请手动复制关键词：${cp.dataset.copyKw}`, 'err');
+        }
+        return;
+      }
       const hotCard = e.target.closest('[data-hot]');
       if (hotCard) {
         if (e.target.closest('[data-stop]')) return stopInCard(hotCard);

@@ -91,6 +91,21 @@ export function hotCardsHtml(items) {
     .join('');
 }
 
+/* 抖音 / 小红书 / 视频号没有开放的搜索与嵌入接口（抓取违反平台协议且随时失效），
+ * 所以只提供「带关键词跳转到平台搜索」，在平台里看；视频号只能在手机微信里搜，这里复制关键词。 */
+const SEARCH_KW = { poem: '古诗词动画', story: '睡前故事动画', explainer: '科普动画', talk: '口播干货', heal: '治愈系动画', free: 'AI动画短片' };
+
+export function platformLinksHtml(tplId) {
+  const kw = SEARCH_KW[tplId] || SEARCH_KW.free;
+  const q = encodeURIComponent(kw);
+  return `<div class="plat-links">
+    <span>想看其他平台的同类视频：</span>
+    <a class="chip" href="https://www.douyin.com/search/${q}?type=video" target="_blank" rel="noopener">抖音搜「${esc(kw)}」↗</a>
+    <a class="chip" href="https://www.xiaohongshu.com/search_result?keyword=${q}&type=51" target="_blank" rel="noopener">小红书搜「${esc(kw)}」↗</a>
+    <button type="button" class="chip" data-copy-kw="${esc(kw)}">视频号：复制关键词</button>
+  </div>`;
+}
+
 /** 在卡片画面区内嵌 B 站官方外嵌播放器（16:9 正好铺满封面位置） */
 export function playHotInCard(card, v) {
   const media = $('.feat-media', card);
