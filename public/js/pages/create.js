@@ -1,4 +1,4 @@
-import { featuredCardsHtml, hotCardsHtml, platformLinksHtml, handleCoverErrors, openFeatured, playInCard, playHotInCard, stopInCard, PLATFORMS } from '../featured.js';
+import { featuredCardsHtml, hotCardsHtml, platformLinksHtml, searchUrl, handleCoverErrors, openFeatured, playInCard, playHotInCard, stopInCard, PLATFORMS } from '../featured.js';
 import { estimate, estimateHtml } from '../pricing.js';
 import { $, $$, api, esc, state, toast, icon, paintIcons, tplOf, tplColor, VISUAL, mockParts, voiceChoices, previewVoice, previewBtnHtml } from '../core.js';
 
@@ -302,14 +302,22 @@ export async function mount(root) {
         return paintFeatured();
       }
       if (e.target.closest('[data-hot-retry]')) return paintHot();
-      const cp = e.target.closest('[data-copy-kw]');
-      if (cp) {
+      const copyKw = async (kw) => {
         try {
-          await navigator.clipboard.writeText(cp.dataset.copyKw);
-          toast(`已复制「${cp.dataset.copyKw}」：打开微信 → 搜一搜 → 视频号，粘贴搜索`, 'ok');
+          await navigator.clipboard.writeText(kw);
+          toast(`已复制「${kw}」：打开微信 → 搜一搜 → 视频号，粘贴搜索`, 'ok');
         } catch {
-          toast(`请手动复制关键词：${cp.dataset.copyKw}`, 'err');
+          toast(`请手动复制关键词：${kw}`, 'err');
         }
+      };
+      const cp = e.target.closest('[data-copy-kw]');
+      if (cp) return copyKw(cp.dataset.copyKw);
+      const go = e.target.closest('[data-go]');
+      if (go) {
+        const kw = $('#platKw', featEl).value.trim();
+        if (!kw) return toast('先输入想搜的关键词', 'err');
+        if (go.dataset.go === 'wx') return copyKw(kw);
+        window.open(searchUrl[go.dataset.go](kw), '_blank', 'noopener');
         return;
       }
       const hotCard = e.target.closest('[data-hot]');

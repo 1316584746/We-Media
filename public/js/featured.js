@@ -93,16 +93,31 @@ export function hotCardsHtml(items) {
 
 /* 抖音 / 小红书 / 视频号没有开放的搜索与嵌入接口（抓取违反平台协议且随时失效），
  * 所以只提供「带关键词跳转到平台搜索」，在平台里看；视频号只能在手机微信里搜，这里复制关键词。 */
-const SEARCH_KW = { poem: '古诗词动画', story: '睡前故事动画', explainer: '科普动画', talk: '口播干货', heal: '治愈系动画', free: 'AI动画短片' };
+const SEARCH_KW = {
+  poem: ['古诗词动画', '国风动画 诗词', '古诗朗诵 动画', '唐诗 意境', '水墨动画', '古风 AI动画', '诗词 氛围感'],
+  story: ['睡前故事动画', '儿童绘本动画', '童话故事', '治愈小故事 动画', 'AI绘本', '寓言故事动画'],
+  explainer: ['科普动画', '冷知识 动画', '一分钟科普', '物理科普 动画', 'AI科普视频', '知识图解'],
+  talk: ['口播干货', '职场口播', '知识口播', '口播文案', '三个技巧 口播', '电影感口播'],
+  heal: ['治愈系动画', '心灵鸡汤', '晚安治愈', '情绪价值 文案', '治愈文案 AI', '温柔晚安 视频'],
+  free: ['AI动画短片', 'AI生成视频', '原创动画短片', 'AI绘本视频', 'AI短剧', 'vlog 氛围感'],
+};
+export const searchUrl = {
+  douyin: (kw) => `https://www.douyin.com/search/${encodeURIComponent(kw)}?type=video`,
+  xhs: (kw) => `https://www.xiaohongshu.com/search_result?keyword=${encodeURIComponent(kw)}&type=51`,
+};
 
 export function platformLinksHtml(tplId) {
-  const kw = SEARCH_KW[tplId] || SEARCH_KW.free;
-  const q = encodeURIComponent(kw);
+  const kws = SEARCH_KW[tplId] || SEARCH_KW.free;
+  const row = (name, cls, inner) => `<div class="plat-row"><b class="plat-name ${cls}">${name}</b><div class="plat-chips">${inner}</div></div>`;
+  const link = (u, kw) => `<a class="chip" href="${u}" target="_blank" rel="noopener">${esc(kw)} ↗</a>`;
   return `<div class="plat-links">
-    <span>想看其他平台的同类视频：</span>
-    <a class="chip" href="https://www.douyin.com/search/${q}?type=video" target="_blank" rel="noopener">抖音搜「${esc(kw)}」↗</a>
-    <a class="chip" href="https://www.xiaohongshu.com/search_result?keyword=${q}&type=51" target="_blank" rel="noopener">小红书搜「${esc(kw)}」↗</a>
-    <button type="button" class="chip" data-copy-kw="${esc(kw)}">视频号：复制关键词</button>
+    <div class="plat-title">更多平台的同类视频（点关键词，到平台里看）</div>
+    ${row('抖音', 'dy', kws.map((k) => link(searchUrl.douyin(k), k)).join(''))}
+    ${row('小红书', 'xhs', kws.map((k) => link(searchUrl.xhs(k), k)).join(''))}
+    ${row('视频号', 'wx', kws.map((k) => `<button type="button" class="chip" data-copy-kw="${esc(k)}" title="复制后到微信 搜一搜 → 视频号 粘贴">${esc(k)}</button>`).join('') + '<span class="plat-tip">点击复制，到微信「搜一搜 → 视频号」粘贴</span>')}
+    <div class="plat-row"><b class="plat-name">自己搜</b>
+      <div class="plat-chips"><input id="platKw" class="plat-input" placeholder="输入你想看的题材或关键词，比如：国风 AI 动画" />
+        <button type="button" class="chip" data-go="douyin">抖音</button><button type="button" class="chip" data-go="xhs">小红书</button><button type="button" class="chip" data-go="wx">复制（视频号）</button></div></div>
   </div>`;
 }
 

@@ -250,7 +250,10 @@ const ok = (c, m) => {
     ok(await js(`JSON.stringify([...document.querySelectorAll('.hot')].map(c=>c.dataset.hot)) === ${JSON.stringify(JSON.stringify(hotApi.items.map((v) => v.bvid)))}`), '页面顺序与接口一致');
     ok(await js(`[...document.querySelectorAll('.hot')].every(c => c.querySelector('.hot-play') && c.querySelector('.hot-dur') && c.querySelector('.hot-open'))`), '每张卡片有播放量、时长、「在 B 站打开」');
     ok(await js(`!document.querySelector('#hotNote').textContent.includes('来源') && document.querySelector('[data-tab="hot"]').textContent.trim() === '热门动画'`), '热门动画页签不再有说明文字');
-    ok(await js(`(() => { const a = [...document.querySelectorAll('.plat-links a')].map(x => x.href); return a.length === 2 && a[0].includes('douyin.com/search/') && a[1].includes('xiaohongshu.com/search_result') && !!document.querySelector('.plat-links [data-copy-kw]'); })()`), '提供抖音、小红书搜索跳转和视频号关键词复制');
+    ok(await js(`(() => { const a = [...document.querySelectorAll('.plat-links a')].map(x => x.href); const dy = a.filter(x => x.includes('douyin.com/search/')), xh = a.filter(x => x.includes('xiaohongshu.com/search_result')); return dy.length >= 6 && xh.length >= 6 && document.querySelectorAll('.plat-links [data-copy-kw]').length >= 6 && !!document.querySelector('#platKw') && document.querySelectorAll('[data-go]').length === 3; })()`), '抖音、小红书各 6+ 个关键词跳转，视频号可复制关键词，另有自定义关键词搜索');
+    await js(`document.querySelector('.plat-links').scrollIntoView({block:'center'})`);
+    await sleep(300);
+    await shot('ui-plat-links');
     await js(`document.querySelector('#featured').scrollIntoView()`);
     await click('.hot [data-hplay]');
     ok(await waitFor(`document.querySelectorAll('.hot iframe').length === 1 && document.querySelector('.hot iframe').src.includes('player.bilibili.com') && !document.querySelector('dialog[open]')`, 3000), '点播放：在卡片内嵌入 B 站播放器，不弹窗');
