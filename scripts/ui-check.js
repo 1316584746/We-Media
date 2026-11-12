@@ -74,15 +74,26 @@ const ok = (c, m) => {
   await sleep(1500);
 
   // ---- 创作页 ----
-  ok(await js(`document.querySelectorAll('.tpl').length === 6`), '创作页有 6 个模板（含心灵鸡汤）');
-  // 模板行可以左右滚动：出现右箭头，点击后向右滚，再出现左箭头
-  ok(await waitFor(`!document.querySelector('.tpl-nav.next').hidden && document.querySelector('.tpl-nav.prev').hidden`, 3000), '模板一行放不下时可滚动：只显示向右的箭头');
+  ok(await js(`document.querySelectorAll('.tpl:not(.clone)').length === 6`), '创作页有 6 个模板（含心灵鸡汤）');
+  // 模板行是自动滚动的轮播：首尾相接，悬停暂停，两侧有箭头
+  ok(await waitFor(`!document.querySelector('.tpl-nav.next').hidden && !document.querySelector('.tpl-nav.prev').hidden && document.querySelector('#tpls').classList.contains('loop') && document.querySelectorAll('.tpl.clone').length >= 6`, 3000), '模板行首尾相接成轮播，两侧都有箭头');
+  const sl0 = await js(`document.querySelector('#tpls').scrollLeft`);
+  await sleep(1500);
+  const sl1 = await js(`document.querySelector('#tpls').scrollLeft`);
+  ok(sl1 !== sl0, `模板行会自动滚动（${sl0} → ${sl1}）`);
+  await js(`document.querySelector('#tplRail').dispatchEvent(new MouseEvent('mouseenter'))`);
+  const sl2 = await js(`document.querySelector('#tpls').scrollLeft`);
+  await sleep(800);
+  ok((await js(`document.querySelector('#tpls').scrollLeft`)) === sl2, '鼠标移到模板行上自动滚动暂停');
+  await js(`document.querySelector('#tplRail').dispatchEvent(new MouseEvent('mouseleave'))`);
+  const sl3 = await js(`document.querySelector('#tpls').scrollLeft`);
+  await js(`document.querySelector('#tplRail').dispatchEvent(new MouseEvent('mouseenter'))`);
   await click('.tpl-nav.next');
-  ok(await waitFor(`document.querySelector('#tpls').scrollLeft > 100 && !document.querySelector('.tpl-nav.prev').hidden`, 3000), '点右箭头向右滚动，随后出现向左的箭头');
+  ok(await waitFor(`Math.abs(document.querySelector('#tpls').scrollLeft - ${sl3}) > 100`, 3000), '点右箭头明显向前滚动');
   await shot('ui-create-tpl-scroll');
   await click('[data-tpl="heal"]');
-  ok(await js(`document.querySelector('.tpl.on').dataset.tpl === 'heal' && document.querySelector('#tpls').scrollLeft > 100`), '选「心灵鸡汤」后选中状态保留，滚动位置不被重置');
-  ok(await js(`document.querySelector('[data-seg="orientation"] .on').dataset.v === 'portrait' && document.querySelectorAll('[data-sample]').length === 3`), '心灵鸡汤默认竖屏，有 3 条示例文案');
+  ok(await js(`document.querySelector('.tpl.on').dataset.tpl === 'heal' && [...document.querySelectorAll('.tpl.on')].every(x => x.dataset.tpl === 'heal') && document.querySelectorAll('.tpl.on .tpl-tag').length > 0`), '选「心灵鸡汤」后选中状态保留（带「已选」标记）');
+  await js(`document.querySelector('#tplRail').dispatchEvent(new MouseEvent('mouseleave'))`);  ok(await js(`document.querySelector('[data-seg="orientation"] .on').dataset.v === 'portrait' && document.querySelectorAll('[data-sample]').length === 3`), '心灵鸡汤默认竖屏，有 3 条示例文案');
   await click('[data-sample="0"]');
   ok(await js(`document.querySelector('[data-k="script"]').value.includes('晚安') && document.querySelector('[data-k="style"]').value.includes('治愈')`), '填入治愈系示例文案，画风为治愈系');
   // 预计费用：随文案实时显示

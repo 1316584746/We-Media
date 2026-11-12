@@ -37,12 +37,14 @@ function resetForm(id) {
 
 const VISUAL_COST = { image: '费用最低', i2v: '效果最好 · 按秒计费', video: '按秒计费' };
 
-function templatesHtml() {
+// clone=true：轮播首尾相接用的副本（不参与读屏 / Tab）
+function templatesHtml(clone = false) {
   return state.meta.templates
     .map(
-      (t) => `<button class="tpl ${t.id === tplId ? 'on' : ''}" data-tpl="${t.id}">
-        <div class="tpl-cover" style="background:${tplColor(t)}">${esc(t.glyph)}</div>
-        <div class="tpl-info"><b>${esc(t.name)}</b><span>${esc(t.desc)}</span></div>
+      (t) => `<button type="button" class="tpl${t.id === tplId ? ' on' : ''}${clone ? ' clone' : ''}" data-tpl="${t.id}" style="--g:${tplColor(t)};--h:${t.hue}"${clone ? ' tabindex="-1" aria-hidden="true"' : ''}>
+        <span class="tpl-glyph">${esc(t.glyph)}</span>
+        <span class="tpl-tag">已选</span>
+        <span class="tpl-info"><b>${esc(t.name)}</b><span>${esc(t.desc)}</span></span>
       </button>`,
     )
     .join('');
@@ -162,39 +164,90 @@ export async function mount(root) {
   const featEl = $('#featured', root);
   const compEl = $('#composer', root);
   const rail = $('#tplRail', root);
-  const updateRail = () => {
-    const max = tplsEl.scrollWidth - tplsEl.clientWidth;
-    const can = max > 4;
-    $$('.tpl-nav', rail).forEach((b) => {
-      b.hidden = !can || (b.dataset.nav === '-1' ? tplsEl.scrollLeft < 4 : tplsEl.scrollLeft > max - 4);
-    });
-    rail.classList.toggle('can-l', can && tplsEl.scrollLeft >= 4);
-    rail.classList.toggle('can-r', can && tplsEl.scrollLeft <= max - 4);
+  // ---- 模板轮播：自动向左缓慢滚动、首尾相接；鼠标悬停 / 拖动 / 触摸 / 滚轮时暂停 ----
+  const SPEED = 30; // px/s
+  const reduceMotion = matchMedia('(prefers-reduced-motion: reduce)').matches;
+  let period = 0; // 一整套模板的宽度，滚动位置落在 [1, period+1) 内循环
+  let pos = 0; // 自动滚动用小数位置（scrollLeft 在低分屏上会取整，慢速时会原地不动）
+  let lastSet = 0;
+  let hovering = false;
+  let pauseUntil = 0;
+  const setLeft = (v) => {
+    pos = v;
+    lastSet = tplsEl.scrollLeft = v;
   };
-  // 把选中的模板卡片滚进可视区（只滚这一行，不动整个页面）
-  const revealSelected = (smooth = false) => {
-    const on = $('.tpl.on', tplsEl);
-    if (!on) return;
-    const l = on.offsetLeft - tplsEl.offsetLeft;
-    const r = l + on.offsetWidth;
-    if (l < tplsEl.scrollLeft) tplsEl.scrollTo({ left: l - 8, behavior: smooth ? 'smooth' : 'auto' });
-    else if (r > tplsEl.scrollLeft + tplsEl.clientWidth) tplsEl.scrollTo({ left: r - tplsEl.clientWidth + 8, behavior: smooth ? 'smooth' : 'auto' });
+  const wrapPos = () => {
+    if (!period) return;
+    const sl = tplsEl.scrollLeft;
+    if (sl >= period + 1) setLeft(sl - period);
+    else if (sl < 1) setLeft(sl + period);
   };
-  const paintTpls = () => {
+  const buildLoop = () => {
     const x = tplsEl.scrollLeft; // 重绘不要把滚动位置弄丢
     tplsEl.innerHTML = templatesHtml();
-    tplsEl.scrollLeft = x;
-    revealSelected(true);
-    updateRail();
-    requestAnimationFrame(updateRail); // 首次绘制时容器可能还没挂进页面，下一帧再量一次
+    const cards = tplsEl.children;
+    const n = cards.length;
+    const gap = parseFloat(getComputedStyle(tplsEl).columnGap) || 16;
+    const set = n ? cards[n - 1].offsetLeft + cards[n - 1].offsetWidth - cards[0].offsetLeft + gap : 0;
+    period = tplsEl.clientWidth && set ? set : 0;
+    if (period) {
+      const k = Math.ceil(tplsEl.clientWidth / period) + 2;
+      tplsEl.innerHTML = Array.from({ length: k }, (_, i) => templatesHtml(i > 0)).join('');
+      setLeft(Math.min(Math.max(x, 1), period));
+    }
+    tplsEl.classList.toggle('loop', !!period);
+    $$('.tpl-nav', rail).forEach((b) => (b.hidden = !period));
+    rail.classList.toggle('can-l', !!period);
+    rail.classList.toggle('can-r', !!period);
   };
-  tplsEl.addEventListener('scroll', updateRail, { passive: true });
-  new ResizeObserver(updateRail).observe(tplsEl);
+  const paintTpls = () => {
+    buildLoop();
+    requestAnimationFrame(() => !period && buildLoop()); // 首次绘制时容器可能还没挂进页面，下一帧再量一次
+  };
+  let railW = 0;
+  new ResizeObserver(() => {
+    if (tplsEl.clientWidth !== railW) {
+      railW = tplsEl.clientWidth;
+      buildLoop();
+    }
+  }).observe(tplsEl);
+  tplsEl.addEventListener(
+    'scroll',
+    () => {
+      if (Math.abs(tplsEl.scrollLeft - lastSet) > 1.5) pos = tplsEl.scrollLeft; // 用户自己滚的，同步位置
+      wrapPos();
+    },
+    { passive: true },
+  );
+  rail.addEventListener('mouseenter', () => (hovering = true));
+  rail.addEventListener('mouseleave', () => (hovering = false));
+  rail.addEventListener('wheel', () => (pauseUntil = performance.now() + 2000), { passive: true });
+  rail.addEventListener('touchstart', () => (pauseUntil = performance.now() + 1e9), { passive: true });
+  rail.addEventListener('touchend', () => (pauseUntil = performance.now() + 2500), { passive: true });
+  rail.addEventListener('focusin', () => (pauseUntil = performance.now() + 4000));
+  let seen = false;
+  let lastT = 0;
+  const tick = (now) => {
+    if (rail.isConnected) seen = true;
+    else if (seen) return; // 离开创作页后停止
+    requestAnimationFrame(tick);
+    const dt = Math.min(now - lastT, 64);
+    lastT = now;
+    if (!period || reduceMotion || hovering || drag || document.hidden || now < pauseUntil) return;
+    pos += (SPEED * dt) / 1000;
+    if (pos >= period + 1) pos -= period;
+    setLeft(pos);
+  };
+  requestAnimationFrame(tick);
   rail.addEventListener('click', (e) => {
     const b = e.target.closest('.tpl-nav');
-    if (b) tplsEl.scrollBy({ left: Number(b.dataset.nav) * Math.max(220, tplsEl.clientWidth * 0.8), behavior: 'smooth' });
-  });
-  // 鼠标按住拖动滚动（触屏 / 触控板本来就能滚）；拖动后不当成点击
+    if (!b || !period) return;
+    const d = Number(b.dataset.nav) * Math.max(240, tplsEl.clientWidth * 0.7);
+    const sl = tplsEl.scrollLeft; // 目标落在循环区外时先无感地挪一套，再平滑滚动
+    if (sl + d >= period + 1) setLeft(sl - period);
+    else if (sl + d < 1) setLeft(sl + period);
+    tplsEl.scrollBy({ left: d, behavior: 'smooth' });
+  });  // 鼠标按住拖动滚动（触屏 / 触控板本来就能滚）；拖动后不当成点击
   let drag = null;
   tplsEl.addEventListener('mousedown', (e) => {
     if (e.button !== 0) return;
