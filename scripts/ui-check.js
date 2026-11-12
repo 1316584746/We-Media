@@ -85,6 +85,40 @@ const ok = (c, m) => {
   ok(await js(`document.querySelector('[data-seg="orientation"] .on').dataset.v === 'portrait' && document.querySelectorAll('[data-sample]').length === 3`), '心灵鸡汤默认竖屏，有 3 条示例文案');
   await click('[data-sample="0"]');
   ok(await js(`document.querySelector('[data-k="script"]').value.includes('晚安') && document.querySelector('[data-k="style"]').value.includes('治愈')`), '填入治愈系示例文案，画风为治愈系');
+  // 预计费用：随文案实时显示
+  ok(await waitFor(`document.querySelector('#estRow')?.textContent.includes('预计费用') && document.querySelector('#estRow').textContent.includes('镜头')`, 3000), '填了文案后显示「预计费用」，含镜头数');
+  // 临时把设置改成收费配置，看付费时的展示（截图后还原）
+  const keepSettings = await js(`(async () => {
+    const { state } = await import('/js/core.js');
+    const old = JSON.stringify({ image: state.settings.image, tts: state.settings.tts, video: state.settings.video });
+    Object.assign(state.settings.image, { mode: 'dashscope', model: 'qwen-image-2.0' });
+    Object.assign(state.settings.tts, { mode: 'dashscope' });
+    Object.assign(state.settings.video, { mode: 'dashscope_i2v', model: 'wan2.7-i2v', resolution: '720P' });
+    return old;
+  })()`);
+  await click('[data-seg="visual"] [data-v="i2v"]');
+  ok(await waitFor(`/约 \\d+(\\.\\d+)? 元/.test(document.querySelector('#estRow .est-total')?.textContent || '') && document.querySelector('#estRow .est-parts').textContent.includes('图生视频')`, 3000), '收费配置 + 图生视频：预计费用显示金额和各项明细');
+  await js(`document.querySelector('#estRow').scrollIntoView({block:'center'})`);
+  await sleep(400);
+  await shot('ui-estimate');
+  await js(`(async () => {
+    const { state } = await import('/js/core.js');
+    const o = JSON.parse(${JSON.stringify(keepSettings)});
+    Object.assign(state.settings.image, o.image); Object.assign(state.settings.tts, o.tts); Object.assign(state.settings.video, o.video);
+  })()`);
+  await setVal('[data-k="script"]', '');
+  ok(await waitFor(`document.querySelector('#estRow').textContent.includes('写好文案后')`, 2000), '文案清空后提示先写文案');
+  ok(await js(`(async () => {
+    const { estimate } = await import('/js/pricing.js');
+    const S = { llm: { enabled: false }, image: { mode: 'dashscope', model: 'qwen-image-2.0' }, tts: { mode: 'edge' }, video: { mode: 'dashscope_i2v', model: 'wan2.7-i2v', resolution: '720P' } };
+    const script = '床前明月光，疑是地上霜。\\n举头望明月，低头思故乡。';
+    const a = estimate({ settings: S, split: 'line', script, visual: 'image' });
+    const b = estimate({ settings: S, split: 'line', script, visual: 'i2v', titleCard: true, endCard: true });
+    const c = estimate({ settings: { ...S, tts: { mode: 'custom' } }, split: 'line', script, visual: 'image' });
+    const d = estimate({ settings: S, split: 'line', script: '', visual: 'image' });
+    const near = (x, y) => Math.abs(x - y) < 1e-9;
+    return a.scenes === 4 && near(a.total, 0.8) && b.seconds === 17 && near(b.total, 0.8 + 17 * 0.6) && c.unknown.join() === '配音' && d === null;
+  })()`), '预计费用计算：4 个镜头画图 0.8 元；图生视频 17 秒 +10.2 元；自定义配音标为按服务商；空文案不估算');
   await click('[data-tpl="poem"]');
   await sleep(300);
   await click('[data-tpl="story"]');

@@ -195,6 +195,13 @@ dialog.dlg .dlg-foot { display: flex; justify-content: flex-end; gap: 10px; padd
 .composer .col { padding: 22px 24px; display: flex; flex-direction: column; gap: 16px; }
 .composer .col + .col { border-left: 1px solid var(--line); background: rgba(255, 255, 255, 0.012); }
 .composer h3 { font-size: 15px; }
+.est-row { flex: 1 0 100%; display: flex; align-items: baseline; gap: 8px 14px; flex-wrap: wrap; padding-bottom: 12px; margin-bottom: 2px; border-bottom: 1px dashed var(--line); font-size: 12.5px; color: var(--muted); }
+.est-total { font-size: 14px; color: var(--text); }
+.est-total.free { color: var(--ok, #4cc38a); }
+.est-parts { display: inline-flex; align-items: baseline; gap: 6px; flex-wrap: wrap; }
+.est-parts i { font-style: normal; opacity: 0.5; }
+.est-parts span { cursor: help; }
+.est-empty { color: var(--muted); }
 .composer-foot { display: flex; align-items: center; gap: 14px; padding: 16px 24px; border-top: 1px solid var(--line); background: var(--bg2); border-radius: 0 0 var(--r2) var(--r2); flex-wrap: wrap; }
 .opt-note { font-size: 12px; color: var(--muted); margin-top: -2px; }
 .section-title { display: flex; align-items: center; justify-content: space-between; margin: 34px 0 14px; }

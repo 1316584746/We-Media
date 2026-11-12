@@ -215,3 +215,109 @@ export function overviewHtml(esc) {
       「免费额度」只有新用户、北京地域、90 天有效，用完或过期就按量收费；本应用没有任何内置的免费视频模型，想不花钱可以用「插画 + 镜头推拉」配 Edge 配音，主要花费就是画图（0.2 元/张）。</p>
     </div>`;
 }
+
+/* ---------------- 创作页：按文案估算本次生成的费用 ---------------- */
+
+/** 与服务端 pipeline.js 的拆分规则保持一致：返回每个镜头的旁白文本 */
+function sceneTexts(script, split) {
+  const text = String(script || '').replace(/\r/g, '');
+  if (split === 'line') return text.split(/[\n，。！？；,.!?;]+/).map((s) => s.trim()).filter(Boolean);
+  const maxChars = 26;
+  const pieces = [];
+  for (const s of text.split(/(?<=[。！？!?…])|\n+/).map((x) => x.trim()).filter(Boolean)) {
+    if (s.length <= maxChars * 1.5) {
+      pieces.push(s);
+      continue;
+    }
+    let cur = '';
+    for (const part of s.split(/(?<=[，,；;：:、])/)) {
+      if (cur && (cur + part).length > maxChars) {
+        pieces.push(cur);
+        cur = part;
+      } else cur += part;
+    }
+    if (cur) pieces.push(cur);
+  }
+  const units = [];
+  let cur = '';
+  for (const p of pieces) {
+    if (cur && (cur + p).length > maxChars) {
+      units.push(cur);
+      cur = p;
+    } else cur += p;
+  }
+  if (cur) units.push(cur);
+  return units;
+}
+
+/** 每秒单价；null = 价格表里没有 */
+function videoPerSec(cfg) {
+  if (cfg.mode === 'ark') return 0.216;
+  const p = VIDEO[String(cfg.model || '').trim()];
+  if (!p) return null;
+  const res = cfg.resolution === '1080P' ? '1080P' : '720P';
+  return p[res] ?? p[res === '720P' ? '480P' : '1080P'] ?? null;
+}
+
+/**
+ * 估算「把当前文案生成成片」要花多少钱（创建项目本身不花钱，花钱的是之后点「生成视频」）。
+ * 估算口径：镜头数按服务端同样的规则拆；旁白约 4 字/秒；图生视频每镜头 = 旁白秒数 + 0.6 秒（2~15 秒），
+ * 片头 ≈ 4 秒、片尾 ≈ 5 秒；文生视频每镜头取设置里的时长（默认 5 秒）。重试成功才计费，失败不收费。
+ * @returns {null | {scenes:number, chars:number, seconds:number, total:number, unknown:string[], parts:{label:string, cost:number|null, detail:string}[]}}
+ */
+export function estimate({ settings, split, script, visual, titleCard, endCard }) {
+  const texts = sceneTexts(script, split);
+  if (!texts.length) return null;
+  const n = texts.length;
+  const chars = texts.join('').replace(/\s/g, '').length;
+  const parts = [];
+
+  const llmOn = settings.llm.enabled && settings.llm.apiKey;
+  parts.push({ label: '分镜', cost: llmOn ? 0.01 : 0, detail: llmOn ? '大模型写分镜' : '规则拆分' });
+
+  if (visual !== 'video') {
+    const cfg = settings.image;
+    const p = IMAGE[String(cfg.model || '').trim()];
+    if (cfg.mode === 'mock') parts.push({ label: '画图', cost: 0, detail: `${n} 张 · 测试模式` });
+    else if (cfg.mode === 'dashscope' && p) parts.push({ label: '画图', cost: p.price * n, detail: `${n} 张 × ${p.price} 元` });
+    else parts.push({ label: '画图', cost: null, detail: `${n} 张` });
+  }
+
+  const tts = settings.tts;
+  if (tts.mode === 'edge') parts.push({ label: '配音', cost: 0, detail: 'Edge 免费' });
+  else if (tts.mode === 'mock') parts.push({ label: '配音', cost: 0, detail: '测试模式' });
+  else if (tts.mode === 'dashscope') parts.push({ label: '配音', cost: ((chars * 2) / 10000) * 0.8, detail: `${chars} 字` });
+  else parts.push({ label: '配音', cost: null, detail: `${chars} 字` });
+
+  let seconds = 0;
+  if (visual !== 'image') {
+    const cfg = settings.video;
+    if (visual === 'i2v') {
+      seconds = texts.reduce((a, t) => a + Math.min(15, Math.max(2, Math.ceil(t.replace(/\s/g, '').length / 4 + 0.6))), 0) + (titleCard ? 4 : 0) + (endCard ? 5 : 0);
+    } else {
+      seconds = n * (Math.round(Number(cfg.duration)) || 5);
+    }
+    const unit = videoPerSec(cfg);
+    const label = visual === 'i2v' ? '图生视频' : '文生视频';
+    if (cfg.mode === 'mock') parts.push({ label, cost: 0, detail: `${seconds} 秒 · 测试模式` });
+    else if (cfg.mode === 'openai') parts.push({ label, cost: null, detail: 'Sora 已停用' });
+    else if (unit != null && cfg.mode !== 'custom') parts.push({ label, cost: unit * seconds, detail: `约 ${seconds} 秒 × ${unit} 元` });
+    else parts.push({ label, cost: null, detail: `约 ${seconds} 秒` });
+  }
+
+  const total = parts.reduce((a, p) => a + (p.cost || 0), 0);
+  return { scenes: n, chars, seconds, total, unknown: parts.filter((p) => p.cost == null).map((p) => p.label), parts };
+}
+
+export const money = yuan;
+
+/** 创作页那一行预计费用的 HTML */
+export function estimateHtml(est, esc) {
+  if (!est) return '<span class="est-empty">写好文案后，这里会显示生成成片的预计费用</span>';
+  const cost = (p) => (p.cost == null ? '按服务商' : p.cost === 0 ? '免费' : yuan(p.cost));
+  const free = est.total === 0 && !est.unknown.length;
+  const head = free ? '预计费用：免费' : `预计费用：约 ${yuan(est.total)}${est.unknown.length ? `（另有 ${est.unknown.join('、')} 按服务商计费，未计入）` : ''}`;
+  return `<b class="est-total ${free ? 'free' : ''}">${esc(head)}</b>
+    <span class="est-parts">${est.parts.map((p) => `<span title="${esc(p.detail)}">${esc(p.label)} ${esc(cost(p))}</span>`).join('<i>+</i>')}</span>
+    <span class="est-note">${est.scenes} 个镜头 · ${est.chars} 字，估算值，实际以账单为准；失败不收费</span>`;
+}

@@ -1,4 +1,5 @@
 import { featuredCardsHtml, hotCardsHtml, handleCoverErrors, openFeatured, playInCard, playHotInCard, stopInCard, PLATFORMS } from '../featured.js';
+import { estimate, estimateHtml } from '../pricing.js';
 import { $, $$, api, esc, state, toast, icon, paintIcons, tplOf, tplColor, VISUAL, mockParts, voiceChoices, previewVoice, previewBtnHtml } from '../core.js';
 
 let tplId = 'poem';
@@ -122,6 +123,7 @@ function composerHtml() {
       </div>
     </div>
     <div class="composer-foot" style="grid-column:1 / -1">
+      <div class="est-row" id="estRow" title="估算口径：镜头数按拆分规则、旁白约 4 字/秒；价格取自各平台官网价格页（见 设置 → 费用一览）"></div>
       <button class="btn primary lg" id="btnCreate">${busy ? '<i class="spin"></i> 正在拆分镜头…' : `${'<span class="ic" data-ic="sparkle" style="font-size:18px"></span>'}生成分镜并创建项目`}</button>
       <span class="hint">创建项目只做文案拆解，不生成画面、不产生视频费用；在编辑器里确认后再点「生成视频」。</span>
       ${mocks.length ? `<span class="badge warn" title="这些能力还没配置真实模型，会生成占位内容">未配置：${mocks.join('、')}（<a href="#/settings" style="text-decoration:underline">去设置</a>）</span>` : ''}
@@ -216,6 +218,13 @@ export async function mount(root) {
   const updateCount = () => {
     const el = $('#scriptCount', compEl);
     if (el) el.textContent = form.script.trim() ? `${form.script.replace(/\s/g, '').length} 字` : '';
+    const row = $('#estRow', compEl);
+    if (row) {
+      row.innerHTML = estimateHtml(
+        estimate({ settings: state.settings, split: tplOf(tplId).split, script: form.script, visual: form.visual, titleCard: form.titleCard, endCard: form.endCard }),
+        esc,
+      );
+    }
   };
   paintTpls();
   paintComposer();
@@ -352,6 +361,7 @@ export async function mount(root) {
     const k = e.target.dataset.k;
     if (!k) return;
     form[k] = e.target.type === 'checkbox' ? e.target.checked : e.target.value;
+    if (k === 'titleCard' || k === 'endCard') updateCount(); // 片头片尾会多出视频秒数，影响预计费用
   });
   compEl.addEventListener('click', async (e) => {
     const pv = e.target.closest('[data-preview]');
