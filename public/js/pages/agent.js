@@ -303,13 +303,19 @@ export async function mount(root) {
     busy = true;
     sendEl.disabled = true;
     sendEl.classList.add('busy');
-    resEl.innerHTML = `<div class="ag-res thinking"><i class="spin"></i><b>M Agent 正在构思…</b></div>`;
+    resEl.innerHTML = `<div class="ag-res thinking"><i class="spin"></i><b>M Agent 正在构思…</b><span class="hint" id="agWait"></span></div>`;
+    const t0 = Date.now();
+    const tick = setInterval(() => {
+      const el = $('#agWait', root);
+      if (el) el.textContent = `已等待 ${Math.round((Date.now() - t0) / 1000)} 秒（通常 10~30 秒，最长约 2 分钟）`;
+    }, 1000);
     try {
-      const r = await api('/api/agent/run', { method: 'POST', body: { idea, template: tplEl.value, skills: picked, orientation: effOri() || undefined, model: modelEl.value || undefined } });
+      const r = await api('/api/agent/run', { method: 'POST', timeout: 150000, body: { idea, template: tplEl.value, skills: picked, orientation: effOri() || undefined, model: modelEl.value || undefined } });
       last = { ...r, idea };
     } catch (err) {
       last = { error: err.message, idea };
     } finally {
+      clearInterval(tick);
       busy = false;
       sendEl.classList.remove('busy');
       paintPicked();

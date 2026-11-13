@@ -52,8 +52,25 @@ function toPrompt(messages) {
   );
 }
 
-/** 返回回复文本 */
-async function complete(cfg, messages, timeoutMs = 240000) {
+/** 返回回复文本。正常 8~15 秒；单次 60 秒没结果就放弃重来一次（偶尔会卡住），再不行才报错，不会让页面一直转 */
+async function complete(cfg, messages, timeoutMs = 60000) {
+  let lastErr;
+  for (let i = 0; i < 2; i++) {
+    const t0 = Date.now();
+    try {
+      const text = await completeOnce(cfg, messages, timeoutMs);
+      console.log(`[cursor] ${cfg.model} 完成，用时 ${((Date.now() - t0) / 1000).toFixed(1)} 秒${i ? '（重试后）' : ''}`);
+      return text;
+    } catch (e) {
+      lastErr = e;
+      console.log(`[cursor] ${cfg.model} 第 ${i + 1} 次失败，用时 ${((Date.now() - t0) / 1000).toFixed(1)} 秒：${brief(e)}`);
+      if (!/超时|为空/.test(String(e.message))) break; // 只对卡住 / 空回复重试；Key 无效、模型不可用之类重试没用
+    }
+  }
+  throw lastErr;
+}
+
+async function completeOnce(cfg, messages, timeoutMs) {
   const { Agent, tempFs, unionFs } = sdk();
   const cwd = path.join(os.tmpdir(), 'wm-cursor-agent');
   fs.mkdirSync(cwd, { recursive: true });
@@ -64,7 +81,7 @@ async function complete(cfg, messages, timeoutMs = 240000) {
       model: { id: cfg.model },
       local: { cwd, fs: unionFs({ '/work': tempFs() }), reportedWorkspacePath: '/work', settingSources: [] },
     });
-    const timeout = new Promise((_, rej) => (timer = setTimeout(() => rej(new Error('Cursor 响应超时')), timeoutMs)));
+    const timeout = new Promise((_, rej) => (timer = setTimeout(() => rej(new Error(`Cursor 响应超时（${Math.round(timeoutMs / 1000)} 秒没有结果）`)), timeoutMs)));
     const r = await Promise.race([run, timeout]);
     if (r.status !== 'finished') throw new Error(`Cursor 运行${r.status === 'cancelled' ? '被取消' : '出错'}${r.result ? `：${String(r.result).slice(0, 200)}` : ''}`);
     const text = String(r.result || '').trim();

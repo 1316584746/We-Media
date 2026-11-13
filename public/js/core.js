@@ -6,12 +6,23 @@ export const esc = (s) => String(s ?? '').replace(/[&<>"']/g, (c) => ({ '&': '&a
 
 export const state = { meta: null, settings: null };
 
-export async function api(url, { method = 'GET', body } = {}) {
-  const res = await fetch(url, {
-    method,
-    headers: body ? { 'Content-Type': 'application/json' } : undefined,
-    body: body ? JSON.stringify(body) : undefined,
-  });
+export async function api(url, { method = 'GET', body, timeout } = {}) {
+  const ctl = timeout ? new AbortController() : null;
+  const timer = ctl ? setTimeout(() => ctl.abort(), timeout) : 0;
+  let res;
+  try {
+    res = await fetch(url, {
+      method,
+      headers: body ? { 'Content-Type': 'application/json' } : undefined,
+      body: body ? JSON.stringify(body) : undefined,
+      signal: ctl?.signal,
+    });
+  } catch (e) {
+    if (e.name === 'AbortError') throw new Error(`等了 ${Math.round(timeout / 1000)} 秒还没有结果，已停止等待，请重试一次`);
+    throw e;
+  } finally {
+    clearTimeout(timer);
+  }
   const json = await res.json().catch(() => ({}));
   if (!res.ok) throw new Error(json.error || `请求失败（HTTP ${res.status}）`);
   return json;
