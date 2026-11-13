@@ -93,6 +93,9 @@ const textOf = (res) =>
 async function research({ llm, task, maxRounds = 4 }) {
   const servers = extensions.enabledMcp();
   if (!servers.length) return null;
+  if (providers.isCursor(llm)) {
+    return { text: '', calls: [], warnings: ['Cursor 的 Key 不支持函数调用，工具增强（MCP）已跳过；换成阿里百炼或 OpenAI 兼容的 Key 才能用'] };
+  }
   const warnings = [];
   const opened = [];
   await Promise.all(

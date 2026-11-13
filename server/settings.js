@@ -10,6 +10,7 @@ const KEY_SECTIONS = ['llm', 'tts', 'image', 'video'];
 const DEFAULTS = {
   llm: {
     enabled: false,
+    provider: 'openai', // openai = 阿里百炼 / 任何 OpenAI 兼容服务 | cursor = Cursor 的 API Key（Key 以 crsr_ / cursor_ 开头会自动按 cursor 处理）
     baseUrl: 'https://dashscope.aliyuncs.com/compatible-mode/v1',
     apiKey: '',
     model: '', // 没有默认值：填好 Key 后在设置里「获取列表」，从这个 Key 拥有的模型里选

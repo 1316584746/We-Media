@@ -107,7 +107,7 @@ export async function mount(root) {
       delete modelEl.dataset.empty;
       const saved = localStorage.getItem(MODEL_KEY);
       const cur = r.models.includes(saved) ? saved : r.current;
-      modelEl.innerHTML = r.models.map((m) => `<option value="${esc(m)}"${m === cur ? ' selected' : ''}>${esc(m)}${m === r.current ? '（默认）' : ''}</option>`).join('');
+      modelEl.innerHTML = r.models.map((m) => `<option value="${esc(m)}"${m === cur ? ' selected' : ''}>${esc(r.names?.[m] || m)}${m === r.current ? '（默认）' : ''}</option>`).join('');
       modelEl.title = r.error ? r.error : `这个 Key 共有 ${r.models.length} 个对话模型，选一个来写文案`;
       if (r.error) toast(r.error, 'err');
     } catch (e) {

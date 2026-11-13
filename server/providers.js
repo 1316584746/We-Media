@@ -5,6 +5,7 @@
 const fs = require('fs');
 const path = require('path');
 const ff = require('./ffmpeg');
+const cursor = require('./cursor-llm');
 const { sleep, getPath, httpRequest, readJsonOrThrow, downloadTo } = require('./util');
 
 const DASHSCOPE = 'https://dashscope.aliyuncs.com';
@@ -140,6 +141,7 @@ function videoSpec(cfg) {
 /* ----------------------------- LLM：分镜 ----------------------------- */
 
 async function llmChat(cfg, messages) {
+  if (cursor.isCursor(cfg)) return cursor.complete(cfg, messages);
   const res = await httpRequest(
     {
       method: 'POST',
@@ -161,6 +163,8 @@ async function llmChat(cfg, messages) {
  * 直接 fetch，不走请求模板（消息里可能含 {{ }}，不能被当成模板变量替换）。
  */
 async function llmComplete(cfg, { messages, tools, temperature = 0.4 }) {
+  // Cursor 的 Key：走官方 SDK，没有函数调用，tools 被忽略
+  if (cursor.isCursor(cfg)) return { role: 'assistant', content: await cursor.complete(cfg, messages) };
   const body = { model: cfg.model, messages, temperature };
   if (tools?.length) body.tools = tools;
   const res = await fetch(`${trimSlash(cfg.baseUrl)}/chat/completions`, {
@@ -425,6 +429,7 @@ async function generateClip({ cfg, render, prompt, outFile, imageFile, duration,
 }
 
 module.exports = {
+  isCursor: cursor.isCursor,
   buildShots,
   llmComplete,
   extractJson,

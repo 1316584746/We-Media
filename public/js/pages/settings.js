@@ -55,15 +55,18 @@ const PANES = `
 <details class="cost-all" id="costAll"></details>
 <section class="st-blk" data-blk="llm"><div class="st-sub"><span>AI Agent</span><span class="badge" data-badge="llm"></span></div><div class="st-inner">
   <p class="hint">分镜、M Agent 写文案、做同款、工具增强等所有 AI 对话功能，都用这里的 API Key 和默认模型。填好 Key 后点「获取列表」，从下拉里选模型。</p>
-  <div class="field"><label>API Key <span class="hint">默认是阿里百炼（<a href="https://bailian.console.aliyun.com/" target="_blank" rel="noopener">bailian.console.aliyun.com</a> 创建）</span></label><input name="llm.apiKey" type="password" autocomplete="off" placeholder="sk-xxxxxxxx" /></div>
+  <div class="field"><label>服务商</label>
+    <select name="llm.provider"><option value="openai">阿里百炼 / 其他 OpenAI 兼容服务</option><option value="cursor">Cursor</option></select>
+  </div>
+  <div class="field"><label>API Key <span class="hint" id="llmKeyHint"></span></label><input name="llm.apiKey" type="password" autocomplete="off" placeholder="sk-xxxxxxxx" /></div>
   <div class="mdl-head"><label>默认模型</label><button type="button" class="btn ghost" id="btnLlmModels"><span class="ic" data-ic="refresh"></span>获取列表</button></div>
   <select name="llm.model" id="llmModelSel"></select>
   <div class="hint" id="llmModelsHint"></div>
-  <details class="mdl-adv"><summary>接口地址（默认阿里百炼，也可以换成其他 OpenAI 兼容服务）</summary>
+  <details class="mdl-adv" id="llmAdv"><summary>接口地址（默认阿里百炼，也可以换成其他 OpenAI 兼容服务）</summary>
     <div class="field"><label>Base URL</label><input name="llm.baseUrl" /></div>
   </details>
   <div class="cost" data-cost="llm"></div>
-  <div class="mdl-all"><button type="button" class="btn ghost" id="btnApplyDash">同时用于文生图、配音、图生视频</button><span class="hint">把上面这个百炼 Key 一并填给下面三项，并切到百炼的推荐配置（要先重新输入一次完整的 Key）。</span></div>
+  <div class="mdl-all" id="llmAll"><button type="button" class="btn ghost" id="btnApplyDash">同时用于文生图、配音、图生视频</button><span class="hint">把上面这个百炼 Key 一并填给下面三项，并切到百炼的推荐配置（要先重新输入一次完整的 Key）。</span></div>
 </div></section>
 
 <section class="st-blk" data-blk="image"><div class="st-sub"><span>文生图</span><span class="badge" data-badge="image"></span></div><div class="st-inner">
@@ -130,7 +133,7 @@ const PANES = `
 
 /** 每个模型块右上角的状态：[文字, badge 样式] */
 function badgeOf(cfg, key) {
-  if (key === 'llm') return cfg.enabled && cfg.apiKey ? ['收费 · 已启用', 'paid'] : ['未启用', 'warn'];
+  if (key === 'llm') return cfg.enabled && cfg.apiKey ? [cfg.provider === 'cursor' ? 'Cursor · 已启用' : '收费 · 已启用', 'paid'] : ['未启用', 'warn'];
   const kind = kindOf(key, cfg);
   if (kind === 'free') return ['免费', 'done'];
   if (kind === 'test') return ['mock 占位', 'warn'];
@@ -192,9 +195,9 @@ export async function mount(root, params = []) {
   // 默认模型下拉：先只放已保存的那个，「获取列表」后换成这个 Key 拥有的全部对话模型
   const MODEL_HINT = { 'qwen-plus': '0.8 / 2 元每百万 token', 'qwen-max': '2.4 / 9.6 元每百万 token', 'qwen3.5-plus': '0.8 / 4.8 元每百万 token', 'qwen3.7-plus': '2 / 8 元每百万 token' };
   const modelSel = $('#llmModelSel', form);
-  const fillModelSelect = (ids, selected) => {
-    const ph = ids.length ? '请选择模型' : '请先填写 API Key，点「获取列表」';
-    modelSel.innerHTML = `<option value="">${ph}</option>` + ids.map((m) => `<option value="${esc(m)}">${esc(m)}${MODEL_HINT[m] ? `　· ${MODEL_HINT[m]}` : ''}</option>`).join('');
+  const fillModelSelect = (ids, selected, names = {}) => {
+    const ph = ids.length ? '请选择模型' : '填好 API Key 后，点「获取列表」';
+    modelSel.innerHTML = `<option value="">${ph}</option>` + ids.map((m) => `<option value="${esc(m)}">${esc(names[m] || m)}${MODEL_HINT[m] ? `　· ${MODEL_HINT[m]}` : ''}</option>`).join('');
     modelSel.value = ids.includes(selected) ? selected : '';
   };
   fillModelSelect(s.llm.model ? [s.llm.model] : [], s.llm.model);
@@ -305,6 +308,35 @@ export async function mount(root, params = []) {
   const mdlBtn = $('#btnLlmModels', root);
   const mdlHint = $('#llmModelsHint', root);
   let mdlSeq = 0;
+  // 服务商：阿里百炼 / OpenAI 兼容 或 Cursor（Key 以 crsr_ / cursor_ 开头会自动切到 Cursor）
+  const provSel = field('llm.provider');
+  const KEY_TIPS = {
+    openai: '默认是阿里百炼，到 <a href="https://bailian.console.aliyun.com/" target="_blank" rel="noopener">bailian.console.aliyun.com</a> 创建；其他 OpenAI 兼容服务在下面改「接口地址」',
+    cursor: '到 <a href="https://cursor.com/dashboard/integrations" target="_blank" rel="noopener">cursor.com/dashboard/integrations</a> 创建（crsr_ 开头）。用量计入你的 Cursor 账号，每次要几秒到几十秒，不支持工具增强',
+  };
+  const syncProvider = () => {
+    const cur = provSel.value === 'cursor';
+    $('#llmKeyHint', root).innerHTML = KEY_TIPS[cur ? 'cursor' : 'openai'];
+    field('llm.apiKey').placeholder = cur ? 'crsr_xxxxxxxx' : 'sk-xxxxxxxx';
+    $('#llmAdv', root).hidden = cur;
+    $('#llmAll', root).hidden = cur;
+    paintCosts();
+  };
+  provSel.addEventListener('change', () => {
+    syncProvider();
+    fillModelSelect([], '');
+    mdlHint.textContent = field('llm.apiKey').value.trim() ? '换了服务商，点「获取列表」重新读取模型。' : '填好 API Key 后点「获取列表」。';
+    if (field('llm.apiKey').value.trim()) fetchModels({ quiet: true });
+  });
+  field('llm.apiKey').addEventListener('input', () => {
+    const k = field('llm.apiKey').value.trim();
+    const want = /^(crsr_|cursor_)/i.test(k) ? 'cursor' : /^sk-/i.test(k) ? 'openai' : provSel.value;
+    if (want !== provSel.value) {
+      provSel.value = want;
+      syncProvider();
+      fillModelSelect([], '');
+    }
+  });
   const fetchModels = async ({ quiet = false } = {}) => {
     const apiKey = field('llm.apiKey').value.trim();
     if (!apiKey) {
@@ -315,8 +347,12 @@ export async function mount(root, params = []) {
     mdlBtn.disabled = true;
     mdlHint.textContent = '获取中…';
     try {
-      const r = await api('/api/llm/models', { method: 'POST', body: { baseUrl: field('llm.baseUrl').value.trim(), apiKey } });
+      const r = await api('/api/llm/models', { method: 'POST', body: { baseUrl: field('llm.baseUrl').value.trim(), apiKey, provider: provSel.value } });
       if (seq !== mdlSeq) return;
+      if (r.provider && r.provider !== provSel.value) {
+        provSel.value = r.provider;
+        syncProvider();
+      }
       if (r.error) {
         mdlHint.textContent = r.error;
         return;
@@ -327,7 +363,7 @@ export async function mount(root, params = []) {
       }
       const cur = field('llm.model').value.trim();
       const list = !cur || r.models.includes(cur) ? r.models : [cur, ...r.models];
-      fillModelSelect(list, cur);
+      fillModelSelect(list, cur, r.names || {});
       paintCosts();
       mdlHint.textContent = `这个 Key 共有 ${r.models.length} 个对话模型${cur && !r.models.includes(cur) ? `；当前的「${cur}」不在列表里，可能用不了` : ''}。${cur ? '' : '请选一个，'}选好后点「保存设置」。`;
     } catch (e) {
@@ -339,6 +375,7 @@ export async function mount(root, params = []) {
   mdlBtn.addEventListener('click', () => fetchModels());
   field('llm.apiKey').addEventListener('change', () => fetchModels({ quiet: true }));
   field('llm.baseUrl').addEventListener('change', () => fetchModels({ quiet: true }));
+  syncProvider();
   if (s.llm.apiKey) fetchModels({ quiet: true });
   else mdlHint.textContent = '填好 API Key 后点「获取列表」。';
 

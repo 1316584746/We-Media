@@ -485,6 +485,11 @@ const ok = (c, m) => {
     await js(`document.querySelector('#btnLlmModels').scrollIntoView({ block: 'center' })`);
     await sleep(300);
     await shot('ui-settings-models');
+    // 填 Cursor 的 Key（crsr_ 开头）：服务商自动切到 Cursor，隐藏百炼专用的接口地址和一键配置
+    await setVal('[name="llm.apiKey"]', 'crsr_ui_test');
+    ok(await js(`document.querySelector('[name="llm.provider"]').value === 'cursor' && document.querySelector('#llmAdv').hidden && document.querySelector('#llmAll').hidden && /cursor\\.com/.test(document.querySelector('#llmKeyHint').innerHTML)`), '设置：填 crsr_ 开头的 Key 自动切到 Cursor，提示去 cursor.com 创建');
+    ok(await waitFor(`document.querySelector('#llmModelSel').value === '' && document.querySelector('[data-badge="llm"]').textContent.includes('未启用')`, 2000), '设置：换了服务商后模型清空，要重新获取列表并选一个才启用');
+    await shot('ui-settings-cursor');
     await goto('#/settings');
     await putLlm({ enabled: false, apiKey: '' });
     fakeLlm.close();

@@ -256,6 +256,8 @@ async function waitDone(id, timeoutMs = 180000) {
   ok(pm3.status === 200 && /bad key/.test(pm3.json.error) && pm3.json.models.length === 0, `设置：Key 无效时给出原因（${pm3.json.error}）`);
   const pm4 = await api('POST', '/api/llm/models', { baseUrl: 'ftp://x', apiKey: 'sk-fake' });
   ok(pm4.status === 200 && /http/.test(pm4.json.error), '设置：Base URL 格式不对时给出原因');
+  const pm5 = await api('POST', '/api/llm/models', { baseUrl: fb, apiKey: 'crsr_not_a_real_key' });
+  ok(pm5.status === 200 && pm5.json.provider === 'cursor' && pm5.json.models.length === 0 && /没能读到/.test(pm5.json.error), `设置：crsr_ 开头的 Key 走 Cursor（不会去请求百炼），Key 无效时给出原因（${pm5.json.error}）`);
   const ag0 = await api('POST', '/api/agent/run', { template: 'free', idea: '租房改造' });
   ok(ag0.status === 200 && ag0.json.title === '秋夜小记' && ag0.json.skillsUsed.length === 0, 'M Agent：不选 Skill 也能写（没有带 Skill 指引）');
   const agT = await api('POST', '/api/agent/run', { template: 'poem', idea: '秋天', skills: [added.json.id] });

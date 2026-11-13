@@ -2,6 +2,7 @@ const path = require('path');
 const os = require('os');
 const fs = require('fs');
 const providers = require('./providers');
+const cursorLlm = require('./cursor-llm');
 const { publicFeatured } = require('./featured');
 const discover = require('./discover');
 const edits = require('./edits');
@@ -78,23 +79,33 @@ app.get('/api/agent/skills', (req, res) => res.json({ categories: agentSkills.CA
 
 /** 读取一个 API Key 拥有的对话模型：请求 {baseUrl}/models（OpenAI 兼容）。失败不抛错，把原因放进 error */
 const NON_CHAT = /embed|rerank|tts|asr|whisper|speech|audio|image|video|wan\d|moderation|ocr|paraformer|sensevoice|cosyvoice|flux|dall-e|sora/i;
-async function listChatModels(baseUrl, apiKey, current = '') {
+async function listChatModels({ provider, baseUrl, apiKey }, current = '') {
   let models = [];
+  const names = {};
   let error = '';
+  const cursorMode = cursorLlm.isCursor({ provider, apiKey });
   try {
-    if (!/^https?:\/\//i.test(String(baseUrl || ''))) throw new Error('Base URL 需要以 http:// 或 https:// 开头');
-    const r = await fetch(`${String(baseUrl).replace(/\/+$/, '')}/models`, { headers: { Authorization: `Bearer ${apiKey}` }, signal: AbortSignal.timeout(15000) });
-    const j = await r.json().catch(() => ({}));
-    if (!r.ok) throw new Error(j.error?.message || j.message || `HTTP ${r.status}`);
-    const ids = [...new Set((Array.isArray(j.data) ? j.data : Array.isArray(j.models) ? j.models : []).map((m) => (typeof m === 'string' ? m : m?.id || m?.name)).filter((x) => typeof x === 'string' && x))];
-    models = ids.filter((id) => !NON_CHAT.test(id));
-    if (!models.length) models = ids;
-    models.sort();
+    if (cursorMode) {
+      // Cursor 的 Key：官方 SDK 读这个账号能用的模型，名字用它的展示名（如 Claude Sonnet 5.5）
+      const list = await cursorLlm.listModels(apiKey);
+      list.forEach((m) => (names[m.id] = m.name));
+      models = list.map((m) => m.id);
+    } else {
+      if (!/^https?:\/\//i.test(String(baseUrl || ''))) throw new Error('Base URL 需要以 http:// 或 https:// 开头');
+      const r = await fetch(`${String(baseUrl).replace(/\/+$/, '')}/models`, { headers: { Authorization: `Bearer ${apiKey}` }, signal: AbortSignal.timeout(15000) });
+      const j = await r.json().catch(() => ({}));
+      if (!r.ok) throw new Error(j.error?.message || j.message || `HTTP ${r.status}`);
+      const ids = [...new Set((Array.isArray(j.data) ? j.data : Array.isArray(j.models) ? j.models : []).map((m) => (typeof m === 'string' ? m : m?.id || m?.name)).filter((x) => typeof x === 'string' && x))];
+      models = ids.filter((id) => !NON_CHAT.test(id));
+      if (!models.length) models = ids;
+      models.sort();
+    }
   } catch (e) {
-    error = `没能读到这个 Key 的模型列表：${e.message}`;
+    error = `没能读到这个 Key 的模型列表：${String(e.message).split('\n')[0]}`;
+    models = [];
   }
   if (current) models = [current, ...models.filter((m) => m !== current)];
-  return { models, error };
+  return { models, names, provider: cursorMode ? 'cursor' : 'openai', error };
 }
 /* 已保存的分镜 LLM 配置能用的模型（M Agent 的模型下拉用） */
 app.get(
@@ -103,7 +114,7 @@ app.get(
     const llm = settingsStore.load().llm;
     if (!llm.enabled || !llm.apiKey) return res.json({ enabled: false, current: '', models: [] });
     const current = llm.model || '';
-    res.json({ enabled: true, current, ...(await listChatModels(llm.baseUrl, llm.apiKey, current)) });
+    res.json({ enabled: true, current, ...(await listChatModels(llm, current)) });
   }),
 );
 /* 设置页「读取这个 Key 的模型」：用表单里还没保存的 baseUrl / apiKey；脱敏的 key 视为没改，用已保存的 */
@@ -111,11 +122,11 @@ app.post(
   '/api/llm/models',
   wrap(async (req, res) => {
     const saved = settingsStore.load().llm;
-    const { baseUrl, apiKey } = req.body || {};
+    const { baseUrl, apiKey, provider } = req.body || {};
     const key = typeof apiKey === 'string' && apiKey && !apiKey.startsWith('********') ? apiKey.trim() : saved.apiKey;
     if (!key) return res.status(400).json({ error: '请先填写 API Key' });
     const base = typeof baseUrl === 'string' && baseUrl.trim() ? baseUrl.trim() : saved.baseUrl;
-    res.json(await listChatModels(base, key));
+    res.json(await listChatModels({ provider: provider === 'cursor' || provider === 'openai' ? provider : saved.provider, baseUrl: base, apiKey: key }));
   }),
 );
 

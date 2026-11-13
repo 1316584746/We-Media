@@ -85,6 +85,9 @@ export function describe(block, cfg) {
 
   if (block === 'llm') {
     if (!cfg.enabled) return { kind: 'none', head: '未启用', lines: ['不启用时用内置规则拆分镜头，不调用任何模型，不花钱；但角色、画风一致性会差一些。'] };
+    if (cfg.provider === 'cursor') {
+      return { kind: 'vary', head: '计入你的 Cursor 用量', lines: ['不是按 token 单独计费：每次写分镜 / 文案都会占用这个 Cursor 账号的用量额度。', '每次要几秒到几十秒（Cursor 是用 Agent 的方式在跑）；不支持工具增强。', '具体扣多少，以你 Cursor 账号的用量页为准。'] };
+    }
     const p = LLM[model];
     if (!p) return { kind: 'vary', head: '价格见服务商', lines: [`「${model || '未填写'}」不在内置价格表里，请查看该服务商的价格页。`, '分镜只需要几千 token，通常不到 1 分钱。'] };
     return {
