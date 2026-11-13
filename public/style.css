@@ -506,7 +506,10 @@ body.in-settings .main { margin-left: 0; padding-bottom: 0; }
 .mdl-adv .field { padding-bottom: 12px; }
 .st-host .toolbar { margin-bottom: 4px; }
 .st-host .ext { background: var(--bg2); border-radius: 16px; }
-.save-bar { position: sticky; bottom: 0; display: flex; align-items: center; gap: 14px; padding: 16px 0 22px; margin-top: 4px; background: linear-gradient(180deg, transparent, var(--bg) 45%); }
+/* 保存设置：放在标题行最右边，页面滚动时标题行吸顶，随时能点 */
+.st-title { position: sticky; top: 0; z-index: 20; align-items: center; margin: 0 0 18px; padding: 10px 0; background: var(--bg); }
+.st-title .save-bar { margin-left: auto; display: flex; align-items: center; gap: 14px; }
+.st-title .save-bar[hidden] { display: none; }
 /* ============ 扩展页 ============ */
 dialog.dlg.wide { width: min(680px, calc(100vw - 32px)); }
 dialog.dlg .dlg-body.form { display: flex; flex-direction: column; gap: 14px; max-height: 70vh; overflow-y: auto; }

@@ -157,14 +157,15 @@ export async function mount(root, params = []) {
     <aside class="st-side"><div class="st-cap">设置</div><nav id="setNav"></nav></aside>
     <section class="st-main">
       <a class="st-back" href="${esc(state.lastApp || '#/')}">${icon('back')}返回</a>
-      <div class="st-title"><h1>设置</h1><span class="sub">本地应用 · 数据只保存在这台电脑</span></div>
+      <div class="st-title"><h1>设置</h1><span class="sub">本地应用 · 数据只保存在这台电脑</span>
+        <div class="save-bar" id="saveBar"><span class="hint" id="saveHint"></span><button class="btn primary" id="btnSave" type="button">保存设置</button></div>
+      </div>
       <div class="st-card">
         <form id="form" autocomplete="off" onsubmit="return false">${PANES}</form>
         ${extPane('skills', '技能')}
         ${extPane('mcp', 'MCP 服务')}
         ${extPane('publish', '发布')}
       </div>
-      <div class="save-bar" id="saveBar"><button class="btn primary lg" id="btnSave" type="button">保存设置</button><span class="hint" id="saveHint"></span></div>
     </section>
   </div>`;
   paintIcons(root);

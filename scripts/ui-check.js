@@ -375,6 +375,11 @@ const ok = (c, m) => {
   await goto('#/projects');
   await goto('#/settings');
   ok(await js(`document.querySelector('#setNav .on').dataset.sec === 'model' && !document.querySelector('#saveBar').hidden`), '设置默认进入「模型」并显示保存栏');
+  ok(await js(`(() => { const b = document.querySelector('#btnSave').getBoundingClientRect(), c = document.querySelector('.st-card').getBoundingClientRect(); return b.top < c.top && Math.abs(b.right - c.right) < 4; })()`), '设置：「保存设置」在标题行最右边，不压在内容上');
+  await js(`window.scrollTo(0, 900)`);
+  await sleep(200);
+  ok(await js(`(() => { const b = document.querySelector('#btnSave').getBoundingClientRect(); return b.top >= 0 && b.bottom < 120; })()`), '设置：往下滚动时「保存设置」吸在页面顶部，随时能点');
+  await js(`window.scrollTo(0, 0)`);
   ok(await js(`document.querySelectorAll('[data-blk]').length === 5 && document.querySelectorAll('[data-badge]').length === 4`), '模型分区有 5 个块（含百炼一键配置），4 个带状态');
   ok(await js(`!!document.querySelector('[data-preview="edge"]') && !!document.querySelector('[data-preview="remote"]')`), '配音设置里 Edge 音色和百炼音色都有试听按钮');
   await shot('ui-settings-model');
