@@ -93,7 +93,23 @@ const ok = (c, m) => {
   await shot('ui-create-tpl-scroll');
   await click('[data-tpl="heal"]');
   ok(await js(`document.querySelector('.tpl.on').dataset.tpl === 'heal' && [...document.querySelectorAll('.tpl.on')].every(x => x.dataset.tpl === 'heal') && document.querySelectorAll('.tpl.on .tpl-tag').length > 0`), '选「心灵鸡汤」后选中状态保留（带「已选」标记）');
-  await js(`document.querySelector('#tplRail').dispatchEvent(new MouseEvent('mouseleave'))`);  ok(await js(`document.querySelector('[data-seg="orientation"] .on').dataset.v === 'portrait' && document.querySelectorAll('[data-sample]').length === 3`), '心灵鸡汤默认竖屏，有 3 条示例文案');
+  await js(`document.querySelector('#tplRail').dispatchEvent(new MouseEvent('mouseleave'))`);
+  // 每个模板一套主题：配色 / 背景装饰 / 问候语随模板变化，离开创作页后恢复
+  const themeOf = (id) => js(`(() => { document.querySelector('[data-tpl="${id}"]').click(); const cs = getComputedStyle(document.body); return JSON.stringify({ t: document.body.dataset.theme, bg: cs.getPropertyValue('--bg').trim(), ac: cs.getPropertyValue('--accent').trim(), deco: cs.getPropertyValue('--deco').trim().length > 20, h: document.querySelector('#heroTitle').textContent }); })()`).then(JSON.parse);
+  const themes = {};
+  for (const id of ['poem', 'story', 'explainer', 'talk', 'heal', 'free']) {
+    themes[id] = await themeOf(id);
+    await sleep(250);
+    await shot(`ui-theme-${id}`);
+  }
+  ok(Object.entries(themes).every(([id, v]) => v.t === id && v.deco && v.h), '6 个模板各有主题标记、背景装饰和问候语');
+  ok(new Set(Object.values(themes).map((v) => v.bg)).size === 6 && new Set(Object.values(themes).map((v) => v.ac)).size === 6, '6 个主题的底色、强调色都不一样');
+  await goto('#/projects');
+  ok(await js(`!document.body.dataset.theme`), '离开创作页后主题配色恢复默认');
+  await goto('#/');
+  await click('[data-tpl="heal"]');
+  ok(await js(`document.body.dataset.theme === 'heal'`), '回到创作页后主题按当前模板恢复');
+  ok(await js(`document.querySelector('[data-seg="orientation"] .on').dataset.v === 'portrait' && document.querySelectorAll('[data-sample]').length === 3`), '心灵鸡汤默认竖屏，有 3 条示例文案');
   await click('[data-sample="0"]');
   ok(await js(`document.querySelector('[data-k="script"]').value.includes('晚安') && document.querySelector('[data-k="style"]').value.includes('治愈')`), '填入治愈系示例文案，画风为治愈系');
   // 预计费用：随文案实时显示

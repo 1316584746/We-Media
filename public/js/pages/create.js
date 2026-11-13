@@ -37,6 +37,16 @@ function resetForm(id) {
 
 const VISUAL_COST = { image: '费用最低', i2v: '效果最好 · 按秒计费', video: '按秒计费' };
 
+// 每个主题的问候语：[标题, 副标题]
+const THEME_COPY = {
+  poem: ['想为哪一首诗，配一幅画？', '挑一首喜欢的古诗，慢慢读，画面和朗读交给 AI'],
+  story: ['今天，讲个什么故事呢？', '写一个暖暖的小故事，让画笔和声音陪它慢慢展开'],
+  explainer: ['想把什么道理，讲清楚？', '一个知识点，一组清楚的画面，几分钟就能看明白'],
+  talk: ['开口就是重点，说点什么？', '观点先行、节奏干脆，配上字幕，竖屏直接发'],
+  heal: ['今天，也辛苦啦', '写下一句温柔的话，让它在柔柔的画面里陪你和别人'],
+  free: ['想做一支什么视频？', '想到什么就写什么，分镜、画面、配音、字幕、成片交给 AI'],
+};
+
 // clone=true：轮播首尾相接用的副本（不参与读屏 / Tab）
 function templatesHtml(clone = false) {
   return state.meta.templates
@@ -150,7 +160,7 @@ export async function mount(root) {
   const featured = state.meta.featured || [];
 
   root.innerHTML = `<div class="page">
-    <div class="hero"><h1>想做一支什么视频？</h1><p>选一个模板，写下文案，剩下的分镜、画面、配音、字幕、成片交给 AI</p></div>
+    <div class="hero"><h1 id="heroTitle"></h1><p id="heroSub"></p></div>
     <div class="tpl-rail" id="tplRail">
       <button class="tpl-nav prev" type="button" data-nav="-1" aria-label="向左滚动" hidden>${icon('back')}</button>
       <div class="tpl-grid" id="tpls"></div>
@@ -200,7 +210,24 @@ export async function mount(root) {
     rail.classList.toggle('can-l', !!period);
     rail.classList.toggle('can-r', !!period);
   };
+  // 选哪个模板，整页换成对应的配色、背景装饰和问候语（样式见 style.css 的 body[data-theme]）
+  let shownTheme = null;
+  const applyTheme = () => {
+    const c = THEME_COPY[tplId] || THEME_COPY.free;
+    document.body.dataset.theme = tplId;
+    document.body.style.setProperty('--wm', JSON.stringify(tplOf(tplId).glyph));
+    $('#heroTitle', root).textContent = c[0];
+    $('#heroSub', root).textContent = c[1];
+    const page = $('.page', root);
+    if (shownTheme && shownTheme !== tplId) {
+      page.classList.remove('theme-swap');
+      void page.offsetWidth; // 重新触发入场动画
+      page.classList.add('theme-swap');
+    }
+    shownTheme = tplId;
+  };
   const paintTpls = () => {
+    applyTheme();
     buildLoop();
     requestAnimationFrame(() => !period && buildLoop()); // 首次绘制时容器可能还没挂进页面，下一帧再量一次
   };

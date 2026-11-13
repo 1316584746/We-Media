@@ -28,6 +28,8 @@ async function render() {
   const match = ROUTES.map(([re, page, nav]) => [hash.match(re), page, nav]).find(([m]) => m);
   const [m, page, nav] = match || [[''], createPage, 'create'];
   if (nav !== 'settings') state.lastApp = hash; // 设置页「返回」回到这里
+  delete document.body.dataset.theme; // 创作页的主题配色只在创作页生效，由创作页自己设置
+  document.body.style.removeProperty('--wm');
   document.body.classList.toggle('in-editor', nav === 'editor');
   document.body.classList.toggle('in-cutter', /^#\/e\//.test(hash));
   document.body.classList.toggle('in-settings', nav === 'settings');

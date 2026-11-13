@@ -201,7 +201,7 @@ export const KIND = { title: '片头', shot: '镜头', ending: '片尾' };
 export const isBusy = (p) => p.status === 'running' || p.status === 'queued';
 
 export const tplOf = (id) => state.meta.templates.find((t) => t.id === id) || state.meta.templates.at(-1);
-export const tplColor = (t) => `linear-gradient(135deg, hsl(${t.hue} 62% 46%), hsl(${(t.hue + 36) % 360} 58% 30%))`;
+export const tplColor = (t) => `linear-gradient(135deg, hsl(${t.hue} 74% 62%), hsl(${(t.hue + 34) % 360} 66% 48%))`;
 
 /** 当前配音服务可选的音色列表；不支持项目内选音色的服务返回 null */
 export function voiceChoices() {
