@@ -240,7 +240,7 @@ const ok = (c, m) => {
   // ---- 扩展页：技能 / MCP ----
   await goto('#/extensions'); // 旧地址应跳到设置 → 技能
   ok(await waitFor(`location.hash === '#/settings/skills'`, 3000), '旧的 #/extensions 地址跳转到设置·技能');
-  ok(await js(`getComputedStyle(document.querySelector('.rail')).display === 'none' && document.querySelectorAll('#setNav button').length === 4`), '设置页是二级页：隐藏主导航，左侧有 4 个分区');
+  ok(await js(`getComputedStyle(document.querySelector('.rail')).display === 'none' && document.querySelectorAll('#setNav button').length === 5`), '设置页是二级页：隐藏主导航，左侧有 5 个分区');
   ok(await js(`document.querySelector('#setNav .on').dataset.sec === 'skills' && document.querySelector('#saveBar').hidden`), '技能分区默认选中，无保存栏');
   await click('[data-act="import-skill"]');
   await waitFor(`!!document.querySelector('dialog.dlg[open]')`, 3000);
@@ -655,6 +655,39 @@ const ok = (c, m) => {
   const dlBuf = Buffer.from(await dl.arrayBuffer());
   ok(dl.status === 200 && dlBuf.length > 5000 && dlBuf.slice(4, 8).toString() === 'ftyp', `下载导出的 mp4（${Math.round(dlBuf.length / 1024)} KB）`);
   await click('dialog.export-dlg [data-close]');
+
+  // ---- 设置 → 发布：定时发布计划 ----
+  await goto('#/settings/publish');
+  ok(await waitFor(`!!document.querySelector('#host-publish [data-act="new"]') && !document.querySelector('.st-pane[data-sec="publish"]').hidden`, 5000), '设置里有「发布」分区');
+  ok(await js(`!!document.querySelector('#pbWx input[name="appId"]') && document.querySelector('#pbWx input[name="appSecret"]').type === 'password' && document.querySelector('#saveBar').hidden`), '发布：公众号配置表单（密钥是密码框），不显示「保存设置」栏');
+  await click('#host-publish [data-act="new"]');
+  ok(await waitFor(`!!document.querySelector('dialog.dlg[open] #pbPlats')`, 3000), '发布：点「新建发布计划」弹出对话框');
+  ok(await js(`document.querySelectorAll('dialog.dlg[open] select[name=src] option').length >= 1 && document.querySelectorAll('#pbPlats .chip').length >= 5`), '发布：能选视频和 5 个平台');
+  await click('dialog.dlg[open] #pbOk');
+  ok(await waitFor(`document.querySelector('#pbErr').textContent.includes('平台')`, 2000), '发布：没选平台给出提示');
+  await click('#pbPlats [data-p="xhs"]');
+  ok(await js(`document.querySelector('#pbPlats [data-p="xhs"]').classList.contains('on')`), '发布：点平台标签选中');
+  await js(`(() => { const i = document.querySelector('dialog.dlg[open] input[name=when]'); const d = new Date(Date.now() - 120000); const p = (n) => String(n).padStart(2, '0'); i.value = d.getFullYear() + '-' + p(d.getMonth() + 1) + '-' + p(d.getDate()) + 'T' + p(d.getHours()) + ':' + p(d.getMinutes()); return true; })()`);
+  await setVal('dialog.dlg[open] input[name=title]', 'UI 发布测试');
+  await setVal('dialog.dlg[open] textarea[name=desc]', '这是文案');
+  await click('dialog.dlg[open] #pbOk');
+  ok(await waitFor(`!!document.querySelector('.pb-task[data-id]') && document.querySelector('.pb-task b').textContent === 'UI 发布测试'`, 4000), '发布：创建后列表出现计划');
+  await fetch(`${BASE}/api/publish/tick`, { method: 'POST' });
+  await goto('#/');
+  await goto('#/settings/publish');
+  ok(await waitFor(`!!document.querySelector('.pb-task [data-act="done"]')`, 5000), '发布：到点后小红书出现「已发布」按钮（待手动发布）');
+  ok(await js(`(() => { const t = document.querySelector('.pb-task'); return t.textContent.includes('待手动发布') && t.querySelector('a[href*="xiaohongshu.com"]') && t.querySelector('a[download]') && t.querySelector('[data-act="copy"]') ? true : false; })()`), '发布：有「打开创作中心 / 复制标题文案 / 下载视频」');
+  await shot('ui-publish');
+  const alerts = await (await fetch(`${BASE}/api/publish/alerts`)).json();
+  ok(alerts.length === 1 && alerts[0].title === 'UI 发布测试', '发布：提醒接口里有这条');
+  await click('.pb-task [data-act="done"]');
+  ok(await waitFor(`document.querySelector('.pb-task .badge.done') && !document.querySelector('.pb-task [data-act="done"]')`, 4000), '发布：点「已发布」后计划完成');
+  await click('.pb-task [data-act="del"]');
+  await waitFor(`!!document.querySelector('dialog.dlg[open] button[value="yes"]')`, 3000);
+  await click('dialog.dlg[open] button[value="yes"]');
+  ok(await waitFor(`!document.querySelector('.pb-task')`, 4000), '发布：删除计划');
+  await goto(`#/e/${eid}`);
+  await waitFor(`!!document.querySelector('.ct-top a.icon-btn')`, 5000);
 
   // 返回列表：卡片 → 删除
   await click('.ct-top a.icon-btn');

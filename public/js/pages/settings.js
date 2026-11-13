@@ -1,5 +1,6 @@
 import { $, $$, api, esc, icon, paintIcons, state, toast, loadMeta, paintRailStatus, previewVoice, stopPreview } from '../core.js';
 import { mountPanel } from './extensions.js';
+import { mountPublishPanel } from './publish-panel.js';
 import { MODE_LABEL, costHtml, describe, overviewHtml, kindOf } from '../pricing.js';
 
 const modeOpts = (name) => Object.entries(MODE_LABEL[name]).map(([v, t]) => `<option value="${v}">${t}</option>`).join('');
@@ -25,9 +26,11 @@ const SECTIONS = [
   ['model', '模型'],
   ['skills', '技能'],
   ['mcp', 'MCP 服务'],
+  ['publish', '发布'],
   ['prefs', '偏好'],
 ];
 const SECTION_DESC = {
+  publish: '把做好的视频排进发布计划，到点处理：微信公众号走官方接口存草稿；抖音、小红书、视频号、B 站到点提醒你手动发布（这些平台没有个人可用的公开接口）。',
   skills: '技能是写给分镜 AI 的额外指引（SKILL.md 格式）。在「创作」页创建项目时勾选后，会附加到分镜提示词里；需要先在「模型」里启用分镜 LLM。',
   mcp: 'MCP 服务给分镜 AI 提供「工具」（搜索、读网页、查资料……）。创建项目时打开「工具增强」，AI 会在分镜前按需调用它们检索背景资料；需要启用分镜 LLM，且模型支持函数调用。',
 };
@@ -156,6 +159,7 @@ export async function mount(root, params = []) {
         <form id="form" autocomplete="off" onsubmit="return false">${PANES}</form>
         ${extPane('skills', '技能')}
         ${extPane('mcp', 'MCP 服务')}
+        ${extPane('publish', '发布')}
       </div>
       <div class="save-bar" id="saveBar"><button class="btn primary lg" id="btnSave" type="button">保存设置</button><span class="hint" id="saveHint"></span></div>
     </section>
@@ -275,6 +279,7 @@ export async function mount(root, params = []) {
   const panels = await Promise.all([
     mountPanel($('#host-skills', root), 'skills', onExtChange),
     mountPanel($('#host-mcp', root), 'mcp', onExtChange),
+    mountPublishPanel($('#host-publish', root)).catch(() => null),
   ]);
   Object.entries(PRESETS).forEach(([sel, { field: target, map }]) => {
     field(sel).addEventListener('change', (e) => {

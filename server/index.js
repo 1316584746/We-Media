@@ -14,6 +14,7 @@ const { TEMPLATES, STYLE_PRESETS, VOICES } = require('./templates');
 
 const extensions = require('./extensions');
 const agentSkills = require('./agent-skills');
+const publish = require('./publish');
 const mcp = require('./mcp');
 
 const app = express();
@@ -368,9 +369,29 @@ app.post(
   }),
 );
 
+/* ---------- 定时发布 ---------- */
+app.get('/api/publish', (req, res) =>
+  res.json({ platforms: publish.PLATFORMS, wechat: publish.publicWechat(publish.load().wechat), tasks: publish.listTasks(), sources: publish.listSources(), now: Date.now() }),
+);
+app.put('/api/publish/wechat', wrap((req, res) => res.json(publish.saveWechat(req.body || {}))));
+app.post('/api/publish/wechat/test', wrap(async (req, res) => res.json(await publish.testWechat().catch((e) => ({ ok: false, message: e.message })))));
+app.post('/api/publish/tasks', wrap((req, res) => res.json(publish.createTask(req.body || {}))));
+app.delete(
+  '/api/publish/tasks/:id',
+  wrap((req, res) => {
+    publish.deleteTask(req.params.id);
+    res.json({ ok: true });
+  }),
+);
+app.post('/api/publish/tasks/:id/run', wrap(async (req, res) => res.json(await publish.runTask(req.params.id))));
+app.post('/api/publish/tasks/:id/done', wrap((req, res) => res.json(publish.markDone(req.params.id, String((req.body || {}).platform || '')))));
+app.post('/api/publish/tick', wrap(async (req, res) => res.json({ ran: await publish.tick() })));
+app.get('/api/publish/alerts', (req, res) => res.json(publish.alerts()));
+
 const port = Number(process.env.WM_PORT) || 3000;
 const host = process.env.WM_HOST || '127.0.0.1';
 app.listen(port, host, () => {
+  publish.startScheduler();
   console.log(`AI 视频工坊已启动： http://localhost:${port}${process.env.WM_HOST ? `（监听 ${host}）` : '（仅本机访问）'}`);
   console.log(`ffmpeg: ${ff.ffmpegPath}`);
 });

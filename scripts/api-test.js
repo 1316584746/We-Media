@@ -109,7 +109,6 @@ async function waitDone(id, timeoutMs = 180000) {
   r = await api('POST', `/api/projects/${poem.id}/storyboard`);
   ok(r.status === 200 && r.json.status === 'draft', '重新生成分镜');
   await api('DELETE', `/api/projects/${poem.id}`);
-  await api('DELETE', `/api/projects/${talk.id}`);
 
   /* ---------- 扩展：技能 ---------- */
   const md = '---\nname: 国风分镜规范\ndescription: >-\n  古诗词分镜时的构图要求\n---\n# 规则\n1. 多用留白构图\n2. 色调偏青绿';
@@ -283,6 +282,88 @@ async function waitDone(id, timeoutMs = 180000) {
       .end();
   });
   ok(status === 403, `非本机 Host 请求被拒绝 -> ${status}`);
+
+  // 定时发布：公众号走（假的）官方接口，其余平台到点提醒
+  {
+    const http = require('http');
+    const wxLog = [];
+    const wx = http.createServer((req, res) => {
+      const u = new URL(req.url, 'http://x');
+      const chunks = [];
+      req.on('data', (c) => chunks.push(c));
+      req.on('end', () => {
+        wxLog.push(u.pathname + (u.searchParams.get('type') ? `?type=${u.searchParams.get('type')}` : ''));
+        const send = (o) => res.writeHead(200, { 'Content-Type': 'application/json' }).end(JSON.stringify(o));
+        if (u.pathname === '/cgi-bin/token') return u.searchParams.get('secret') === 'good-secret' ? send({ access_token: 'TK', expires_in: 7200 }) : send({ errcode: 40125, errmsg: 'invalid appsecret' });
+        if (u.searchParams.get('access_token') !== 'TK') return send({ errcode: 40001, errmsg: 'bad token' });
+        if (u.pathname === '/cgi-bin/material/add_material') return send({ media_id: `M_${u.searchParams.get('type')}`, url: 'http://x/y' });
+        if (u.pathname === '/cgi-bin/draft/add') {
+          const body = JSON.parse(Buffer.concat(chunks).toString() || '{}');
+          wxLog.push(`draft:${body.articles?.[0]?.title}|${body.articles?.[0]?.thumb_media_id}`);
+          return send({ media_id: 'DRAFT1' });
+        }
+        send({ errcode: 404, errmsg: 'nope' });
+      });
+    });
+    await new Promise((r) => wx.listen(0, '127.0.0.1', r));
+    const wxUrl = `http://127.0.0.1:${wx.address().port}`;
+
+    let pb = (await api('GET', '/api/publish')).json;
+    ok(pb.platforms.length >= 5 && pb.platforms.some((p) => p.key === 'wechat' && p.mode === 'api') && pb.sources.some((s) => s.id === talk.id), `发布：平台 ${pb.platforms.map((p) => p.key).join('/')}，可选视频 ${pb.sources.length} 个`);
+
+    let w = await api('PUT', '/api/publish/wechat', { appId: 'wx123', appSecret: 'bad-secret', baseUrl: wxUrl });
+    ok(w.status === 200 && w.json.appId === 'wx123' && w.json.configured && w.json.appSecret.startsWith('********') && !JSON.stringify(w.json).includes('bad-secret'), '发布：公众号配置保存，密钥脱敏');
+    ok((await api('PUT', '/api/publish/wechat', { baseUrl: 'ftp://x' })).status === 400, '发布：接口地址格式校验');
+    let t1 = (await api('POST', '/api/publish/wechat/test')).json;
+    ok(t1.ok === false && /AppSecret/.test(t1.message), `发布：密钥错误给出中文原因 ${t1.message}`);
+    w = await api('PUT', '/api/publish/wechat', { appSecret: 'good-secret' });
+    ok(w.json.appSecret === '********cret', '发布：只改密钥');
+    w = await api('PUT', '/api/publish/wechat', { appId: 'wx123', appSecret: w.json.appSecret });
+    t1 = (await api('POST', '/api/publish/wechat/test')).json;
+    ok(t1.ok === true, '发布：保存时带回脱敏密钥不会覆盖真实密钥，测试连接通过');
+
+    ok((await api('POST', '/api/publish/tasks', { sourceType: 'project', sourceId: talk.id, platforms: [], runAt: Date.now() })).status === 400, '发布：不选平台 -> 400');
+    ok((await api('POST', '/api/publish/tasks', { sourceType: 'project', sourceId: 'nope', platforms: ['douyin'], runAt: Date.now() })).status === 404, '发布：视频不存在 -> 404');
+    const draftP = (await api('POST', '/api/projects', { template: 'free', script: '一句话。', options: { visual: 'image' } })).json;
+    ok((await api('POST', '/api/publish/tasks', { sourceType: 'project', sourceId: draftP.id, platforms: ['douyin'], runAt: Date.now() })).status === 400, '发布：没做好的视频不能排期');
+
+    const future = (await api('POST', '/api/publish/tasks', { sourceType: 'project', sourceId: talk.id, title: '明天发', desc: '第一段\n第二段', tags: '自律, #成长', platforms: ['wechat', 'douyin'], runAt: Date.now() + 3600000 })).json;
+    ok(future.status === 'pending' && future.tags.join() === '自律,成长' && future.videoUrl.includes(talk.id), `发布：创建计划 ${future.id}`);
+    await api('POST', '/api/publish/tick');
+    ok((await api('GET', '/api/publish')).json.tasks.find((t) => t.id === future.id).status === 'pending', '发布：没到点不会执行');
+
+    const due = (await api('POST', '/api/publish/tasks', { sourceType: 'project', sourceId: talk.id, title: '到点了', desc: '文案', platforms: ['wechat', 'xhs'], runAt: Date.now() - 1000 })).json;
+    const tk = await api('POST', '/api/publish/tick');
+    ok(tk.json.ran === 1, `发布：tick 执行到点的计划 ran=${tk.json.ran}`);
+    const dueV = (await api('GET', '/api/publish')).json.tasks.find((t) => t.id === due.id);
+    const wxR = dueV.platforms.find((p) => p.key === 'wechat');
+    const xhsR = dueV.platforms.find((p) => p.key === 'xhs');
+    ok(wxR.status === 'done' && /草稿箱/.test(wxR.message), `发布：公众号存入草稿 ${wxR.message}`);
+    ok(wxLog.includes('/cgi-bin/material/add_material?type=image') && wxLog.includes('/cgi-bin/material/add_material?type=video') && wxLog.includes('draft:到点了|M_image'), `发布：调用顺序 ${wxLog.join(' ')}`);
+    ok(xhsR.status === 'remind' && dueV.status === 'waiting', '发布：小红书到点提醒，计划进入「待手动发布」');
+    const al = (await api('GET', '/api/publish/alerts')).json;
+    ok(al.some((a) => a.id === due.id && a.platforms.some((p) => p.key === 'xhs')), '发布：提醒列表里有小红书');
+    const dn = await api('POST', `/api/publish/tasks/${due.id}/done`, { platform: 'xhs' });
+    ok(dn.status === 200 && dn.json.status === 'done', '发布：标记已发布后计划完成');
+    ok(!(await api('GET', '/api/publish/alerts')).json.some((a) => a.id === due.id), '发布：完成后不再提醒');
+    ok((await api('POST', `/api/publish/tasks/${due.id}/done`, { platform: 'bili' })).status === 400, '发布：标记没选的平台 -> 400');
+
+    await api('PUT', '/api/publish/wechat', { appSecret: 'bad-secret' });
+    const bad = (await api('POST', '/api/publish/tasks', { sourceType: 'project', sourceId: talk.id, platforms: ['wechat'], runAt: Date.now() - 1000 })).json;
+    await api('POST', '/api/publish/tick');
+    const badV = (await api('GET', '/api/publish')).json.tasks.find((t) => t.id === bad.id);
+    ok(badV.status === 'failed' && /AppSecret/.test(badV.platforms[0].message), `发布：公众号失败会记录原因 ${badV.platforms[0].message}`);
+    await api('PUT', '/api/publish/wechat', { appSecret: 'good-secret' });
+    const re = await api('POST', `/api/publish/tasks/${bad.id}/run`);
+    ok(re.status === 200 && re.json.status === 'done', '发布：修好配置后可重试');
+
+    for (const id of [future.id, due.id, bad.id]) await api('DELETE', `/api/publish/tasks/${id}`);
+    ok((await api('DELETE', `/api/publish/tasks/${future.id}`)).status === 404, '发布：删除计划');
+    await api('PUT', '/api/publish/wechat', { appId: '', appSecret: '', baseUrl: '' });
+    wx.close();
+    await api('DELETE', `/api/projects/${draftP.id}`);
+    await api('DELETE', `/api/projects/${talk.id}`);
+  }
 
   console.log(failed ? `\n${failed} 项失败` : '\n全部通过');
   process.exit(failed ? 1 : 0);

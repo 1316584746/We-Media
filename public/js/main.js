@@ -55,4 +55,31 @@ window.addEventListener('hashchange', render);
   }
   paintRailStatus();
   render();
+  pollPublishAlerts();
 })();
+
+/* 定时发布：到点要手动发布 / 失败的计划，提醒一次（toast + 系统通知） */
+function pollPublishAlerts() {
+  const KEY = 'wm.pubNotified';
+  const seen = new Set(JSON.parse(localStorage.getItem(KEY) || '[]'));
+  const check = async () => {
+    try {
+      const list = await fetch('/api/publish/alerts').then((r) => r.json());
+      if (!Array.isArray(list)) return;
+      const fresh = list.filter((a) => !seen.has(`${a.id}:${a.status}`));
+      for (const a of fresh) {
+        seen.add(`${a.id}:${a.status}`);
+        const names = a.platforms.map((p) => p.name).join('、');
+        const msg = a.status === 'failed' ? `「${a.title}」发布失败（${names}），去「设置 → 发布」查看原因` : `「${a.title}」到发布时间了：请手动发布到 ${names}（设置 → 发布）`;
+        toast(msg, a.status === 'failed' ? 'err' : 'ok');
+        if (window.Notification && Notification.permission === 'granted') new Notification('AI 视频工坊 · 定时发布', { body: msg });
+      }
+      if (fresh.length) localStorage.setItem(KEY, JSON.stringify([...seen].slice(-200)));
+    } catch {
+      /* 服务暂时不可用，下次再查 */
+    }
+  };
+  if (window.Notification && Notification.permission === 'default') Notification.requestPermission().catch(() => {});
+  check();
+  setInterval(check, 30000);
+}

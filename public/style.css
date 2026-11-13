@@ -1011,3 +1011,10 @@ body[data-theme='free'] {
 .ag-d-foot { display: flex; align-items: center; gap: 10px; padding: 12px 24px 18px; border-top: 1px solid var(--line); }
 .ag-d-foot .spacer { flex: 1; }
 @media (max-width: 720px) { .ag-d-head { flex-wrap: wrap; } .ag-d-act { width: 100%; justify-content: flex-end; } }
+/* ============ 定时发布 ============ */
+.pb-plats { display: flex; flex-direction: column; gap: 8px; }
+.pb-plat { background: var(--bg2); border: 1px solid var(--line); border-radius: 10px; padding: 10px 12px; display: flex; flex-direction: column; gap: 6px; }
+.pb-plat-h { display: flex; align-items: center; gap: 8px; font-size: 13.5px; }
+.pb-plat .hint, .pb-plat .err-msg { font-size: 12.5px; line-height: 1.6; word-break: break-all; }
+.pb-plat .ext-meta a.btn { text-decoration: none; display: inline-flex; align-items: center; }
+#pbPlats .chip.on { background: var(--accent-bg); border-color: var(--accent); color: var(--accent-text); }
