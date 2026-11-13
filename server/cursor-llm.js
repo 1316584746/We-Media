@@ -25,10 +25,16 @@ function sdk() {
 const brief = (e) => String(e?.message || e).split('\n')[0].slice(0, 300);
 
 /** @returns {Promise<{id: string, name: string}[]>} */
+const modelCache = new Map(); // key -> { at, list }：读一次要好几秒，缓存 10 分钟，打开设置页就是秒出
 async function listModels(apiKey) {
+  const key = String(apiKey).trim();
+  const hit = modelCache.get(key);
+  if (hit && Date.now() - hit.at < 10 * 60 * 1000) return hit.list;
   const { Cursor } = sdk();
-  const list = await Cursor.models.list({ apiKey: String(apiKey).trim() });
-  return (list || []).map((m) => ({ id: m.id, name: m.displayName || m.id })).filter((m) => m.id);
+  const raw = await Cursor.models.list({ apiKey: key });
+  const list = (raw || []).map((m) => ({ id: m.id, name: m.displayName || m.id })).filter((m) => m.id);
+  if (list.length) modelCache.set(key, { at: Date.now(), list });
+  return list;
 }
 
 const PREAMBLE =

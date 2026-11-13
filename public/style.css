@@ -494,6 +494,9 @@ body.in-settings .main { margin-left: 0; padding-bottom: 0; }
 .pw-eye.on { color: var(--accent); }
 .quick-row { display: flex; gap: 10px; }
 .quick-row input { flex: 1; }
+.mdl-row { display: flex; gap: 10px; align-items: center; }
+.mdl-row select { flex: 1; min-width: 0; }
+.mdl-row .btn { display: inline-flex; align-items: center; gap: 6px; white-space: nowrap; }
 .mdl-head { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin-top: 4px; }
 .mdl-head label { font-weight: 600; }
 .mdl-head .btn { display: inline-flex; align-items: center; gap: 6px; }

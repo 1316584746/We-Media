@@ -58,14 +58,18 @@ const PANES = `
     <select name="llm.provider"><option value="openai">阿里百炼 / 其他 OpenAI 兼容服务</option><option value="cursor">Cursor</option></select>
   </div>
   <div class="field"><label>API Key <span class="hint" id="llmKeyHint"></span></label><input name="llm.apiKey" type="password" autocomplete="off" placeholder="sk-xxxxxxxx" /></div>
-  <div class="mdl-head"><label>默认模型</label><button type="button" class="btn ghost" id="btnLlmModels"><span class="ic" data-ic="refresh"></span>获取列表</button></div>
-  <select name="llm.model" id="llmModelSel"></select>
+  <div class="field"><label>默认模型</label>
+    <div class="mdl-row"><select name="llm.model" id="llmModelSel"></select><button type="button" class="btn ghost" id="btnLlmModels"><span class="ic" data-ic="refresh"></span>获取列表</button></div>
+  </div>
   <div class="hint" id="llmModelsHint"></div>
   <details class="mdl-adv" id="llmAdv"><summary>接口地址（默认阿里百炼，也可以换成其他 OpenAI 兼容服务）</summary>
     <div class="field"><label>Base URL</label><input name="llm.baseUrl" /></div>
   </details>
   <div class="cost" data-cost="llm"></div>
-  <div class="mdl-all" id="llmAll"><button type="button" class="btn ghost" id="btnApplyDash">同时用于文生图、配音、图生视频</button><span class="hint">把上面这个百炼 Key 一并填给下面三项，并切到百炼的推荐配置（要先重新输入一次完整的 Key）。</span></div>
+</div></section>
+<section class="st-blk" data-blk="dash"><div class="st-sub"><span>阿里百炼一键配置</span></div><div class="st-inner">
+  <label class="lbl-sm">API Key <span class="hint">一个百炼 Key 同时填给下面的文生图、配音、图生视频，并切到百炼推荐配置。AI Agent 用什么服务商都不影响。填入后点「套用」，再点「保存设置」。</span></label>
+  <div class="quick-row"><input id="dashKey" type="password" placeholder="sk-xxxxxxxx" autocomplete="off" /><button type="button" class="btn" id="btnApplyDash">套用</button></div>
 </div></section>
 
 <section class="st-blk" data-blk="image"><div class="st-sub"><span>文生图</span><span class="badge" data-badge="image"></span></div><div class="st-inner">
@@ -317,7 +321,6 @@ export async function mount(root, params = []) {
     $('#llmKeyHint', root).innerHTML = KEY_TIPS[cur ? 'cursor' : 'openai'];
     field('llm.apiKey').placeholder = cur ? 'crsr_xxxxxxxx' : 'sk-xxxxxxxx';
     $('#llmAdv', root).hidden = cur;
-    $('#llmAll', root).hidden = cur;
     paintCosts();
   };
   provSel.addEventListener('change', () => {
@@ -326,6 +329,9 @@ export async function mount(root, params = []) {
     mdlHint.textContent = field('llm.apiKey').value.trim() ? '换了服务商，点「获取列表」重新读取模型。' : '填好 API Key 后点「获取列表」。';
     if (field('llm.apiKey').value.trim()) fetchModels({ quiet: true });
   });
+  // 输入 / 粘贴 Key：识别服务商，停下 0.6 秒后自动获取模型（不用再点按钮或离开输入框）
+  let autoTimer = 0;
+  let lastKey = '';
   field('llm.apiKey').addEventListener('input', () => {
     const k = field('llm.apiKey').value.trim();
     const want = /^(crsr_|cursor_)/i.test(k) ? 'cursor' : /^sk-/i.test(k) ? 'openai' : provSel.value;
@@ -334,6 +340,8 @@ export async function mount(root, params = []) {
       syncProvider();
       fillModelSelect([], '');
     }
+    clearTimeout(autoTimer);
+    if (k.length >= 12 && !k.startsWith('********')) autoTimer = setTimeout(() => fetchModels({ quiet: true }), 600);
   });
   const fetchModels = async ({ quiet = false } = {}) => {
     const apiKey = field('llm.apiKey').value.trim();
@@ -342,8 +350,10 @@ export async function mount(root, params = []) {
       return;
     }
     const seq = ++mdlSeq;
+    lastKey = apiKey;
     mdlBtn.disabled = true;
-    mdlHint.textContent = '获取中…';
+    mdlHint.textContent = provSel.value === 'cursor' ? '正在获取这个 Cursor 账号的模型，大约要几秒…' : '获取中…';
+    modelSel.disabled = true;
     try {
       const r = await api('/api/llm/models', { method: 'POST', body: { baseUrl: field('llm.baseUrl').value.trim(), apiKey, provider: provSel.value } });
       if (seq !== mdlSeq) return;
@@ -367,20 +377,28 @@ export async function mount(root, params = []) {
     } catch (e) {
       if (seq === mdlSeq) mdlHint.textContent = e.message;
     } finally {
-      if (seq === mdlSeq) mdlBtn.disabled = false;
+      if (seq === mdlSeq) {
+        mdlBtn.disabled = false;
+        modelSel.disabled = false;
+      }
     }
   };
   mdlBtn.addEventListener('click', () => fetchModels());
-  field('llm.apiKey').addEventListener('change', () => fetchModels({ quiet: true }));
+  field('llm.apiKey').addEventListener('change', () => {
+    clearTimeout(autoTimer);
+    if (field('llm.apiKey').value.trim() !== lastKey) fetchModels({ quiet: true });
+  });
   field('llm.baseUrl').addEventListener('change', () => fetchModels({ quiet: true }));
   syncProvider();
   if (s.llm.apiKey) fetchModels({ quiet: true });
   else mdlHint.textContent = '填好 API Key 后点「获取列表」。';
 
   $('#btnApplyDash', root).addEventListener('click', () => {
-    const key = field('llm.apiKey').value.trim();
+    const dashKey = $('#dashKey', root);
+    const llmKey = field('llm.apiKey').value.trim();
+    // 优先用这里填的 Key；没填时，如果 AI Agent 里正好是一个新输入的百炼 Key，也可以直接用
+    const key = dashKey.value.trim() || (provSel.value === 'openai' && !llmKey.startsWith('********') ? llmKey : '');
     if (!key) return toast('请先填入百炼 API Key', 'err');
-    if (key.startsWith('********')) return toast('已保存的 Key 只显示后 4 位，请重新输入一次完整的 Key 再点', 'err');
     const vals = {
       'image.mode': 'dashscope', 'image.baseUrl': '', 'image.apiKey': key, 'image.model': 'qwen-image-2.0',
       'tts.mode': 'dashscope', 'tts.baseUrl': '', 'tts.apiKey': key, 'tts.model': 'qwen3-tts-flash', 'tts.voice': 'Ethan',
@@ -393,8 +411,10 @@ export async function mount(root, params = []) {
       if (el.type === 'checkbox') el.checked = !!v;
       else el.value = v;
     });
+    dashKey.value = '';
     paintCosts();
-    $('#saveHint', root).textContent = '已把这个 Key 填给文生图、配音、图生视频并切到百炼推荐配置，点「保存设置」生效';
+    $('#saveHint', root).textContent = '已套用：文生图、配音、图生视频都用这个百炼 Key，并切到推荐配置。点「保存设置」生效';
+    toast('已套用百炼推荐配置，记得点「保存设置」', 'ok');
   });
 
   $('#btnSave', root).addEventListener('click', async () => {
