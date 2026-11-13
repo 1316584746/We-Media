@@ -112,6 +112,16 @@ const ok = (c, m) => {
   ok(await js(`document.querySelector('[data-seg="orientation"] .on').dataset.v === 'portrait' && document.querySelectorAll('[data-sample]').length === 3`), '心灵鸡汤默认竖屏，有 3 条示例文案');
   await click('[data-sample="0"]');
   ok(await js(`document.querySelector('[data-k="script"]').value.includes('晚安') && document.querySelector('[data-k="style"]').value.includes('治愈')`), '填入治愈系示例文案，画风为治愈系');
+  // 画风下拉：按模板推荐，手改后显示「自定义」
+  ok(await js(`(() => { const s = document.querySelector('select[data-style-sel]'); const g = s.querySelectorAll('optgroup'); return !!s && !document.querySelector('[data-style]') && g[0].label.includes('心灵鸡汤') && g[0].querySelectorAll('option').length === 4 && s.selectedOptions[0].textContent.includes('治愈柔光') && s.selectedOptions[0].textContent.includes('默认推荐'); })()`), '画风是下拉：心灵鸡汤推荐 4 种，默认「治愈柔光」排第一');
+  await js(`(() => { const s = document.querySelector('select[data-style-sel]'); s.value = [...s.options].find(o => o.textContent.startsWith('梦幻水彩')).value; s.dispatchEvent(new Event('change', { bubbles: true })); })()`);
+  ok(await js(`document.querySelector('[data-k="style"]').value.includes('梦幻水彩') && document.querySelector('select[data-style-sel]').selectedOptions[0].textContent.startsWith('梦幻水彩')`), '选「梦幻水彩」后画风文本同步');
+  await setVal('[data-k="style"]', '我自己写的画风');
+  ok(await js(`document.querySelector('select[data-style-sel]').selectedOptions[0].value === '__custom'`), '手改画风文本后下拉显示「自定义」');
+  await click('[data-tpl="poem"]');
+  ok(await js(`(() => { const g = document.querySelector('select[data-style-sel]').querySelectorAll('optgroup'); return g[0].label.includes('古诗词') && [...g[0].querySelectorAll('option')].map(o => o.textContent.split(' · ')[0]).join() === '国风水彩,水墨写意,工笔重彩,治愈柔光'; })()`), '切到古诗词：推荐国风水彩、水墨写意、工笔重彩、治愈柔光');
+  await click('[data-tpl="heal"]');
+  await click('[data-sample="0"]');
   // 预计费用：随文案实时显示
   ok(await waitFor(`document.querySelector('#estRow')?.textContent.includes('预计费用') && document.querySelector('#estRow').textContent.includes('镜头')`, 3000), '填了文案后显示「预计费用」，含镜头数');
   // 临时把设置改成收费配置，看付费时的展示（截图后还原）

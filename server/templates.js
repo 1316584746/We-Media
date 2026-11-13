@@ -240,7 +240,16 @@ const STYLE_PRESETS = [
   { name: '治愈柔光', value: `治愈系插画，柔和的暖色调与晨光黄昏光线，云朵、植物、窗边、小猫与小房子，安静温柔的氛围，细腻水彩质感，大面积留白，${NO_TEXT}` },
   { name: '日系动漫', value: `日系动漫风格插画，清透的色彩，细腻的光影与天空，精致的人物线条，${NO_TEXT}` },
   { name: '3D 卡通', value: `3D 卡通渲染风格，皮克斯质感，柔和打光，饱满可爱的色彩，${NO_TEXT}` },
-];
+  { name: '水墨写意', value: `中国水墨写意画，留白与淡墨渲染，远山近水，墨色浓淡相宜，点缀少量朱砂红，意境悠远，${NO_TEXT}` },
+  { name: '工笔重彩', value: `中国工笔重彩插画，线条精细，矿物颜料般浓郁的色彩，典雅的传统纹样与器物，画卷质感，${NO_TEXT}` },
+  { name: '蜡笔童话', value: `蜡笔与彩铅手绘的童话插画，纸张纹理，色彩明快跳跃，造型夸张可爱，充满童趣，${NO_TEXT}` },
+  { name: '剪纸拼贴', value: `层叠剪纸与布艺拼贴风格插画，柔和的纸张纹理与立体投影，温暖明快的配色，手作质感，${NO_TEXT}` },
+  { name: '手绘白板', value: `手绘白板科普风格，黑色线条加少量高亮色，简笔画人物与图标，清晰的示意图与箭头，干净的白色背景，${NO_TEXT}` },
+  { name: '等距信息图', value: `等距视角 3D 信息图风格，清爽的蓝白配色，简洁的模型与图标，柔和投影，${NO_TEXT}` },
+  { name: '杂志海报', value: `现代杂志海报质感，大面积纯色背景与简洁构图，高级配色，几何图形点缀，人物半身特写，${NO_TEXT}` },
+  { name: '梦幻水彩', value: `梦幻水彩插画，粉紫与奶油色渐变晕染，星光与花瓣，轻盈通透，柔和的光斑，${NO_TEXT}` },
+  { name: '莫兰迪低饱和', value: `莫兰迪低饱和配色的极简插画，柔和的灰粉、灰蓝、灰绿，干净的几何形体，安静治愈的氛围，大面积留白，${NO_TEXT}` },
+  { name: '数字插画', value: `精致的数字插画，色彩丰富，电影感构图，${NO_TEXT}` },];
 
 const VOICES = {
   edge: [
@@ -258,4 +267,18 @@ const VOICES = {
   ],
 };
 
+/** 每个模板推荐的画风（STYLE_PRESETS 的 name，第一个是默认）；创建页的画风下拉里「适合本模板」的排在最前 */
+const RECOMMENDED_STYLES = {
+  poem: ['国风水彩', '水墨写意', '工笔重彩', '治愈柔光'],
+  story: ['儿童绘本', '蜡笔童话', '剪纸拼贴', '3D 卡通', '梦幻水彩'],
+  explainer: ['扁平插画', '手绘白板', '等距信息图', '3D 卡通'],
+  talk: ['电影写实', '杂志海报', '扁平插画', '日系动漫'],
+  heal: ['治愈柔光', '梦幻水彩', '莫兰迪低饱和', '日系动漫'],
+  free: ['数字插画', '日系动漫', '电影写实', '3D 卡通'],
+};
+const presetValue = (name) => STYLE_PRESETS.find((s) => s.name === name).value;
+for (const t of TEMPLATES) {
+  t.styles = RECOMMENDED_STYLES[t.id];
+  t.defaults.style = presetValue(t.styles[0]); // 默认画风就是推荐的第一个，下拉里能对上
+}
 module.exports = { TEMPLATES, STYLE_PRESETS, VOICES, getTemplate, NO_TEXT };

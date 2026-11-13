@@ -60,6 +60,20 @@ function templatesHtml(clone = false) {
     .join('');
 }
 
+// 画风下拉：适合当前模板的排在最前（带「推荐」），其余画风放在「更多画风」，手改过的画风显示为「自定义」
+function styleSelectHtml(t) {
+  const all = state.meta.stylePresets;
+  const rec = (t.styles || []).map((n) => all.find((s) => s.name === n)).filter(Boolean);
+  const more = all.filter((s) => !rec.includes(s));
+  const cur = all.find((s) => s.value === form.style);
+  const opt = (s, tag = '') => `<option value="${esc(s.value)}" ${cur === s ? 'selected' : ''}>${esc(s.name)}${tag}</option>`;
+  return `<select data-style-sel>
+    ${cur ? '' : '<option value="__custom" selected>自定义（在下方文本框里改）</option>'}
+    ${rec.length ? `<optgroup label="适合「${esc(t.name)}」">${rec.map((s, i) => opt(s, i === 0 ? ' · 默认推荐' : ' · 推荐')).join('')}</optgroup>` : ''}
+    <optgroup label="${rec.length ? '更多画风' : '全部画风'}">${more.map((s) => opt(s)).join('')}</optgroup>
+  </select>`;
+}
+
 function composerHtml() {
   const t = tplOf(tplId);
   const voices = voiceChoices();
@@ -132,9 +146,7 @@ function composerHtml() {
         <span class="opt-note">${VISUAL[form.visual].desc}</span>
       </div>
       <div class="field"><span class="lbl">画风</span>
-        <div class="chips">${state.meta.stylePresets
-          .map((s) => `<button class="chip ${form.style === s.value ? 'on' : ''}" data-style="${esc(s.value)}">${esc(s.name)}</button>`)
-          .join('')}</div>
+        ${styleSelectHtml(t)}
         <textarea data-k="style" rows="2" style="min-height:52px">${esc(form.style)}</textarea>
       </div>
       <div class="field"><span class="lbl">配音</span><div class="voice-row">${voiceSel}${previewBtnHtml()}</div></div>
@@ -458,9 +470,24 @@ export async function mount(root) {
     if (!k || e.target.type === 'checkbox' || e.target.tagName === 'SELECT') return;
     form[k] = e.target.value;
     if (k === 'script') updateCount();
-    if (k === 'style') $$('[data-style]', compEl).forEach((c) => c.classList.toggle('on', c.dataset.style === form.style));
+    if (k === 'style') {
+      // 手改文本后，下拉跟着变：恰好等于某个预设就选中它，否则显示「自定义」
+      const sel = $('[data-style-sel]', compEl);
+      const hit = state.meta.stylePresets.find((s) => s.value === form.style);
+      $('option[value="__custom"]', sel)?.remove();
+      if (hit) sel.value = hit.value;
+      else {
+        sel.insertAdjacentHTML('afterbegin', '<option value="__custom">自定义（在下方文本框里改）</option>');
+        sel.value = '__custom';
+      }
+    }
   });
   compEl.addEventListener('change', (e) => {
+    if (e.target.matches('[data-style-sel]')) {
+      if (e.target.value === '__custom') return $('[data-k="style"]', compEl).focus();
+      form.style = e.target.value;
+      return paintComposer();
+    }
     const k = e.target.dataset.k;
     if (!k) return;
     form[k] = e.target.type === 'checkbox' ? e.target.checked : e.target.value;
@@ -472,11 +499,6 @@ export async function mount(root) {
     const seg = e.target.closest('[data-seg] button');
     if (seg) {
       form[seg.parentElement.dataset.seg] = seg.dataset.v;
-      return paintComposer();
-    }
-    const st = e.target.closest('[data-style]');
-    if (st) {
-      form.style = st.dataset.style;
       return paintComposer();
     }
     const skBtn = e.target.closest('[data-skill]');

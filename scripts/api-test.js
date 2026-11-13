@@ -167,6 +167,10 @@ async function waitDone(id, timeoutMs = 180000) {
 
   /* ---------- 创作精选 ---------- */
   ok(Array.isArray(meta.featured) && meta.featured.length >= 8, `meta 带创作精选 ${meta.featured?.length} 条`);
+  ok(
+    meta.templates.every((t) => t.styles.length >= 4 && t.styles.every((n) => meta.stylePresets.some((s) => s.name === n)) && t.defaults.style === meta.stylePresets.find((s) => s.name === t.styles[0]).value),
+    '每个模板有 4+ 个推荐画风，且默认画风就是推荐的第一个',
+  );
   const tplIds = meta.templates.map((t) => t.id);
   ok(meta.featured.every((f) => tplIds.includes(f.template) && f.script.trim() && f.style && !('coverPrompt' in f)), '精选条目模板有效、带文案和画风，且不下发封面提示词');
   for (const t of meta.templates.filter((x) => x.id !== 'free')) {
