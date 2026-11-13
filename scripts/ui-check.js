@@ -458,6 +458,37 @@ const ok = (c, m) => {
   await js(`document.querySelector('dialog.ag-dlg[open]')?.close()`);
   const extGone = await (await fetch(`${BASE}/api/extensions`)).json();
   ok(!extGone.skills.some((s) => s.source === 'market:hook-3s'), '服务端也删掉了');
+  ok(await waitFor(`!!document.querySelector('#agModel') && document.querySelector('#agModel').dataset.empty === '1' && document.querySelector('#agModel').textContent.includes('未配置')`, 4000), 'M Agent：输入框里有模型选择，没配置 Key 时提示去设置');
+  {
+    const fakeLlm = require('http').createServer((req, res) => res.writeHead(200, { 'Content-Type': 'application/json' }).end(JSON.stringify({ data: ['qwen-plus', 'qwen-max', 'qwen-turbo', 'text-embedding-v3'].map((id) => ({ id })) })));
+    await new Promise((r) => fakeLlm.listen(0, '127.0.0.1', r));
+    const putLlm = (llm) => fetch(`${BASE}/api/settings`, { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ llm }) });
+    await putLlm({ enabled: true, baseUrl: `http://127.0.0.1:${fakeLlm.address().port}`, apiKey: 'sk-ui', model: 'qwen-plus' });
+    await goto('#/settings');
+    await goto('#/agent');
+    ok(await waitFor(`[...document.querySelectorAll('#agModel option')].map(o=>o.value).join() === 'qwen-plus,qwen-max,qwen-turbo' && !document.querySelector('#agModel').dataset.empty`, 5000), 'M Agent：下拉里是这个 Key 的模型（默认模型第一，过滤掉向量模型）');
+    await js(`(() => { const s = document.querySelector('#agModel'); s.value = 'qwen-max'; s.dispatchEvent(new Event('change')); })()`);
+    ok(await js(`localStorage.getItem('wm.agent.model') === 'qwen-max'`), 'M Agent：选的模型会记住');
+    await shot('ui-agent-model');
+    await js(`localStorage.removeItem('wm.agent.model')`);
+    // 设置页：读取表单里 Key 的模型，点标签填进「模型」
+    await goto('#/settings/model');
+    await setVal('[name="llm.baseUrl"]', `http://127.0.0.1:${fakeLlm.address().port}`);
+    await setVal('[name="llm.apiKey"]', 'sk-ui-new');
+    await click('#btnLlmModels');
+    ok(await waitFor(`[...document.querySelectorAll('#llmModelChips .mdl-chip')].map(c=>c.textContent).join() === 'qwen-max,qwen-plus,qwen-turbo' && !document.querySelector('#llmModelChips').hidden`, 5000), '设置：读取这个 Key 的模型，列出对话模型（过滤掉向量模型）');
+    await js(`document.querySelector('#llmModelChips [data-m="qwen-turbo"]').click()`);
+    ok(await js(`document.querySelector('[name="llm.model"]').value === 'qwen-turbo' && document.querySelector('#llmModelChips .mdl-chip.on')?.dataset.m === 'qwen-turbo'`), '设置：点模型标签会填进「模型」');
+    await js(`document.querySelector('#btnLlmModels').scrollIntoView({ block: 'center' })`);
+    await sleep(300);
+    await shot('ui-settings-models');
+    await goto('#/settings');
+    await putLlm({ enabled: false, apiKey: '' });
+    fakeLlm.close();
+    await goto('#/settings');
+    await goto('#/agent');
+    await waitFor(`!!document.querySelector('.ag-card')`, 4000);
+  }
   // 灵感 → 没启用 LLM 时给出提示，并能直接去创作页
   await js(`(() => { const s = document.querySelector('#agTpl'); s.value = 'talk'; s.dispatchEvent(new Event('change')); })()`);
   await setVal('#agIdea', '睡眠');

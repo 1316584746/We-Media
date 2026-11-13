@@ -65,6 +65,8 @@ const PANES = `
     <div class="field"><label>API Key</label><input name="llm.apiKey" type="password" autocomplete="off" /></div>
     <div class="field"><label>模型</label><input name="llm.model" list="llmModels" /></div>
   </div>
+  <div class="mdl-row"><button type="button" class="btn" id="btnLlmModels">读取这个 Key 的模型</button><span class="hint" id="llmModelsHint">用上面填的 Base URL 和 API Key（不用先保存），列出它能用的对话模型，点一个就填到「模型」里。</span></div>
+  <div class="mdl-chips" id="llmModelChips" hidden></div>
   <datalist id="llmModels"><option value="qwen-plus" label="0.8 / 2 元每百万 token"></option><option value="qwen-max" label="2.4 / 9.6 元每百万 token"></option><option value="qwen3.5-plus" label="0.8 / 4.8 元每百万 token"></option><option value="qwen3.7-plus" label="2 / 8 元每百万 token，新用户 100 万 token 免费"></option></datalist>
   <div class="cost" data-cost="llm"></div>
 </div></section>
@@ -292,6 +294,52 @@ export async function mount(root, params = []) {
         if (!v.value || Object.values(VOICE_PRESETS).includes(v.value)) v.value = VOICE_PRESETS[e.target.value];
       }
     });
+  });
+
+  // 读取 Key 拥有的模型：列成可点的标签，点一个填进「模型」；同时更新输入框的候选列表
+  const mdlBtn = $('#btnLlmModels', root);
+  const mdlHint = $('#llmModelsHint', root);
+  const mdlChips = $('#llmModelChips', root);
+  const mdlTip = mdlHint.textContent;
+  const paintChips = (models) => {
+    const cur = field('llm.model').value.trim();
+    mdlChips.innerHTML = models.map((m) => `<button type="button" class="mdl-chip${m === cur ? ' on' : ''}" data-m="${esc(m)}">${esc(m)}</button>`).join('');
+  };
+  mdlBtn.addEventListener('click', async () => {
+    mdlBtn.disabled = true;
+    mdlHint.textContent = '读取中…';
+    try {
+      const r = await api('/api/llm/models', { method: 'POST', body: { baseUrl: field('llm.baseUrl').value.trim(), apiKey: field('llm.apiKey').value.trim() } });
+      if (r.error) {
+        mdlHint.textContent = r.error;
+        mdlChips.hidden = true;
+        return;
+      }
+      const dl = $('#llmModels', root);
+      const labels = Object.fromEntries([...dl.options].map((o) => [o.value, o.label]));
+      dl.innerHTML = r.models.map((m) => `<option value="${esc(m)}"${labels[m] ? ` label="${esc(labels[m])}"` : ''}></option>`).join('');
+      paintChips(r.models);
+      mdlChips.hidden = !r.models.length;
+      mdlHint.textContent = r.models.length ? `这个 Key 共有 ${r.models.length} 个对话模型，点一个填到「模型」里。` : '这个 Key 没有返回任何对话模型。';
+    } catch (e) {
+      mdlHint.textContent = e.message;
+      mdlChips.hidden = true;
+    } finally {
+      mdlBtn.disabled = false;
+    }
+  });
+  mdlChips.addEventListener('click', (e) => {
+    const b = e.target.closest('[data-m]');
+    if (!b) return;
+    const input = field('llm.model');
+    input.value = b.dataset.m;
+    input.dispatchEvent(new Event('input', { bubbles: true }));
+    $$('.mdl-chip', mdlChips).forEach((c) => c.classList.toggle('on', c === b));
+    mdlHint.textContent = `已选 ${b.dataset.m}，记得点「保存设置」。`;
+  });
+  field('llm.apiKey').addEventListener('input', () => {
+    mdlChips.hidden = true;
+    mdlHint.textContent = mdlTip;
   });
 
   $('#btnApplyDash', root).addEventListener('click', () => {

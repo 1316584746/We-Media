@@ -68,6 +68,7 @@ export async function mount(root) {
         <div class="seg sm" id="agOri" title="画幅">
           <button type="button" data-o="" class="on">默认画幅</button><button type="button" data-o="portrait">竖屏</button><button type="button" data-o="landscape">横屏</button>
         </div>
+        <select id="agModel" class="ag-tpl ag-model" aria-label="写文案用的模型" title="写文案用的模型（读取你填的 API Key 能用的模型）"><option value="">模型加载中…</option></select>
         <span class="spacer"></span>
         <span class="hint" id="agCount">0 / 300</span>
         <button type="button" class="ag-send" id="agSend" disabled aria-label="生成文案" title="生成文案（Ctrl + 回车）">${icon('send')}</button>
@@ -91,6 +92,44 @@ export async function mount(root) {
   const sendEl = $('#agSend', root);
   const tplEl = $('#agTpl', root);
   const resEl = $('#agResult', root);
+  const modelEl = $('#agModel', root);
+
+  /* 读取当前 API Key 拥有的模型；选择会记住，下次还用这个 */
+  const MODEL_KEY = 'wm.agent.model';
+  const loadModels = async () => {
+    try {
+      const r = await api('/api/llm/models');
+      if (!r.enabled) {
+        modelEl.innerHTML = '<option value="">未配置模型 · 去设置</option>';
+        modelEl.dataset.empty = '1';
+        return;
+      }
+      delete modelEl.dataset.empty;
+      const saved = localStorage.getItem(MODEL_KEY);
+      const cur = r.models.includes(saved) ? saved : r.current;
+      modelEl.innerHTML = r.models.map((m) => `<option value="${esc(m)}"${m === cur ? ' selected' : ''}>${esc(m)}${m === r.current ? '（默认）' : ''}</option>`).join('');
+      modelEl.title = r.error ? r.error : `这个 Key 共有 ${r.models.length} 个对话模型，选一个来写文案`;
+      if (r.error) toast(r.error, 'err');
+    } catch (e) {
+      modelEl.innerHTML = '<option value="">读取模型失败</option>';
+      modelEl.title = e.message;
+    }
+  };
+  modelEl.addEventListener('change', () => {
+    if (modelEl.dataset.empty) {
+      modelEl.blur();
+      location.hash = '#/settings/model';
+      return;
+    }
+    localStorage.setItem(MODEL_KEY, modelEl.value);
+  });
+  modelEl.addEventListener('mousedown', (e) => {
+    if (modelEl.dataset.empty) {
+      e.preventDefault();
+      location.hash = '#/settings/model';
+    }
+  });
+  loadModels();
   const pickedUsers = () => picked.map((id) => userSkills.find((u) => u.id === id)).filter(Boolean);
   const inScope = (u, tplId) => !u.templates.length || u.templates.includes(tplId);
 
@@ -250,7 +289,7 @@ export async function mount(root) {
     resEl.innerHTML = `<div class="ag-res">
       <div class="ag-res-head"><b>${esc(r.title || '（未命名）')}</b>${r.author ? `<span class="hint">${esc(r.author)}</span>` : ''}</div>
       <div class="ag-script">${r.script.split('\n').filter(Boolean).map((l, i) => `<p><i>${i + 1}</i>${esc(l)}</p>`).join('')}</div>
-      <div class="ag-res-tags"><span class="tag">${esc(tplOf(r.template).name)}模板</span><span class="tag">${ORI[r.orientation]}</span><span class="tag">画风：${esc(styleName)}</span>${
+      <div class="ag-res-tags"><span class="tag">${esc(tplOf(r.template).name)}模板</span><span class="tag">${ORI[r.orientation]}</span>${r.model ? `<span class="tag">模型 · ${esc(r.model)}</span>` : ''}<span class="tag">画风：${esc(styleName)}</span>${
         r.skillsUsed.length ? r.skillsUsed.map((s) => `<span class="tag ok">Skill · ${esc(s.name)}</span>`).join('') : '<span class="tag">未使用 Skill</span>'
       }</div>
       <div class="ag-res-act"><button type="button" class="btn ghost" data-regen>${icon('refresh')}换一版</button><button type="button" class="btn primary" data-go>去创作页，生成视频</button></div>
@@ -266,7 +305,7 @@ export async function mount(root) {
     sendEl.classList.add('busy');
     resEl.innerHTML = `<div class="ag-res thinking"><i class="spin"></i><b>M Agent 正在构思…</b></div>`;
     try {
-      const r = await api('/api/agent/run', { method: 'POST', body: { idea, template: tplEl.value, skills: picked, orientation: effOri() || undefined } });
+      const r = await api('/api/agent/run', { method: 'POST', body: { idea, template: tplEl.value, skills: picked, orientation: effOri() || undefined, model: modelEl.value || undefined } });
       last = { ...r, idea };
     } catch (err) {
       last = { error: err.message, idea };

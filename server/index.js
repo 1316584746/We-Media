@@ -76,6 +76,49 @@ const draftRule = (tpl) =>
 /* ---------- M Agent：一句灵感 + 已添加的 Skill → 标题和分镜文案 ---------- */
 app.get('/api/agent/skills', (req, res) => res.json({ categories: agentSkills.CATEGORIES, skills: agentSkills.listSkills() }));
 
+/** 读取一个 API Key 拥有的对话模型：请求 {baseUrl}/models（OpenAI 兼容）。失败不抛错，把原因放进 error */
+const NON_CHAT = /embed|rerank|tts|asr|whisper|speech|audio|image|video|wan\d|moderation|ocr|paraformer|sensevoice|cosyvoice|flux|dall-e|sora/i;
+async function listChatModels(baseUrl, apiKey, current = '') {
+  let models = [];
+  let error = '';
+  try {
+    if (!/^https?:\/\//i.test(String(baseUrl || ''))) throw new Error('Base URL 需要以 http:// 或 https:// 开头');
+    const r = await fetch(`${String(baseUrl).replace(/\/+$/, '')}/models`, { headers: { Authorization: `Bearer ${apiKey}` }, signal: AbortSignal.timeout(15000) });
+    const j = await r.json().catch(() => ({}));
+    if (!r.ok) throw new Error(j.error?.message || j.message || `HTTP ${r.status}`);
+    const ids = [...new Set((Array.isArray(j.data) ? j.data : Array.isArray(j.models) ? j.models : []).map((m) => (typeof m === 'string' ? m : m?.id || m?.name)).filter((x) => typeof x === 'string' && x))];
+    models = ids.filter((id) => !NON_CHAT.test(id));
+    if (!models.length) models = ids;
+    models.sort();
+  } catch (e) {
+    error = `没能读到这个 Key 的模型列表：${e.message}`;
+  }
+  if (current) models = [current, ...models.filter((m) => m !== current)];
+  return { models, error };
+}
+/* 已保存的分镜 LLM 配置能用的模型（M Agent 的模型下拉用） */
+app.get(
+  '/api/llm/models',
+  wrap(async (req, res) => {
+    const llm = settingsStore.load().llm;
+    if (!llm.enabled || !llm.apiKey) return res.json({ enabled: false, current: '', models: [] });
+    const current = llm.model || '';
+    res.json({ enabled: true, current, ...(await listChatModels(llm.baseUrl, llm.apiKey, current)) });
+  }),
+);
+/* 设置页「读取这个 Key 的模型」：用表单里还没保存的 baseUrl / apiKey；脱敏的 key 视为没改，用已保存的 */
+app.post(
+  '/api/llm/models',
+  wrap(async (req, res) => {
+    const saved = settingsStore.load().llm;
+    const { baseUrl, apiKey } = req.body || {};
+    const key = typeof apiKey === 'string' && apiKey && !apiKey.startsWith('********') ? apiKey.trim() : saved.apiKey;
+    if (!key) return res.status(400).json({ error: '请先填写 API Key' });
+    const base = typeof baseUrl === 'string' && baseUrl.trim() ? baseUrl.trim() : saved.baseUrl;
+    res.json(await listChatModels(base, key));
+  }),
+);
+
 /* body: { idea, template?, skills?, orientation? }
  *  - skills 是「设置 → 技能」里的技能 id（M Agent 里「添加 Skill」后就在那里）；只有已启用且适用于该模板的才会生效；
  *  - 返回 { template, orientation, style, title, author, script, skillsUsed }。
@@ -83,7 +126,7 @@ app.get('/api/agent/skills', (req, res) => res.json({ categories: agentSkills.CA
 app.post(
   '/api/agent/run',
   wrap(async (req, res) => {
-    const { idea: rawIdea, template, skills, orientation } = req.body || {};
+    const { idea: rawIdea, template, skills, orientation, model } = req.body || {};
     const tpl = TEMPLATES.find((t) => t.id === (template || 'free'));
     if (!tpl) return res.status(400).json({ error: '未知模板' });
     const idea = String(rawIdea || '').replace(/\s+/g, ' ').trim().slice(0, 300);
@@ -91,7 +134,8 @@ app.post(
     const llm = settingsStore.load().llm;
     if (!llm.enabled || !llm.apiKey) return res.status(400).json({ error: '还没有启用分镜 LLM：请先到「设置 → 模型」启用并填写 Key，或者直接去创作页自己写文案' });
     const picked = extensions.pickSkills((Array.isArray(skills) ? skills : []).filter((s) => typeof s === 'string').slice(0, 5), tpl.id);
-    const msg = await providers.llmComplete(llm, {
+    const useModel = typeof model === 'string' && model.trim() ? model.trim().slice(0, 100) : llm.model;
+    const msg = await providers.llmComplete({ ...llm, model: useModel }, {
       temperature: 0.85,
       messages: [
         { role: 'system', content: `你是 M Agent，一名短视频文案策划，当前为「${tpl.name}」写文案。${tpl.desc}。` },
@@ -117,6 +161,7 @@ app.post(
       author: String(j.author || '').trim(),
       script,
       skillsUsed: picked.map((s) => ({ id: s.id, name: s.name })),
+      model: useModel,
     });
   }),
 );

@@ -203,11 +203,20 @@ async function waitDone(id, timeoutMs = 180000) {
   ok(noTpl.status === 400, '做同款：未知模板返回 400');
   const noLlm = await api('POST', '/api/script-draft', { template: 'heal', topic: '晚安' });
   ok(noLlm.status === 400 && /分镜 LLM/.test(noLlm.json.error), `做同款：未启用 LLM 时给出明确提示（${noLlm.json.error}）`);
+  const noMods = (await api('GET', '/api/llm/models')).json;
+  ok(noMods.enabled === false && noMods.models.length === 0, 'M Agent：没配置 Key 时模型列表为空');
   const fake = require('http').createServer((req, res) => {
     let body = '';
     req.on('data', (d) => (body += d));
     req.on('end', () => {
-      const asked = JSON.parse(body).messages.map((m) => m.content).join('\n');
+      res.setHeader('Content-Type', 'application/json');
+      if (req.method === 'GET' && req.url.endsWith('/models')) {
+        if (req.headers.authorization !== 'Bearer sk-fake') return res.writeHead(401).end(JSON.stringify({ error: { message: 'bad key' } }));
+        return res.end(JSON.stringify({ data: ['qwen-turbo', 'text-embedding-v3', 'qwen-max', 'fake', 'qwen-image-2.0', 'qwen3-tts-flash'].map((id) => ({ id })) }));
+      }
+      const reqBody = JSON.parse(body);
+      globalThis.__lastModel = reqBody.model;
+      const asked = reqBody.messages.map((m) => m.content).join('\n');
       const reply = asked.includes('开头钩子规则') ? '{"title":"开头钩子版","author":"","script":"你以为很累。\\n其实是方法不对。\\n换个做法。"}' : asked.includes('M Agent') ? '{"title":"秋夜小记","author":"","script":"风起了。\\n叶子落满小路。\\n你慢慢走。"}' : asked.includes('晚安小熊') ? '{"title":"给你的晚安","author":"","script":"今天辛苦了。\\n把烦恼放下吧。\\n晚安。"}' : 'not json';
       res.setHeader('Content-Type', 'application/json');
       res.end(JSON.stringify({ choices: [{ message: { content: reply } }] }));
@@ -232,6 +241,21 @@ async function waitDone(id, timeoutMs = 180000) {
   ok(added.status === 200 && added.json.source === 'market:hook-3s', `M Agent：「添加 Skill」存成技能 ${added.json.id}`);
   const ag1 = await api('POST', '/api/agent/run', { template: 'free', idea: '租房改造', skills: [added.json.id], orientation: 'portrait' });
   ok(ag1.status === 200 && ag1.json.template === 'free' && ag1.json.orientation === 'portrait' && ag1.json.title === '开头钩子版' && ag1.json.script.split('\n').length === 3 && ag1.json.skillsUsed[0]?.id === added.json.id, `M Agent：Skill 指引随请求发给模型，返回 ${JSON.stringify(ag1.json).slice(0, 70)}`);
+  ok(globalThis.__lastModel === 'fake', `M Agent：不指定模型时用设置里的（${globalThis.__lastModel}）`);
+  const mods = (await api('GET', '/api/llm/models')).json;
+  ok(mods.enabled && mods.current === 'fake' && mods.models[0] === 'fake' && mods.models.includes('qwen-max') && mods.models.includes('qwen-turbo') && !mods.models.some((m) => /embedding|image|tts/.test(m)) && !mods.error, `M Agent：读取 Key 的模型列表，当前模型排第一，过滤掉向量/生图/语音 ${mods.models.join(',')}`);
+  const agM = await api('POST', '/api/agent/run', { template: 'free', idea: '租房改造', model: 'qwen-max' });
+  ok(agM.status === 200 && agM.json.model === 'qwen-max' && globalThis.__lastModel === 'qwen-max', 'M Agent：选了模型，请求用的就是它');
+  // 设置页：用表单里还没保存的 Key 读模型
+  const fb = `http://127.0.0.1:${fake.address().port}`;
+  const pm1 = await api('POST', '/api/llm/models', { baseUrl: fb, apiKey: 'sk-fake' });
+  ok(pm1.status === 200 && !pm1.json.error && pm1.json.models.includes('qwen-max') && !pm1.json.models.includes('text-embedding-v3'), `设置：用未保存的 Key 读到模型 ${pm1.json.models?.join(',')}`);
+  const pm2 = await api('POST', '/api/llm/models', { baseUrl: fb, apiKey: '********fake' });
+  ok(pm2.status === 200 && !pm2.json.error && pm2.json.models.length > 0, '设置：脱敏的 Key 视为没改，用已保存的');
+  const pm3 = await api('POST', '/api/llm/models', { baseUrl: fb, apiKey: 'sk-wrong' });
+  ok(pm3.status === 200 && /bad key/.test(pm3.json.error) && pm3.json.models.length === 0, `设置：Key 无效时给出原因（${pm3.json.error}）`);
+  const pm4 = await api('POST', '/api/llm/models', { baseUrl: 'ftp://x', apiKey: 'sk-fake' });
+  ok(pm4.status === 200 && /http/.test(pm4.json.error), '设置：Base URL 格式不对时给出原因');
   const ag0 = await api('POST', '/api/agent/run', { template: 'free', idea: '租房改造' });
   ok(ag0.status === 200 && ag0.json.title === '秋夜小记' && ag0.json.skillsUsed.length === 0, 'M Agent：不选 Skill 也能写（没有带 Skill 指引）');
   const agT = await api('POST', '/api/agent/run', { template: 'poem', idea: '秋天', skills: [added.json.id] });
