@@ -5,9 +5,11 @@ import * as editorPage from './pages/editor.js';
 import * as settingsPage from './pages/settings.js';
 import * as editsPage from './pages/edits.js';
 import * as cutterPage from './pages/cutter.js';
+import * as agentPage from './pages/agent.js';
 
 const ROUTES = [
   [/^#?\/?$/, createPage, 'create'],
+  [/^#\/agent$/, agentPage, 'agent'],
   [/^#\/projects$/, projectsPage, 'projects'],
   [/^#\/edits$/, editsPage, 'edits'],
   [/^#\/e\/(e_[a-z0-9]+)$/, cutterPage, 'edits'],

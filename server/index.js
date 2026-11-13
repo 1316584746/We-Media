@@ -13,6 +13,7 @@ const ff = require('./ffmpeg');
 const { TEMPLATES, STYLE_PRESETS, VOICES } = require('./templates');
 
 const extensions = require('./extensions');
+const agentSkills = require('./agent-skills');
 const mcp = require('./mcp');
 
 const app = express();
@@ -63,6 +64,61 @@ app.get(
   }),
 );
 
+/** 各模板的文案输出要求（做同款 / M Agent 共用） */
+const draftRule = (tpl) =>
+  tpl.id === 'poem'
+    ? '选一首与该题材意境相符的经典古诗词（四到八句，必须是真实存在的原文），script 里一句一行，title 填诗名，author 填作者。'
+    : tpl.id === 'talk'
+      ? '口播风格：观点先行，层层递进；script 5~8 句，每句不超过 30 字，一句一行，总共 120~200 字；title 填一个吸引人的标题，author 留空。'
+      : `script 5~8 句，每句不超过 30 字，一句一行，总共 120~200 字，语言自然有画面感；title 填一个简短的标题（${tpl.titleLabel || '标题'}），author 留空。`;
+
+/* ---------- M Agent：一句灵感 + 一个技能 → 标题和分镜文案 ---------- */
+app.get('/api/agent/skills', (req, res) => res.json({ categories: agentSkills.CATEGORIES, skills: agentSkills.listSkills() }));
+
+/* body: { skill?, idea, userSkill?, orientation? }；返回 { skill, template, orientation, style, title, author, script }
+ * 需要启用分镜 LLM（一次约 0.01 元）。userSkill 是「设置 → 技能」里自己写的技能 id，内容会作为额外指引。 */
+app.post(
+  '/api/agent/run',
+  wrap(async (req, res) => {
+    const { skill: skillId, idea: rawIdea, userSkill, orientation } = req.body || {};
+    const skill = agentSkills.getSkill(skillId || 'free-any');
+    if (!skill) return res.status(400).json({ error: '未知技能' });
+    const tpl = TEMPLATES.find((t) => t.id === skill.template);
+    const idea = String(rawIdea || '').replace(/\s+/g, ' ').trim().slice(0, 300);
+    if (!idea) return res.status(400).json({ error: '先写下你的创作灵感' });
+    const llm = settingsStore.load().llm;
+    if (!llm.enabled || !llm.apiKey) return res.status(400).json({ error: '还没有启用分镜 LLM：请先到「设置 → 模型」启用并填写 Key，或者直接去创作页自己写文案' });
+    const extra = userSkill ? extensions.skillsPrompt(extensions.pickSkills([String(userSkill)], tpl.id)) : '';
+    const msg = await providers.llmComplete(llm, {
+      temperature: 0.85,
+      messages: [
+        { role: 'system', content: `你是 M Agent 的「${skill.name}」技能。${skill.brief}${tpl.desc ? `产出用于「${tpl.name}」短视频。` : ''}` },
+        {
+          role: 'user',
+          content: `用户的创作灵感：「${idea}」。请据此原创一版文案（不要出现平台名、博主名、「关注点赞」之类的字样）。${skill.rule || draftRule(tpl)}\n只输出一个 JSON：{"title":"","author":"","script":""}，script 里用 \\n 分行，不要输出别的内容。${extra}`,
+        },
+      ],
+    });
+    let j;
+    try {
+      j = providers.extractJson(String(msg.content || ''));
+    } catch {
+      throw Object.assign(new Error('模型没有按要求返回文案，请重试一次'), { status: 502 });
+    }
+    const script = String(j.script || '').trim();
+    if (!script) throw Object.assign(new Error('模型返回的文案为空，请重试一次'), { status: 502 });
+    res.json({
+      skill: skill.id,
+      template: tpl.id,
+      orientation: ['portrait', 'landscape'].includes(orientation) ? orientation : skill.orientation || tpl.defaults.orientation,
+      style: agentSkills.styleValue(skill.styleName) || tpl.defaults.style,
+      title: String(j.title || '').trim(),
+      author: String(j.author || '').trim(),
+      script,
+    });
+  }),
+);
+
 /* ---------- 「做同款」：参考一个题材，让分镜 LLM 原创一版文案 ----------
  * body: { template, topic }；返回 { title, author, script }。需要在设置里启用分镜 LLM（一次约 0.01 元）。 */
 app.post(
@@ -75,12 +131,7 @@ app.post(
     if (!theme) return res.status(400).json({ error: '缺少题材' });
     const llm = settingsStore.load().llm;
     if (!llm.enabled || !llm.apiKey) return res.status(400).json({ error: '还没有启用分镜 LLM：请先到「设置 → 模型」启用并填写 Key，或者自己写文案' });
-    const rule =
-      tpl.id === 'poem'
-        ? '选一首与该题材意境相符的经典古诗词（四到八句，必须是真实存在的原文），script 里一句一行，title 填诗名，author 填作者。'
-        : tpl.id === 'talk'
-          ? '口播风格：观点先行，层层递进；script 5~8 句，每句不超过 30 字，一句一行，总共 120~200 字；title 填一个吸引人的标题，author 留空。'
-          : `script 5~8 句，每句不超过 30 字，一句一行，总共 120~200 字，语言自然有画面感；title 填一个简短的标题（${tpl.titleLabel || '标题'}），author 留空。`;
+    const rule = draftRule(tpl);
     const msg = await providers.llmComplete(llm, {
       temperature: 0.8,
       messages: [

@@ -167,6 +167,23 @@ function composerHtml() {
 
 export async function mount(root) {
   if (!form) resetForm(tplId);
+  // M Agent 带来的草稿：套用模板、标题、文案、画风、画幅（只用一次）
+  let agentDraft = null;
+  try {
+    agentDraft = JSON.parse(sessionStorage.getItem('wm.agentDraft') || 'null');
+  } catch {}
+  sessionStorage.removeItem('wm.agentDraft');
+  if (agentDraft && state.meta.templates.some((t) => t.id === agentDraft.template)) {
+    resetForm(agentDraft.template);
+    Object.assign(form, {
+      title: agentDraft.title || '',
+      author: agentDraft.author || '',
+      script: agentDraft.script || '',
+      ...(agentDraft.style ? { style: agentDraft.style } : {}),
+      ...(agentDraft.orientation ? { orientation: agentDraft.orientation } : {}),
+    });
+    setTimeout(() => toast(agentDraft.script ? '已带入 M Agent 写好的文案，可以直接改，再点「生成分镜并创建项目」' : '已选好模板，写下文案再生成', 'ok'), 300);
+  } else agentDraft = null;
   exts = await api('/api/extensions').catch(() => exts);
   const featured = state.meta.featured || [];
 
