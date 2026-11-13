@@ -16,7 +16,7 @@ const ok = (c, m) => {
 };
 
 (async () => {
-  const proc = spawn(EDGE, ['--headless=new', '--disable-gpu', '--autoplay-policy=no-user-gesture-required', '--remote-debugging-port=9333', '--window-size=1440,900', `--user-data-dir=${path.join(TMP, 'profile')}`, 'about:blank'], { stdio: 'ignore' });
+  const proc = spawn(EDGE, ['--headless=new', '--disable-gpu', '--mute-audio', '--autoplay-policy=no-user-gesture-required', '--remote-debugging-port=9333', '--window-size=1440,900', `--user-data-dir=${path.join(TMP, 'profile')}`, 'about:blank'], { stdio: 'ignore' });
   let targets;
   for (let i = 0; i < 30; i++) {
     try {
