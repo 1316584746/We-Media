@@ -409,10 +409,10 @@ const ok = (c, m) => {
   await js(`document.querySelector('#costAll').open = false`);
   await setVal('[name="video.mode"]', 'mock');
   await setVal('[name="tts.mode"]', 'mock');
-  await setVal('[name="llm.model"]', 'qwen-max-ui');
+  await setVal('[name="image.model"]', 'qwen-max-ui');
   await click('#setNav [data-sec="skills"]');
   await click('#setNav [data-sec="model"]');
-  ok(await js(`document.querySelector('[name="llm.model"]').value === 'qwen-max-ui'`), '切换分区不丢未保存的修改');
+  ok(await js(`document.querySelector('[name="image.model"]').value === 'qwen-max-ui'`), '切换分区不丢未保存的修改');
   await click('#setNav [data-sec="prefs"]');
   ok(await js(`!!document.querySelector('[name="render.fps"]') && document.querySelector('[data-sec="prefs"].st-pane').hidden === false`), '偏好分区');
   ok(await js(`document.querySelector('.st-back').getAttribute('href') === '#/projects'`), '返回链接指向进入设置前的页面');
@@ -473,12 +473,15 @@ const ok = (c, m) => {
     await js(`localStorage.removeItem('wm.agent.model')`);
     // 设置页：读取表单里 Key 的模型，点标签填进「模型」
     await goto('#/settings/model');
-    await setVal('[name="llm.baseUrl"]', `http://127.0.0.1:${fakeLlm.address().port}`);
+    const optVals = `[...document.querySelectorAll('#llmModelSel option')].map(o=>o.value).join()`;
+    ok(await waitFor(`${optVals} === 'qwen-max,qwen-plus,qwen-turbo' && document.querySelector('#llmModelSel').value === 'qwen-plus'`, 5000), '设置：已保存 Key 时打开页面自动获取模型，下拉里是 Key 拥有的对话模型，当前模型被选中');
     await setVal('[name="llm.apiKey"]', 'sk-ui-new');
     await click('#btnLlmModels');
-    ok(await waitFor(`[...document.querySelectorAll('#llmModelChips .mdl-chip')].map(c=>c.textContent).join() === 'qwen-max,qwen-plus,qwen-turbo' && !document.querySelector('#llmModelChips').hidden`, 5000), '设置：读取这个 Key 的模型，列出对话模型（过滤掉向量模型）');
-    await js(`document.querySelector('#llmModelChips [data-m="qwen-turbo"]').click()`);
-    ok(await js(`document.querySelector('[name="llm.model"]').value === 'qwen-turbo' && document.querySelector('#llmModelChips .mdl-chip.on')?.dataset.m === 'qwen-turbo'`), '设置：点模型标签会填进「模型」');
+    ok(await waitFor(`/共有 3 个对话模型/.test(document.querySelector('#llmModelsHint').textContent)`, 5000), '设置：点「获取列表」后提示这个 Key 共有 3 个对话模型');
+    await js(`(() => { const s = document.querySelector('#llmModelSel'); s.value = 'qwen-turbo'; s.dispatchEvent(new Event('change', { bubbles: true })); })()`);
+    await click('#btnSave');
+    ok(await waitFor(`!!document.querySelector('.toast')`, 3000) && (await (await fetch(`${BASE}/api/settings`)).json()).llm.model === 'qwen-turbo', '设置：选好模型保存后生效');
+    await sleep(300);
     await js(`document.querySelector('#btnLlmModels').scrollIntoView({ block: 'center' })`);
     await sleep(300);
     await shot('ui-settings-models');

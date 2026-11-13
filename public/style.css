@@ -494,12 +494,13 @@ body.in-settings .main { margin-left: 0; padding-bottom: 0; }
 .pw-eye.on { color: var(--accent); }
 .quick-row { display: flex; gap: 10px; }
 .quick-row input { flex: 1; }
-.mdl-row { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; }
-.mdl-chips { display: flex; flex-wrap: wrap; gap: 6px; max-height: 132px; overflow: auto; padding: 2px; }
-.mdl-chips[hidden] { display: none; }
-.mdl-chip { height: 26px; padding: 0 11px; border-radius: 99px; border: 1px solid var(--line2); background: var(--panel); color: var(--text2); font-size: 12.5px; cursor: pointer; }
-.mdl-chip:hover { border-color: var(--accent); color: var(--accent-text); }
-.mdl-chip.on { background: var(--accent); border-color: var(--accent); color: #fff; }
+.mdl-head { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin-top: 4px; }
+.mdl-head label { font-weight: 600; }
+.mdl-head .btn { display: inline-flex; align-items: center; gap: 6px; }
+#llmModelSel { width: 100%; }
+.mdl-adv { border: 1px solid var(--line2); border-radius: 10px; padding: 0 12px; }
+.mdl-adv > summary { cursor: pointer; padding: 9px 0; font-size: 12.5px; color: var(--muted); }
+.mdl-adv .field { padding-bottom: 12px; }
 .st-host .toolbar { margin-bottom: 4px; }
 .st-host .ext { background: var(--bg2); border-radius: 16px; }
 .save-bar { position: sticky; bottom: 0; display: flex; align-items: center; gap: 14px; padding: 16px 0 22px; margin-top: 4px; background: linear-gradient(180deg, transparent, var(--bg) 45%); }

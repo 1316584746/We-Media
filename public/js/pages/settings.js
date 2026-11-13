@@ -53,22 +53,21 @@ const PANES = `
 
 <div class="st-pane" data-sec="model"><h2 class="st-h">模型</h2><p class="st-desc">分镜、文生图、配音、视频生成用到的模型与密钥，只保存在本机 <code class="mono">data/settings.json</code>，不会上传。</p>
 <details class="cost-all" id="costAll"></details>
-<section class="st-blk"><div class="st-sub"><span>阿里百炼一键配置</span></div><div class="st-inner">
-  <label class="lbl-sm">API Key <span class="hint">一个 Key 同时用于分镜、文生图、配音、图生视频。填入后点「套用」，再保存。</span></label>
-  <div class="quick-row"><input id="dashKey" type="password" placeholder="sk-xxxxxxxx" autocomplete="off" /><button type="button" class="btn" id="btnApplyDash">套用</button></div>
-</div></section>
-<section class="st-blk" data-blk="llm"><div class="st-sub"><span>分镜 LLM</span><span class="badge" data-badge="llm"></span></div><div class="st-inner">
-  <p class="hint">用大模型把文案拆成镜头，并保证各镜头角色、画风一致。不启用则用规则模板生成画面描述。</p>
-  <label class="switch"><input type="checkbox" name="llm.enabled" />启用 LLM 分镜</label>
-  <div class="field"><label>Base URL（OpenAI 兼容）</label><input name="llm.baseUrl" /></div>
-  <div class="row2">
-    <div class="field"><label>API Key</label><input name="llm.apiKey" type="password" autocomplete="off" /></div>
-    <div class="field"><label>模型</label><input name="llm.model" list="llmModels" /></div>
-  </div>
-  <div class="mdl-row"><button type="button" class="btn" id="btnLlmModels">读取这个 Key 的模型</button><span class="hint" id="llmModelsHint">用上面填的 Base URL 和 API Key（不用先保存），列出它能用的对话模型，点一个就填到「模型」里。</span></div>
-  <div class="mdl-chips" id="llmModelChips" hidden></div>
-  <datalist id="llmModels"><option value="qwen-plus" label="0.8 / 2 元每百万 token"></option><option value="qwen-max" label="2.4 / 9.6 元每百万 token"></option><option value="qwen3.5-plus" label="0.8 / 4.8 元每百万 token"></option><option value="qwen3.7-plus" label="2 / 8 元每百万 token，新用户 100 万 token 免费"></option></datalist>
+<section class="st-blk" data-blk="llm"><div class="st-sub"><span>AI Agent</span><span class="badge" data-badge="llm"></span></div><div class="st-inner">
+  <p class="hint">分镜、M Agent 写文案、做同款、工具增强等所有 AI 对话功能，都用这里的 API Key 和默认模型。填好 Key 后点「获取列表」，从下拉里选模型。</p>
+  <div class="field"><label>API Key <span class="hint">默认是阿里百炼（<a href="https://bailian.console.aliyun.com/" target="_blank" rel="noopener">bailian.console.aliyun.com</a> 创建）</span></label><input name="llm.apiKey" type="password" autocomplete="off" placeholder="sk-xxxxxxxx" /></div>
+  <div class="mdl-head"><label>默认模型</label><button type="button" class="btn ghost" id="btnLlmModels"><span class="ic" data-ic="refresh"></span>获取列表</button></div>
+  <select name="llm.model" id="llmModelSel"></select>
+  <div class="hint" id="llmModelsHint"></div>
+  <details class="mdl-adv"><summary>接口地址（默认阿里百炼，也可以换成其他 OpenAI 兼容服务）</summary>
+    <div class="field"><label>Base URL</label><input name="llm.baseUrl" /></div>
+  </details>
+  <label class="switch"><input type="checkbox" name="llm.enabled" />启用 AI 分镜 / 文案（不启用则用规则模板，不产生费用）</label>
   <div class="cost" data-cost="llm"></div>
+</div></section>
+<section class="st-blk"><div class="st-sub"><span>阿里百炼一键配置</span></div><div class="st-inner">
+  <label class="lbl-sm">API Key <span class="hint">一个 Key 同时用于 AI Agent、文生图、配音、图生视频。填入后点「套用」，再保存。</span></label>
+  <div class="quick-row"><input id="dashKey" type="password" placeholder="sk-xxxxxxxx" autocomplete="off" /><button type="button" class="btn" id="btnApplyDash">套用</button></div>
 </div></section>
 
 <section class="st-blk" data-blk="image"><div class="st-sub"><span>文生图</span><span class="badge" data-badge="image"></span></div><div class="st-inner">
@@ -194,6 +193,16 @@ export async function mount(root, params = []) {
   const form = $('#form', root);
   const field = (name) => form.querySelector(`[name="${name}"]`);
 
+  // 默认模型下拉：先只放已保存的那个，「获取列表」后换成这个 Key 拥有的全部对话模型
+  const MODEL_HINT = { 'qwen-plus': '0.8 / 2 元每百万 token', 'qwen-max': '2.4 / 9.6 元每百万 token', 'qwen3.5-plus': '0.8 / 4.8 元每百万 token', 'qwen3.7-plus': '2 / 8 元每百万 token' };
+  const modelSel = $('#llmModelSel', form);
+  const fillModelSelect = (ids, selected) => {
+    modelSel.innerHTML = ids.length
+      ? ids.map((m) => `<option value="${esc(m)}">${esc(m)}${MODEL_HINT[m] ? `　· ${MODEL_HINT[m]}` : ''}</option>`).join('')
+      : '<option value="">请先填写 API Key，点「获取列表」</option>';
+    modelSel.value = ids.includes(selected) ? selected : ids[0] || '';
+  };
+  fillModelSelect(s.llm.model ? [s.llm.model] : [], s.llm.model);
   $$('[name]', form).forEach((el) => {
     const v = getByPath(s, el.name);
     if (el.type === 'checkbox') el.checked = !!v;
@@ -296,51 +305,46 @@ export async function mount(root, params = []) {
     });
   });
 
-  // 读取 Key 拥有的模型：列成可点的标签，点一个填进「模型」；同时更新输入框的候选列表
+  // 获取 Key 拥有的模型 → 填进「默认模型」下拉；填好 Key（失去焦点）、打开设置页、套用百炼配置时会自动获取
   const mdlBtn = $('#btnLlmModels', root);
   const mdlHint = $('#llmModelsHint', root);
-  const mdlChips = $('#llmModelChips', root);
-  const mdlTip = mdlHint.textContent;
-  const paintChips = (models) => {
-    const cur = field('llm.model').value.trim();
-    mdlChips.innerHTML = models.map((m) => `<button type="button" class="mdl-chip${m === cur ? ' on' : ''}" data-m="${esc(m)}">${esc(m)}</button>`).join('');
-  };
-  mdlBtn.addEventListener('click', async () => {
+  let mdlSeq = 0;
+  const fetchModels = async ({ quiet = false } = {}) => {
+    const apiKey = field('llm.apiKey').value.trim();
+    if (!apiKey) {
+      if (!quiet) mdlHint.textContent = '请先填写 API Key。';
+      return;
+    }
+    const seq = ++mdlSeq;
     mdlBtn.disabled = true;
-    mdlHint.textContent = '读取中…';
+    mdlHint.textContent = '获取中…';
     try {
-      const r = await api('/api/llm/models', { method: 'POST', body: { baseUrl: field('llm.baseUrl').value.trim(), apiKey: field('llm.apiKey').value.trim() } });
+      const r = await api('/api/llm/models', { method: 'POST', body: { baseUrl: field('llm.baseUrl').value.trim(), apiKey } });
+      if (seq !== mdlSeq) return;
       if (r.error) {
         mdlHint.textContent = r.error;
-        mdlChips.hidden = true;
         return;
       }
-      const dl = $('#llmModels', root);
-      const labels = Object.fromEntries([...dl.options].map((o) => [o.value, o.label]));
-      dl.innerHTML = r.models.map((m) => `<option value="${esc(m)}"${labels[m] ? ` label="${esc(labels[m])}"` : ''}></option>`).join('');
-      paintChips(r.models);
-      mdlChips.hidden = !r.models.length;
-      mdlHint.textContent = r.models.length ? `这个 Key 共有 ${r.models.length} 个对话模型，点一个填到「模型」里。` : '这个 Key 没有返回任何对话模型。';
+      if (!r.models.length) {
+        mdlHint.textContent = '这个 Key 没有返回任何对话模型。';
+        return;
+      }
+      const cur = field('llm.model').value.trim();
+      const list = !cur || r.models.includes(cur) ? r.models : [cur, ...r.models];
+      fillModelSelect(list, cur || r.models[0], cur && !r.models.includes(cur) ? cur : '');
+      paintCosts();
+      mdlHint.textContent = `这个 Key 共有 ${r.models.length} 个对话模型${cur && !r.models.includes(cur) ? `；当前的「${cur}」不在列表里，可能用不了` : ''}。选好后点「保存设置」。`;
     } catch (e) {
-      mdlHint.textContent = e.message;
-      mdlChips.hidden = true;
+      if (seq === mdlSeq) mdlHint.textContent = e.message;
     } finally {
-      mdlBtn.disabled = false;
+      if (seq === mdlSeq) mdlBtn.disabled = false;
     }
-  });
-  mdlChips.addEventListener('click', (e) => {
-    const b = e.target.closest('[data-m]');
-    if (!b) return;
-    const input = field('llm.model');
-    input.value = b.dataset.m;
-    input.dispatchEvent(new Event('input', { bubbles: true }));
-    $$('.mdl-chip', mdlChips).forEach((c) => c.classList.toggle('on', c === b));
-    mdlHint.textContent = `已选 ${b.dataset.m}，记得点「保存设置」。`;
-  });
-  field('llm.apiKey').addEventListener('input', () => {
-    mdlChips.hidden = true;
-    mdlHint.textContent = mdlTip;
-  });
+  };
+  mdlBtn.addEventListener('click', () => fetchModels());
+  field('llm.apiKey').addEventListener('change', () => fetchModels({ quiet: true }));
+  field('llm.baseUrl').addEventListener('change', () => fetchModels({ quiet: true }));
+  if (s.llm.apiKey) fetchModels({ quiet: true });
+  else mdlHint.textContent = '填好 API Key 后点「获取列表」。';
 
   $('#btnApplyDash', root).addEventListener('click', () => {
     const key = $('#dashKey', root).value.trim();
@@ -353,6 +357,7 @@ export async function mount(root, params = []) {
       'video.mode': 'dashscope_i2v', 'video.baseUrl': '', 'video.apiKey': key, 'video.model': 'wan2.7-i2v', 'video.resolution': '720P',
       'render.visual': 'i2v',
     };
+    fillModelSelect(['qwen-plus'], 'qwen-plus');
     Object.entries(vals).forEach(([k, v]) => {
       const el = field(k);
       if (!el) return;
@@ -361,6 +366,7 @@ export async function mount(root, params = []) {
     });
     $('#dashKey', root).value = '';
     paintCosts();
+    fetchModels({ quiet: true });
     $('#saveHint', root).textContent = '已套用百炼推荐配置，点「保存设置」生效';
   });
 
