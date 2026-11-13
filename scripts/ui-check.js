@@ -518,6 +518,70 @@ const ok = (c, m) => {
   await sleep(500);
   await shot('ui-cutter');
 
+  // 升级后的剪辑页：预览居中、左侧分类面板、滤镜 / 朗读 / 文字模板、向左向右裁剪、参考线、快捷键面板、分隔条
+  ok(await js(`(()=>{const w=document.querySelector('#ctWrap').getBoundingClientRect(),s=document.querySelector('#ctScreen').getBoundingClientRect();return Math.abs((w.left+w.width/2)-(s.left+s.width/2))<=2 && Math.abs((w.top+w.height/2)-(s.top+s.height/2))<=2})()`), '预览画面在舞台里水平、垂直居中');
+  ok(await js(`document.querySelectorAll('#libTabs [data-tab]').length === 5`), '左侧有 5 个分类（媒体/音频/文字/滤镜/AI 成片）');
+  await click('#libTabs [data-tab="audio"]');
+  ok(await waitFor(`!!document.querySelector('#ttsText') && !!document.querySelector('#ttsGo') && document.querySelector('#libTitle').textContent.includes('文本朗读')`, 2000), '音频页有「文本朗读」');
+  await fetch(`${BASE}/api/settings`, { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ tts: { mode: 'mock' } }) }); // 测试服务：占位配音，不联网
+  const aBefore = await cut(`c.clips.filter(x=>x.track==='a').length`);
+  await setVal('#ttsText', '你好，这是一段自测配音');
+  await click('#ttsGo');
+  ok(await waitFor(`document.querySelector('#view').__cutter.clips.filter(x=>x.track==='a').length === ${aBefore + 1}`, 20000), '文本朗读生成配音并加到音频轨');
+  await click('#libTabs [data-tab="text"]');
+  ok(await js(`document.querySelectorAll('.lib-preset').length >= 6`), '文字页有多款文字模板');
+  await click('#libTabs [data-tab="filter"]');
+  ok(await js(`document.querySelectorAll('.filter-item').length === 12`), '滤镜页有 12 款滤镜');
+  await clickClip(0);
+  await click('.filter-item[data-filter="11"]');
+  ok(await cut(`(()=>{const x=c.clips.find(x=>x.id===c.sel);return x.saturation===0&&x.contrast===1.1})()`), '点「黑白」滤镜：选中片段饱和度变 0');
+  ok(await waitFor(`document.querySelector('.filter-item.on')?.textContent === '黑白'`, 2000), '当前滤镜高亮');
+  await click('#btnUndo');
+  ok(await cut(`c.clips.find(x=>x.id===c.sel).saturation === 1`), '撤销滤镜');
+  await click('#libTabs [data-tab="media"]');
+
+  // 属性面板分页
+  ok(await js(`document.querySelectorAll('#inspTabs [data-itab]').length >= 3`), '选中视频片段后，属性面板分「画面 / 调色 / 变速 / 声音」页');
+  await click('#inspTabs [data-itab="color"]');
+  ok(await js(`getComputedStyle(document.querySelector('[data-pane="color"]')).display !== 'none' && getComputedStyle(document.querySelector('[data-pane="pic"]')).display === 'none'`), '切到「调色」页');
+  await click('#inspTabs [data-itab="pic"]');
+
+  // 向左 / 向右裁剪（Q / W）
+  await cut(`c.select(c.clips.find(x=>x.track==='a').id)`);
+  const aClip = JSON.parse(await cut(`JSON.stringify(c.clips.find(x=>x.id===c.sel))`));
+  await cut(`c.player.seek(${(aClip.start + aClip.dur / 2).toFixed(3)})`);
+  ok(await waitFor(`!document.querySelector('#btnTrimL').disabled`, 2000), '播放头在音频片段中间时「向左裁剪」可用');
+  await js(`document.activeElement && document.activeElement.blur()`);
+  await send('Input.dispatchKeyEvent', { type: 'keyDown', key: 'q', code: 'KeyQ', text: 'q' });
+  await send('Input.dispatchKeyEvent', { type: 'keyUp', key: 'q', code: 'KeyQ' });
+  ok(await cut(`(()=>{const x=c.clips.find(x=>x.id===c.sel);return x.start > ${aClip.start + 0.2} && x.dur < ${aClip.dur - 0.2}})()`), '按 Q：删掉播放头左边的部分');
+  await click('#btnUndo');
+  await click('#btnTrimR');
+  ok(await cut(`(()=>{const x=c.clips.find(x=>x.id===c.sel);return Math.abs(x.start-${aClip.start})<0.01 && x.dur < ${aClip.dur - 0.2}})()`), '点「向右裁剪」：删掉播放头右边的部分');
+  await click('#btnUndo');
+  await cut(`c.select(null)`);
+
+  // 参考线、快捷键面板、拖动分隔条
+  await click('#btnGrid');
+  ok(await js(`document.querySelector('#ctScreen').classList.contains('grid')`), '预览参考线可开关');
+  await click('#btnGrid');
+  await click('#btnKeys');
+  ok(await waitFor(`!!document.querySelector('dialog.keys-dlg[open] kbd')`, 2000), '点键盘图标弹出快捷键列表');
+  await send('Input.dispatchKeyEvent', { type: 'keyDown', key: 'Escape', code: 'Escape', windowsVirtualKeyCode: 27 });
+  await send('Input.dispatchKeyEvent', { type: 'keyUp', key: 'Escape', code: 'Escape', windowsVirtualKeyCode: 27 });
+  ok(await waitFor(`!document.querySelector('dialog.keys-dlg[open]')`, 2000), 'Esc 关闭快捷键面板');
+  const tlh0 = await js(`document.querySelector('.ct-tl').getBoundingClientRect().height`);
+  const sp = JSON.parse(await js(`(()=>{const r=document.querySelector('#ctSplit').getBoundingClientRect();return JSON.stringify({x:r.left+r.width/2,y:r.top+r.height/2})})()`));
+  await mouse('mousePressed', sp.x, sp.y);
+  for (let i = 1; i <= 5; i++) await mouse('mouseMoved', sp.x, sp.y - i * 16);
+  await mouse('mouseReleased', sp.x, sp.y - 80);
+  const tlh1 = await js(`document.querySelector('.ct-tl').getBoundingClientRect().height`);
+  ok(tlh1 > tlh0 + 40, `拖动分隔条调整时间线高度（${Math.round(tlh0)} → ${Math.round(tlh1)}px）`);
+  ok(await js(`document.querySelector('#btnExport').getBoundingClientRect().right <= window.innerWidth + 1 && document.querySelector('#ctInsp').getBoundingClientRect().right <= window.innerWidth + 1`), '时间线加了片段后页面不会横向撑出屏幕（导出按钮、属性面板始终可见）');
+  await js(`localStorage.removeItem('wm.cutter.tlh')`);
+  await sleep(300);
+  await shot('ui-cutter-pro');
+
   // 快捷键：空格播放 / 暂停
   await js(`document.activeElement && document.activeElement.blur()`);
   await send('Input.dispatchKeyEvent', { type: 'keyDown', key: ' ', code: 'Space', text: ' ' });

@@ -1,5 +1,5 @@
 /* 视频剪辑编辑器：素材库 | 预览 | 属性 + 多轨时间线。逻辑见 cutter/model.mjs，预览见 cutter/player.js。 */
-import { $, $$, api, esc, toast, icon, paintIcons, confirmDlg, relTime, debounce, fmtDur } from '../core.js';
+import { $, $$, api, esc, toast, icon, paintIcons, confirmDlg, relTime, debounce, fmtDur, state, voiceChoices } from '../core.js';
 import * as M from '../cutter/model.mjs';
 import { Player } from '../cutter/player.js';
 
@@ -17,11 +17,56 @@ const TRACK_ICON = { t: 'type', v: 'film', a: 'music' };
 const STEPS = [0.5, 1, 2, 5, 10, 15, 30, 60, 120, 300, 600];
 const FRAME = 1 / 30;
 
+// 左侧素材栏：[key, 名称, 图标]
+const LIB_TABS = [
+  ['media', '媒体', 'film'],
+  ['audio', '音频', 'music'],
+  ['text', '文字', 'type'],
+  ['filter', '滤镜', 'sliders'],
+  ['ai', 'AI 成片', 'sparkle'],
+];
+const LIB_TITLE = { media: '媒体素材', audio: '音频 · 文本朗读', text: '文字模板', filter: '滤镜', ai: 'AI 成片' };
+
 const TEXT_PRESETS = [
-  { name: '默认字幕', hint: '底部白字描边', patch: { text: '在这里输入字幕', size: 5.5, y: 86, color: '#ffffff', bold: true, bg: '', fade: false } },
-  { name: '大标题', hint: '居中黄色淡入淡出', patch: { text: '标题文字', size: 12, y: 45, color: '#ffe14d', bold: true, bg: '', fade: true } },
-  { name: '底框字幕', hint: '黑色底框', patch: { text: '底框字幕', size: 5, y: 88, color: '#ffffff', bold: true, bg: '#000000', fade: false } },
-  { name: '角标', hint: '右上角小字', patch: { text: '@作者名', size: 4, x: 88, y: 6, color: '#ffffff', bold: false, bg: '', fade: false } },
+  { name: '默认字幕', hint: '底部白字', sample: 'color:#fff;font-weight:700', patch: { text: '在这里输入字幕', size: 5.5, y: 86, color: '#ffffff', bold: true, bg: '', fade: false } },
+  { name: '大标题', hint: '居中黄字，淡入淡出', sample: 'color:#ffe14d;font-weight:700;font-size:20px', patch: { text: '标题文字', size: 12, y: 45, color: '#ffe14d', bold: true, bg: '', fade: true } },
+  { name: '综艺大字', hint: '红色强调，淡入淡出', sample: 'color:#ff5c5c;font-weight:800;font-size:20px', patch: { text: '重点来了！', size: 13, y: 40, color: '#ff5c5c', bold: true, bg: '', fade: true } },
+  { name: '底框字幕', hint: '黑色底框', sample: 'color:#fff;background:#000;padding:1px 8px;border-radius:3px', patch: { text: '底框字幕', size: 5, y: 88, color: '#ffffff', bold: true, bg: '#000000', fade: false } },
+  { name: '提示框', hint: '蓝底白字', sample: 'color:#fff;background:#2f6fe4;padding:1px 8px;border-radius:3px;font-weight:700', patch: { text: '小提示', size: 5.5, y: 18, color: '#ffffff', bold: true, bg: '#2f6fe4', fade: false } },
+  { name: '电影字幕', hint: '灰白细体，靠下', sample: 'color:#e6e6e6', patch: { text: '电影感字幕', size: 4.6, y: 90, color: '#e6e6e6', bold: false, bg: '', fade: false } },
+  { name: '小标题', hint: '靠上，绿色', sample: 'color:#7cff9b;font-weight:700', patch: { text: '第一部分', size: 6.5, y: 12, color: '#7cff9b', bold: true, bg: '', fade: true } },
+  { name: '角标', hint: '右上角小字', sample: 'color:#fff;font-size:11px', patch: { text: '@作者名', size: 4, x: 88, y: 6, color: '#ffffff', bold: false, bg: '', fade: false } },
+];
+
+// 滤镜预设：只用亮度 / 对比度 / 饱和度三个参数（预览和导出都支持），[名称, 亮度, 对比度, 饱和度]
+const FILTERS = [
+  ['原图', 0, 1, 1],
+  ['清新', 0.06, 1.05, 1.25],
+  ['鲜艳', 0.02, 1.15, 1.6],
+  ['明亮', 0.12, 1, 1.1],
+  ['柔和', 0.05, 0.88, 0.85],
+  ['日系', 0.1, 0.85, 0.9],
+  ['胶片', -0.05, 1.2, 0.75],
+  ['复古', -0.04, 1.1, 0.55],
+  ['电影', -0.06, 1.3, 0.85],
+  ['高对比', -0.02, 1.45, 1.2],
+  ['夜景', -0.15, 1.25, 1],
+  ['黑白', 0, 1.1, 0],
+];
+const filterCss = (b, c, s) => `filter:brightness(${1 + b}) contrast(${c}) saturate(${s})`;
+
+const SHORTCUTS = [
+  ['空格', '播放 / 暂停'],
+  ['S', '在播放头处分割'],
+  ['Q / W', '向左 / 向右裁剪（删掉播放头一侧）'],
+  ['Delete', '删除选中片段'],
+  ['Ctrl + D', '复制选中片段'],
+  ['Ctrl + Z / Ctrl + Shift + Z', '撤销 / 重做'],
+  ['← / →', '逐帧移动播放头（加 Shift 为 1 秒）'],
+  ['Home / End', '跳到开头 / 结尾'],
+  ['Ctrl + 滚轮', '缩放时间线'],
+  ['F', '全屏预览'],
+  ['Esc', '取消选择'],
 ];
 
 const fmtT = (t) => {
@@ -54,6 +99,7 @@ export async function mount(root, [id]) {
   let tab = 'media';
   const hist = new M.History();
   let editOpen = false;
+  let inspTab = 'pic';
   let editTimer = 0;
   let exportPoll = 0;
   let uploads = 0;
@@ -71,32 +117,39 @@ export async function mount(root, [id]) {
       <span class="ct-save" id="ctSave">已保存</span>
       <span class="spacer"></span>
       <div class="ct-ratio" id="ctRatio" title="画布比例">${RATIOS.map(([r]) => `<button data-r="${r}" class="${r === ratio ? 'on' : ''}">${r}</button>`).join('')}</div>
+      <button class="icon-btn" id="btnKeys" title="快捷键 (?)">${icon('keyboard')}</button>
       <button class="icon-btn" id="btnUndo" title="撤销 (Ctrl+Z)">${icon('undo')}</button>
       <button class="icon-btn" id="btnRedo" title="重做 (Ctrl+Shift+Z)">${icon('redo')}</button>
       <button class="btn primary" id="btnExport">${icon('download')}<span>导出</span></button>
     </header>
     <div class="ct-main">
       <aside class="ct-lib" id="ctLib">
-        <div class="seg full" id="libTabs"><button data-tab="media" class="on">媒体</button><button data-tab="text">文本</button><button data-tab="ai">AI 成片</button></div>
-        <div class="lib-body" id="libBody"></div>
+        <nav class="lib-rail" id="libTabs" aria-label="素材面板">${LIB_TABS.map(([k, label, ic], i) => `<button type="button" data-tab="${k}" class="${i === 0 ? 'on' : ''}">${icon(ic)}<span>${label}</span></button>`).join('')}</nav>
+        <div class="lib-panel"><div class="lib-title" id="libTitle"></div><div class="lib-body" id="libBody"></div></div>
       </aside>
       <section class="ct-stage">
         <div class="ct-wrap" id="ctWrap"><div class="ct-screen" id="ctScreen"></div></div>
         <div class="ct-transport">
-          <span class="ct-time" id="ctTime">00:00.0</span>
+          <div class="ct-clock"><span class="ct-time" id="ctTime">00:00.0</span><i>/</i><span class="ct-time dim" id="ctTotal">00:00.0</span></div>
           <div class="ct-play">
             <button class="icon-btn" id="btnStart" title="回到开头 (Home)">${icon('skipBack')}</button>
             <button class="icon-btn play" id="btnPlay" title="播放 / 暂停 (空格)">${icon('play')}</button>
             <button class="icon-btn" id="btnEnd" title="跳到结尾 (End)">${icon('skipFwd')}</button>
           </div>
-          <span class="ct-time dim" id="ctTotal">00:00.0</span>
+          <div class="ct-tools">
+            <button class="icon-btn" id="btnGrid" title="参考线（三分线 + 安全框）">${icon('grid')}</button>
+            <button class="icon-btn" id="btnFull" title="全屏预览 (F)">${icon('maximize')}</button>
+          </div>
         </div>
       </section>
       <aside class="ct-insp" id="ctInsp"></aside>
     </div>
+    <div class="ct-split" id="ctSplit" role="separator" aria-orientation="horizontal" title="上下拖动，调整时间线高度"><i></i></div>
     <section class="ct-tl">
       <div class="tl-bar">
         <button class="btn sm" id="btnSplit" title="在播放头处分割 (S)">${icon('scissors')}分割</button>
+        <button class="btn sm" id="btnTrimL" title="删除播放头左边的部分 (Q)">${icon('trimLeft')}向左裁剪</button>
+        <button class="btn sm" id="btnTrimR" title="删除播放头右边的部分 (W)">${icon('trimRight')}向右裁剪</button>
         <button class="btn sm" id="btnDup" title="复制 (Ctrl+D)">${icon('copy')}复制</button>
         <button class="btn sm danger" id="btnDel" title="删除 (Delete)">${icon('trash')}删除</button>
         <span class="tl-sep"></span>
@@ -244,6 +297,7 @@ export async function mount(root, [id]) {
     const s = Math.min(W / w, H / h);
     el.screen.style.width = `${Math.floor(w * s)}px`;
     el.screen.style.height = `${Math.floor(h * s)}px`;
+    player.layoutText();
   };
   const ro = new ResizeObserver(fitScreen);
   ro.observe(el.wrap);
@@ -332,6 +386,7 @@ export async function mount(root, [id]) {
     $$('.tl-clip', el.content).forEach((n) => n.classList.toggle('sel', n.dataset.id === cid));
     paintToolbar();
     paintInsp();
+    if (tab === 'filter') paintLib(); // 滤镜面板要跟着选中片段刷新「当前滤镜」
   }
 
   function paintToolbar() {
@@ -339,6 +394,22 @@ export async function mount(root, [id]) {
     $('#btnDel', root).disabled = !c;
     $('#btnDup', root).disabled = !c;
     $('#btnSplit', root).disabled = !splitTarget();
+    const tt = trimTarget();
+    $('#btnTrimL', root).disabled = !tt;
+    $('#btnTrimR', root).disabled = !tt;
+  }
+
+  /** 向左/向右裁剪的目标：选中片段（播放头在其内部）；没选中则取播放头下的片段 */
+  function trimTarget() {
+    const t = player.t;
+    const ok = (x) => x && t > x.start + 0.1 && t < M.clipEnd(x) - 0.1;
+    const c = selClip();
+    if (c) return ok(c) ? c : null;
+    for (const tr of ['v', 'a', 't']) {
+      const x = M.clipAt(clips, tr, t);
+      if (ok(x)) return x;
+    }
+    return null;
   }
 
   function splitTarget() {
@@ -361,6 +432,12 @@ export async function mount(root, [id]) {
     if (!r) return;
     commit(r.clips);
     select(r.ids[1]);
+  }
+  function doTrim(edge) {
+    const c = trimTarget();
+    if (!c) return toast('把播放头放到片段中间再裁剪（离两端至少 0.1 秒）', '');
+    commit(M.trimClip(clips, c.id, edge, player.t, mediaLookup));
+    if (edge === 'l' && c.track === 'v') player.seek(c.start);
   }
   function doDelete() {
     const c = selClip();
@@ -578,6 +655,58 @@ export async function mount(root, [id]) {
   $('#btnStart', root).addEventListener('click', () => player.seek(0));
   $('#btnEnd', root).addEventListener('click', () => player.seek(M.totalDuration(clips)));
   $('#btnSplit', root).addEventListener('click', doSplit);
+  $('#btnTrimL', root).addEventListener('click', () => doTrim('l'));
+  $('#btnTrimR', root).addEventListener('click', () => doTrim('r'));
+  $('#btnKeys', root).addEventListener('click', showKeys);
+  $('#btnGrid', root).addEventListener('click', (ev) => {
+    const on = el.screen.classList.toggle('grid');
+    ev.currentTarget.classList.toggle('on', on);
+  });
+  const toggleFull = () => {
+    if (document.fullscreenElement) document.exitFullscreen();
+    else el.wrap.requestFullscreen?.().catch(() => toast('浏览器不允许全屏', ''));
+  };
+  $('#btnFull', root).addEventListener('click', toggleFull);
+  const onFull = () => requestAnimationFrame(fitScreen);
+  document.addEventListener('fullscreenchange', onFull);
+
+  function showKeys() {
+    const dlg = document.createElement('dialog');
+    dlg.className = 'dlg keys-dlg';
+    dlg.innerHTML = `<form method="dialog"><div class="dlg-body"><h3>快捷键</h3>
+      <div class="keys-list">${SHORTCUTS.map(([k, d]) => `<div><span class="kbd-row">${k.split(' / ').map((x) => `<kbd>${esc(x)}</kbd>`).join('<i>/</i>')}</span><em>${esc(d)}</em></div>`).join('')}</div></div>
+      <div class="dlg-foot"><button class="btn primary" autofocus>知道了</button></div></form>`;
+    document.body.appendChild(dlg);
+    dlg.addEventListener('close', () => dlg.remove());
+    dlg.showModal();
+  }
+
+  // 上下拖动分隔条：调整时间线高度（记住上次的高度）
+  const TL_KEY = 'wm.cutter.tlh';
+  const clampTl = (h) => Math.max(150, Math.min(h, root.clientHeight - 260));
+  const setTl = (h) => $('.ct', root).style.setProperty('--tl-h', `${Math.round(clampTl(h))}px`);
+  const savedTl = Number(localStorage.getItem(TL_KEY));
+  if (savedTl) setTl(savedTl);
+  $('#ctSplit', root).addEventListener('pointerdown', (ev) => {
+    ev.preventDefault();
+    const bar = ev.currentTarget;
+    bar.setPointerCapture(ev.pointerId);
+    bar.classList.add('on');
+    const y0 = ev.clientY;
+    const h0 = $('.ct-tl', root).getBoundingClientRect().height;
+    const move = (e) => setTl(h0 - (e.clientY - y0));
+    const up = () => {
+      bar.classList.remove('on');
+      bar.removeEventListener('pointermove', move);
+      bar.removeEventListener('pointerup', up);
+      bar.removeEventListener('pointercancel', up);
+      const v = parseInt($('.ct', root).style.getPropertyValue('--tl-h'), 10);
+      if (v) localStorage.setItem(TL_KEY, String(v));
+    };
+    bar.addEventListener('pointermove', move);
+    bar.addEventListener('pointerup', up);
+    bar.addEventListener('pointercancel', up);
+  });
   $('#btnDel', root).addEventListener('click', doDelete);
   $('#btnDup', root).addEventListener('click', doDup);
   $('#btnAddText', root).addEventListener('click', () => addText(TEXT_PRESETS[0].patch));
@@ -622,6 +751,17 @@ export async function mount(root, [id]) {
       player.seek(0);
     } else if (k === 'End') {
       player.seek(M.totalDuration(clips));
+    } else if (!mod && k.toLowerCase() === 'q') {
+      ev.preventDefault();
+      doTrim('l');
+    } else if (!mod && k.toLowerCase() === 'w') {
+      ev.preventDefault();
+      doTrim('r');
+    } else if (!mod && k.toLowerCase() === 'f') {
+      ev.preventDefault();
+      toggleFull();
+    } else if (k === '?') {
+      showKeys();
     } else if (k === 'Escape') {
       select(null);
     }
@@ -637,16 +777,22 @@ export async function mount(root, [id]) {
   function inspHtml() {
     const c = selClip();
     if (!c) {
-      return `<div class="ins-sec"><h4>画布</h4>
-        <div class="seg full" id="inspRatio">${RATIOS.map(([r]) => `<button data-r="${r}" class="${r === ratio ? 'on' : ''}">${r}</button>`).join('')}</div>
-        <p class="hint">${RATIOS.find(([r]) => r === ratio).slice(1).join(' × ')} · ${fmtT(M.totalDuration(clips))} · ${clips.length} 个片段</p></div>
-        <div class="ins-sec"><h4>使用提示</h4><ul class="ins-tips">
+      return `<div class="ins-overview">
+          <div class="ov-stat"><b>${fmtT(M.totalDuration(clips))}</b><span>总时长</span></div>
+          <div class="ov-stat"><b>${clips.length}</b><span>片段</span></div>
+          <div class="ov-stat"><b>${media.size}</b><span>素材</span></div>
+        </div>
+        <div class="ins-sec"><h4>画布比例</h4>
+          <div class="ratio-cards" id="inspRatio">${RATIOS.map(([r, w, h]) => `<button data-r="${r}" class="${r === ratio ? 'on' : ''}"><i style="aspect-ratio:${w}/${h}"></i><span>${r}</span></button>`).join('')}</div>
+          <p class="hint">${RATIOS.find(([r]) => r === ratio).slice(1).join(' × ')}</p></div>
+        <div class="ins-sec"><h4>小技巧</h4><ul class="ins-tips">
           <li>把素材拖到时间线，或点素材上的 <b>＋</b></li>
-          <li>点选片段后在这里调整属性</li>
+          <li>点选片段后，这里会出现它的属性</li>
           <li>拖动片段两端裁剪，拖动片段本身移动</li>
           <li>视频轨自动首尾相接；文字、音频可自由摆放</li>
           <li>文字可以直接在预览画面里拖动位置</li>
-        </ul></div>`;
+          <li>左边「滤镜」一键调色，「音频」可文本朗读</li>
+        </ul><button class="btn sm ghost" id="inspKeys">${icon('keyboard')}查看全部快捷键</button></div>`;
     }
     const m = media.get(c.mediaId);
     const title = c.track === 't' ? '文字' : esc(m?.name || '片段');
@@ -680,20 +826,29 @@ export async function mount(root, [id]) {
           <div class="ins-row"><label>静音</label><label class="switch"><input type="checkbox" data-check="muted" ${c.muted ? 'checked' : ''} /></label>${c.volume > 1 ? '<span class="hint">预览最大 100%，导出会放大</span>' : ''}</div>
           ${c.track === 'a' ? `${slider('淡入', 'fadeIn', c.fadeIn || 0, 0, Math.max(0.1, c.dur / 2), 0.1, sec)}${slider('淡出', 'fadeOut', c.fadeOut || 0, 0, Math.max(0.1, c.dur / 2), 0.1, sec)}` : ''}</div>`
       : '';
-    const visual =
-      c.track === 'v'
-        ? `<div class="ins-sec"><h4>画面</h4>
+    const panes = [];
+    if (c.track === 'v') {
+      panes.push(['pic', '画面', `<div class="ins-sec"><h4>位置与大小</h4>
           ${slider('缩放', 'scale', c.scale, 0.1, 3, 0.01, pct)}
           ${slider('水平位移', 'x', c.x, -100, 100, 1, (v) => `${v}%`)}
-          ${slider('垂直位移', 'y', c.y, -100, 100, 1, (v) => `${v}%`)}</div>
-          <div class="ins-sec"><h4>调色 <button class="link" data-reset-color>重置</button></h4>
+          ${slider('垂直位移', 'y', c.y, -100, 100, 1, (v) => `${v}%`)}</div>${timing}`]);
+      panes.push(['color', '调色', `<div class="ins-sec"><h4>快速滤镜</h4>
+          <div class="filter-mini">${FILTERS.map((f, i) => `<button type="button" class="${filterOn(f) ? 'on' : ''}" data-ins-filter="${i}" title="${f[0]}"><span style="${sampleThumb()};${filterCss(f[1], f[2], f[3])}"></span><em>${f[0]}</em></button>`).join('')}</div></div>
+          <div class="ins-sec"><h4>手动调色 <button class="link" data-reset-color>重置</button></h4>
           ${slider('亮度', 'brightness', c.brightness, -0.5, 0.5, 0.01, (v) => `${Math.round(v * 100)}`)}
           ${slider('对比度', 'contrast', c.contrast, 0.5, 1.8, 0.01, pct)}
-          ${slider('饱和度', 'saturation', c.saturation, 0, 2.5, 0.01, pct)}</div>`
-        : '';
-    return `${head}${visual}${speed}${audio}${timing}`;
+          ${slider('饱和度', 'saturation', c.saturation, 0, 2.5, 0.01, pct)}</div>`]);
+      if (speed) panes.push(['speed', '变速', speed]);
+      if (audio) panes.push(['audio', '声音', audio]);
+    } else {
+      if (audio) panes.push(['audio', '声音', audio + timing]);
+      if (speed) panes.push(['speed', '变速', speed + (audio ? '' : timing)]);
+      if (!panes.length) panes.push(['pic', '属性', timing]);
+    }
+    if (!panes.some(([k]) => k === inspTab)) inspTab = panes[0][0];
+    const strip = panes.length > 1 ? `<div class="insp-tabs2" id="inspTabs">${panes.map(([k, label]) => `<button type="button" data-itab="${k}" class="${k === inspTab ? 'on' : ''}">${label}</button>`).join('')}</div>` : '';
+    return `${head}${strip}<div class="ins-panes" data-active="${inspTab}">${panes.map(([k, , html]) => `<div class="ins-pane" data-pane="${k}">${html}</div>`).join('')}</div>`;
   }
-
   function paintInsp() {
     el.insp.innerHTML = inspHtml();
   }
@@ -767,6 +922,20 @@ export async function mount(root, [id]) {
   });
   el.insp.addEventListener('click', (ev) => {
     const c = selClip();
+    if (ev.target.closest('#inspKeys')) return showKeys();
+    const it = ev.target.closest('[data-itab]');
+    if (it) {
+      inspTab = it.dataset.itab;
+      $$('[data-itab]', el.insp).forEach((b) => b.classList.toggle('on', b === it));
+      $('.ins-panes', el.insp).dataset.active = inspTab;
+      return;
+    }
+    const mf = ev.target.closest('[data-ins-filter]');
+    if (mf && c) {
+      const f = FILTERS[Number(mf.dataset.insFilter)];
+      commit(M.updateClip(clips, c.id, { brightness: f[1], contrast: f[2], saturation: f[3] }));
+      return;
+    }
     const r = ev.target.closest('#inspRatio [data-r]');
     if (r) return setRatio(r.dataset.r);
     if (!c) return;
@@ -806,7 +975,45 @@ export async function mount(root, [id]) {
     </div>`;
   };
 
+  let ttsDraft = '';
+  let ttsVoice = '';
+  let filterAll = false;
+
+  const ttsHtml = () => {
+    const voices = voiceChoices() || state.meta.voices?.edge || [];
+    if (ttsVoice && !voices.some((v) => v.id === ttsVoice)) ttsVoice = '';
+    const mode = state.meta.ttsMode;
+    const note = mode === 'edge' ? '微软 Edge 配音，免费' : mode === 'mock' ? '占位配音（只有提示音）' : '按字计费，见 设置 → 费用一览';
+    return `<div class="tts-card">
+      <div class="tts-head">${icon('mic')}<b>文本朗读</b><span class="hint">${esc(note)}</span></div>
+      <textarea id="ttsText" rows="4" maxlength="400" placeholder="输入要朗读的文字，生成后会自动加到音频轨（播放头位置）">${esc(ttsDraft)}</textarea>
+      <select id="ttsVoice" aria-label="音色"><option value="">默认音色（设置里的音色）</option>${voices.map((v) => `<option value="${esc(v.id)}" ${v.id === ttsVoice ? 'selected' : ''}>${esc(v.name)}</option>`).join('')}</select>
+      <div class="tts-row"><span class="hint" id="ttsCount">${ttsDraft.length} / 400 字</span><button type="button" class="btn primary sm" id="ttsGo">${icon('mic')}生成并加入</button></div>
+    </div>`;
+  };
+
+  const sampleThumb = () => {
+    const m = [...media.values()].find((x) => x.thumb && x.kind !== 'audio');
+    return m ? `background-image:url(${filesBase}${m.thumb})` : 'background-image:linear-gradient(135deg,#7aa2ff,#f2a8c8 55%,#ffd48a)';
+  };
+  const filterOn = (f) => {
+    const c = selClip();
+    return !!c && c.track === 'v' && Math.abs(c.brightness - f[1]) < 0.005 && Math.abs(c.contrast - f[2]) < 0.005 && Math.abs(c.saturation - f[3]) < 0.005;
+  };
+  const filterHtml = () => {
+    const c = selClip();
+    const hasV = clips.some((x) => x.track === 'v');
+    const tip = !hasV ? '先把视频或图片放到时间线上。' : c?.track === 'v' || filterAll ? '点一个滤镜，立刻在预览里生效。' : '先在时间线上选中一个视频片段，或勾选「应用到全部视频片段」。';
+    return `<p class="hint">${tip}</p>
+      <label class="switch lib-switch"><input type="checkbox" id="filterAll" ${filterAll ? 'checked' : ''} />应用到全部视频片段</label>
+      <div class="filter-grid">${FILTERS.map(
+        (f, i) => `<button type="button" class="filter-item ${filterOn(f) ? 'on' : ''}" data-filter="${i}"><span class="filter-thumb" style="${sampleThumb()};${filterCss(f[1], f[2], f[3])}"></span><em>${f[0]}</em></button>`,
+      ).join('')}</div>
+      <p class="hint">滤镜 = 亮度 / 对比度 / 饱和度的组合，选中片段后还能在右侧「调色」里继续微调。</p>`;
+  };
+
   function paintLib() {
+    $('#libTitle', root).textContent = LIB_TITLE[tab] || '';
     if (tab === 'media') {
       const list = [...media.values()];
       el.libBody.innerHTML = `
@@ -814,9 +1021,16 @@ export async function mount(root, [id]) {
           <input type="file" id="libFile" multiple accept="video/*,audio/*,image/*,.mkv,.flv,.wmv,.ts,.m4a,.flac,.opus,.wma" hidden /></label>
         <div class="lib-uploads" id="libUploads"></div>
         ${list.length ? `<div class="lib-grid">${list.map(mediaItem).join('')}</div>` : '<p class="hint lib-empty">还没有素材。导入后拖到下面的时间线，或点素材上的＋。</p>'}`;
+    } else if (tab === 'audio') {
+      const list = [...media.values()].filter((m) => m.kind === 'audio');
+      el.libBody.innerHTML = `${ttsHtml()}
+        <h4 class="lib-sub">我的音频</h4>
+        ${list.length ? `<div class="lib-grid">${list.map(mediaItem).join('')}</div>` : '<p class="hint lib-empty">还没有音频。在「媒体」里导入音乐，或用上面的文本朗读生成配音。</p>'}`;
     } else if (tab === 'text') {
-      el.libBody.innerHTML = `<p class="hint">点击会在播放头位置添加一段文字，可在右侧调整样式，也能在预览里直接拖动。</p>
-        <div class="lib-text">${TEXT_PRESETS.map((p, i) => `<button class="lib-preset" data-preset="${i}"><b>${esc(p.name)}</b><span>${esc(p.hint)}</span></button>`).join('')}</div>`;
+      el.libBody.innerHTML = `<p class="hint">点一个样式，会在播放头位置添加文字；之后可在右侧调整，也能在预览里直接拖动。</p>
+        <div class="lib-text">${TEXT_PRESETS.map((p, i) => `<button class="lib-preset" data-preset="${i}"><span class="lp-sample" style="${p.sample}">${esc(p.name)}</span><span class="lp-hint">${esc(p.hint)}</span></button>`).join('')}</div>`;
+    } else if (tab === 'filter') {
+      el.libBody.innerHTML = filterHtml();
     } else {
       if (aiProjects === null) {
         el.libBody.innerHTML = '<p class="hint">读取中…</p>';
@@ -836,7 +1050,6 @@ export async function mount(root, [id]) {
     }
     paintIcons(el.libBody);
   }
-
   $('#libTabs', root).addEventListener('click', (ev) => {
     const b = ev.target.closest('[data-tab]');
     if (!b) return;
@@ -845,7 +1058,47 @@ export async function mount(root, [id]) {
     paintLib();
   });
 
+  function applyFilter(i) {
+    const f = FILTERS[i];
+    const c = selClip();
+    const patch = { brightness: f[1], contrast: f[2], saturation: f[3] };
+    const targets = filterAll ? clips.filter((x) => x.track === 'v') : c?.track === 'v' ? [c] : [];
+    if (!targets.length) return toast('先在时间线上选中一个视频片段，或勾选「应用到全部视频片段」', '');
+    let next = clips;
+    for (const x of targets) next = M.updateClip(next, x.id, patch);
+    commit(next);
+    paintLib();
+  }
+
+  el.libBody.addEventListener('input', (ev) => {
+    if (ev.target.id === 'ttsText') {
+      ttsDraft = ev.target.value;
+      $('#ttsCount', el.libBody).textContent = `${ttsDraft.length} / 400 字`;
+    }
+  });
+
+  async function makeTts(btn) {
+    const text = ttsDraft.trim();
+    if (!text) return toast('先输入要朗读的文字', 'err');
+    btn.disabled = true;
+    btn.textContent = '生成中…';
+    try {
+      const m = await api(`/api/edits/${id}/media/from-tts`, { method: 'POST', body: { text, voice: ttsVoice } });
+      media.set(m.id, m);
+      addMediaToTimeline(m);
+      toast('配音已加到音频轨', 'ok');
+    } catch (err) {
+      toast(err.message, 'err');
+    } finally {
+      if (alive && tab === 'audio') paintLib();
+    }
+  }
+
   el.libBody.addEventListener('click', async (ev) => {
+    const flt = ev.target.closest('[data-filter]');
+    if (flt) return applyFilter(Number(flt.dataset.filter));
+    const go = ev.target.closest('#ttsGo');
+    if (go) return makeTts(go);
     const preset = ev.target.closest('[data-preset]');
     if (preset) return addText(TEXT_PRESETS[Number(preset.dataset.preset)].patch);
     const add = ev.target.closest('[data-add]');
@@ -886,6 +1139,11 @@ export async function mount(root, [id]) {
   });
 
   el.libBody.addEventListener('change', (ev) => {
+    if (ev.target.id === 'filterAll') {
+      filterAll = ev.target.checked;
+      return paintLib();
+    }
+    if (ev.target.id === 'ttsVoice') return void (ttsVoice = ev.target.value);
     if (ev.target.id === 'libFile') {
       uploadFiles([...ev.target.files]);
       ev.target.value = '';
@@ -1069,12 +1327,14 @@ export async function mount(root, [id]) {
   player.render();
 
   // 暴露给自测用
-  root.__cutter = { player, get clips() { return clips; }, get sel() { return sel; } };
+  root.__cutter = { player, select, get clips() { return clips; }, get sel() { return sel; } };
 
   return {
     async unmount() {
       alive = false;
       document.removeEventListener('keydown', onKey);
+      document.removeEventListener('fullscreenchange', onFull);
+      if (document.fullscreenElement) document.exitFullscreen().catch(() => {});
       window.removeEventListener('pointermove', onWindowMove);
       window.removeEventListener('pointerup', onWindowUp);
       clearInterval(exportPoll);

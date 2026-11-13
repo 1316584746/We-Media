@@ -230,6 +230,30 @@ app.post(
   }),
 );
 app.delete('/api/edits/:id/media/:mid', wrap(async (req, res) => res.json(await edits.removeMedia(req.params.id, req.params.mid))));
+/* 文本朗读：把一段文字合成配音（用设置里的配音服务，edge 免费），作为音频素材加进工程 */
+app.post(
+  '/api/edits/:id/media/from-tts',
+  wrap(async (req, res) => {
+    const id = req.params.id;
+    edits.read(id);
+    const { text, voice } = req.body || {};
+    const speech = String(text || '').trim().slice(0, 400);
+    if (!speech) throw edits.httpError(400, '缺少要朗读的文字');
+    const cfg = providers.ttsWithVoice(settingsStore.load().tts, voice);
+    const tmp = path.join(edits.dirOf(id), `tts-${Date.now()}-${Math.random().toString(36).slice(2, 6)}.mp3`);
+    try {
+      try {
+        await providers.synthesizeSpeech({ cfg, text: speech, outFile: tmp });
+      } catch (e) {
+        throw edits.httpError(502, `生成配音失败：${e.message}`);
+      }
+      const label = speech.replace(/[\s\\/:*?"<>|]+/g, '').slice(0, 8) || '配音';
+      res.json(await edits.addMedia(id, tmp, `朗读-${label}.mp3`));
+    } finally {
+      fs.rm(tmp, { force: true }, () => {});
+    }
+  }),
+);
 app.post(
   '/api/edits/:id/media/from-project',
   wrap(async (req, res) => {

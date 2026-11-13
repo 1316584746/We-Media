@@ -224,6 +224,20 @@ async function waitDone(id, timeoutMs = 180000) {
   ok(badDraft.status === 502 && /重试/.test(badDraft.json.error), '做同款：模型没按 JSON 返回时提示重试');
   await api('PUT', '/api/settings', { llm: { enabled: !!keepLlm.enabled, baseUrl: keepLlm.baseUrl, apiKey: '', model: keepLlm.model } });
   fake.close();
+
+  // 剪辑：文本朗读 → 音频素材
+  const ttsKeep = (await api('GET', '/api/settings')).json.tts.mode;
+  await api('PUT', '/api/settings', { tts: { mode: 'mock' } });
+  const ed = await api('POST', '/api/edits', { name: 'tts 自测' });
+  const edId = ed.json.id;
+  const noText = await api('POST', `/api/edits/${edId}/media/from-tts`, { text: '  ' });
+  ok(noText.status === 400, `文本朗读：空文字返回 400（${noText.json.error}）`);
+  const tm = await api('POST', `/api/edits/${edId}/media/from-tts`, { text: '你好，这是一段文本朗读测试。' });
+  ok(tm.status === 200 && tm.json.kind === 'audio' && tm.json.duration > 2 && /^朗读-/.test(tm.json.name), `文本朗读：生成音频素材 ${tm.json.name} ${tm.json.duration}s`);
+  const noEd = await api('POST', '/api/edits/e_nope/media/from-tts', { text: 'x' });
+  ok(noEd.status === 404, '文本朗读：工程不存在返回 404');
+  await api('DELETE', `/api/edits/${edId}`);
+  await api('PUT', '/api/settings', { tts: { mode: ttsKeep } });
   /* ---------- 音色试听 ---------- */
   const pv = await fetch(BASE + '/api/tts/preview', {
     method: 'POST',
