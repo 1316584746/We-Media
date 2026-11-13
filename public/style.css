@@ -394,7 +394,7 @@ details.logs pre { margin: 10px 0 0; max-height: 220px; overflow: auto; backgrou
 .feat-head { flex-wrap: wrap; gap: 12px; }
 .feat-head h2 { display: inline; }
 .feat-head .sub { margin-left: 12px; color: var(--muted); font-size: 12.5px; }
-.feat-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(190px, 1fr)); gap: 18px; }
+.feat-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(210px, 1fr)); gap: 18px; }
 .feat { padding: 0; text-align: left; cursor: pointer; background: var(--panel); border: 1px solid var(--line); border-radius: var(--r2); overflow: hidden; transition: 0.18s; display: block; }
 .feat:hover { border-color: var(--line2); transform: translateY(-3px); box-shadow: var(--shadow); }
 .feat-media { position: relative; }
@@ -441,16 +441,10 @@ details.logs pre { margin: 10px 0 0; max-height: 220px; overflow: auto; backgrou
 .feat-grid > .empty { grid-column: 1 / -1; padding: 40px 20px; }
 .hot-loading b { margin: 0; }
 .empty p { margin: 6px 0 12px; color: var(--muted); font-size: 12.5px; }
-.hot-groups { display: flex; flex-direction: column; gap: 26px; }
-.hot-group-head { display: flex; align-items: baseline; gap: 12px; margin-bottom: 12px; }
-.hot-group-head .plat-name { font-size: 15px; color: var(--text); }
-.hot-group-head .plat-name.bili { color: #0b8fc7; }
-.hot-group-head .plat-name.dy { color: #0aa8a2; }
-.hot-group-head .plat-name.xhs { color: #e63757; }
-.hot-group-head .plat-name.wx { color: #1f9d66; }
-.hot-group-head .n { color: var(--muted); font-size: 12.5px; }
-.hot-group-empty { padding: 14px 16px; border: 1px dashed var(--line2); border-radius: var(--r2); color: var(--muted); font-size: 12.5px; line-height: 1.6; }
-.hot-group.off { opacity: .85; }
+.feat-ori.src { background: rgba(11, 143, 199, 0.85); }
+.feat-sep { grid-column: 1 / -1; display: flex; align-items: baseline; gap: 12px; padding-top: 10px; border-top: 1px dashed var(--line2); margin-top: 4px; }
+.feat-sep span { font-weight: 700; font-size: 14px; }
+.feat-sep em { font-style: normal; color: var(--muted); font-size: 12.5px; }
 .chip-sep { width: 1px; height: 18px; background: var(--line2); align-self: center; margin: 0 4px; }
 .feat-info { padding: 11px 13px 13px; }
 .feat-info .t { font-weight: 600; font-size: 14px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }

@@ -1,4 +1,4 @@
-import { featuredCardsHtml, hotGroupsHtml, fmtPlay, handleCoverErrors, openFeatured, playInCard, playHotInCard, stopInCard, PLATFORMS } from '../featured.js';
+import { featuredCardsHtml, hotCardsHtml, fmtPlay, handleCoverErrors, openFeatured, playInCard, playHotInCard, stopInCard, PLAT_FILTERS } from '../featured.js';
 import { estimate, estimateHtml } from '../pricing.js';
 import { $, $$, api, esc, state, toast, icon, paintIcons, tplOf, tplColor, VISUAL, mockParts, voiceChoices, previewVoice, previewBtnHtml } from '../core.js';
 
@@ -6,8 +6,7 @@ let tplId = 'poem';
 let form = null;
 let busy = false;
 let exts = { skills: [], mcp: [] };
-let featPlatform = '全部';
-let featTab = 'hot'; // hot = B 站热门动画；demo = 做同款示范
+let featPlat = 'all'; // all / dy / xhs / wx / bili：创作精选的平台筛选
 const hotCache = new Map(); // 模板 id -> /api/discover 结果（页面会话内缓存，服务端另有 30 分钟缓存）
 let drafting = false; // 正在让 AI 写文案
 let featAll = false; // false = 只看当前模板的同类精选；true = 所有模板
@@ -334,59 +333,88 @@ export async function mount(root) {
 
   // ---- 创作精选 ----
   // 精选随当前模板联动：选「古诗词动画」就只推荐诗词类；「自由创作」不限题材，展示全部
-  // 两个页签：「热门动画」= B 站同主题视频按播放量排序、可原地播放；「做同款示范」= 我们的示范模板
+  // 一个列表：各平台视频聚合在一起，按播放量从高到低；上方按平台筛选。
+  // 有真实播放量的（B 站）排在前面；抖音 / 小红书是按其内容形态写的示范（没有播放量），排在后面；公众号暂无数据源
   let hotList = [];
+  let hotState = 'idle'; // idle | loading | ok | err
+  let hotErr = '';
+  let hotStale = '';
   let hotSeq = 0;
-  const paintHot = async () => {
-    const grid = $('#featGrid', featEl);
-    const note = $('#hotNote', featEl);
+  const loadHot = async () => {
     const id = tplId;
     const seq = ++hotSeq;
     let data = hotCache.get(id);
     if (!data) {
-      grid.innerHTML = `<div class="empty hot-loading"><i class="spin"></i><b>正在获取热门视频…</b></div>`;
+      hotState = 'loading';
+      paintGrid();
       try {
         data = await api(`/api/discover?template=${encodeURIComponent(id)}`);
         hotCache.set(id, data);
       } catch (err) {
         if (seq !== hotSeq) return;
         hotList = [];
-        grid.innerHTML = `<div class="empty"><b>暂时拿不到热门视频</b><p>${esc(err.message)}</p><button class="btn ghost sm" data-hot-retry>重试</button></div>`;
-        return;
+        hotState = 'err';
+        hotErr = err.message;
+        return paintGrid();
       }
     }
     if (seq !== hotSeq || tplId !== id) return; // 等待期间用户已经换了模板
     hotList = data.items;
-    grid.className = 'hot-groups';
-    grid.innerHTML = hotGroupsHtml(hotList);
-    if (note && data.stale) {
-      // 只在拿不到实时数据时提示，平时不展示任何说明文字
-      note.textContent = `B 站暂时限制了访问，当前是 ${new Date(data.fetchedAt).toLocaleDateString('zh-CN')} 的数据快照`;
+    hotState = 'ok';
+    // 只在拿不到实时数据时提示，平时不展示任何说明文字
+    hotStale = data.stale ? `B 站暂时限制了访问，当前是 ${new Date(data.fetchedAt).toLocaleDateString('zh-CN')} 的数据快照` : '';
+    paintGrid();
+  };
+  const demoList = () => {
+    const scoped = tplId !== 'free' && !featAll;
+    const want = { dy: '抖音向', xhs: '小红书向' };
+    return featured.filter((f) => (!scoped || f.template === tplId) && (featPlat === 'all' || want[featPlat] === f.platform));
+  };
+  const paintGrid = () => {
+    const grid = $('#featGrid', featEl);
+    const note = $('#hotNote', featEl);
+    if (!grid) return;
+    const showHot = featPlat === 'all' || featPlat === 'bili';
+    const demos = demoList();
+    const hots = showHot && hotState === 'ok' ? hotList : [];
+    if (note) note.textContent = showHot && hotState === 'ok' ? hotStale : '';
+    let html = '';
+    if (showHot && hotState === 'loading') html += `<div class="empty hot-loading"><i class="spin"></i><b>正在获取热门视频…</b></div>`;
+    html += hotCardsHtml(hots);
+    if (hots.length && demos.length) html += `<div class="feat-sep"><span>做同款示范</span><em>按抖音 / 小红书的内容形态写的示例，没有播放量</em></div>`;
+    html += featuredCardsHtml(demos);
+    if (showHot && hotState === 'err') {
+      html += `<div class="empty hot-err"><b>暂时拿不到 B 站热门视频</b><p>${esc(hotErr)}</p><button class="btn ghost sm" data-hot-retry>重试</button></div>`;
     }
+    if (!html) {
+      html =
+        featPlat === 'wx'
+          ? `<div class="empty"><b>微信公众号暂无可聚合的视频</b><p>公众号没有公开的视频榜单与搜索接口，接入合规数据源后会显示在这里。</p></div>`
+          : `<div class="empty"><b>暂无内容</b></div>`;
+    }
+    grid.innerHTML = html;
   };
   const paintFeatured = () => {
     if (!featEl) return;
     hotSeq++;
     const t = tplOf(tplId);
-    const hot = featTab === 'hot';
-    const scoped = tplId !== 'free' && !featAll;
-    const list = featured.filter((f) => (!scoped || f.template === tplId) && (featPlatform === '全部' || f.platform === featPlatform));
+    const needHot = featPlat === 'all' || featPlat === 'bili';
     featEl.innerHTML = `<div class="section-title feat-head">
-        <div><h2>创作精选${tplId !== 'free' && (hot || scoped) ? ` · ${esc(t.name)}` : ''}</h2><span class="sub" id="hotNote"></span></div>
-        <div class="chips" id="featFilter">
-          <button class="chip ${hot ? 'on' : ''}" data-tab="hot">热门动画</button>
-          <button class="chip ${hot ? '' : 'on'}" data-tab="demo">做同款示范</button>${
-            hot
-              ? ''
-              : `<span class="chip-sep"></span>${PLATFORMS.map((p) => `<button class="chip ${p === featPlatform ? 'on' : ''}" data-plat="${p}"${p === '全部' ? '' : ' title="按该平台常见的内容形态写的示范，不是平台原视频，没有播放量数据"'}>${p}</button>`).join('')}${
-                  tplId === 'free' ? '' : `<span class="chip-sep"></span><button class="chip ${featAll ? 'on' : ''}" data-scope>看全部模板</button>`
-                }`
-          }</div>
+        <div><h2>创作精选${tplId !== 'free' ? ` · ${esc(t.name)}` : ''}</h2><span class="sub" id="hotNote"></span></div>
+        <div class="chips" id="featFilter">${PLAT_FILTERS.map((p) => `<button class="chip ${p.key === featPlat ? 'on' : ''}" data-plat="${p.key}">${p.name}</button>`).join('')}${
+          tplId === 'free' ? '' : `<span class="chip-sep"></span><button class="chip ${featAll ? 'on' : ''}" data-scope>看全部模板</button>`
+        }</div>
       </div>
-      <div class="feat-grid" id="featGrid">${hot ? '' : featuredCardsHtml(list)}</div>`;
-    if (hot) paintHot();
-  };
-  const useFeatured = (item) => {
+      <div class="feat-grid" id="featGrid"></div>`;
+    hotState = needHot && hotCache.has(tplId) ? 'ok' : needHot ? 'loading' : 'idle';
+    if (hotState === 'ok') {
+      hotList = hotCache.get(tplId).items;
+      const d = hotCache.get(tplId);
+      hotStale = d.stale ? `B 站暂时限制了访问，当前是 ${new Date(d.fetchedAt).toLocaleDateString('zh-CN')} 的数据快照` : '';
+    }
+    paintGrid();
+    if (needHot && !hotCache.has(tplId)) loadHot();
+  };  const useFeatured = (item) => {
     resetForm(item.template);
     Object.assign(form, { title: item.title, author: item.author || '', script: item.script, style: item.style, orientation: item.orientation });
     paintTpls();
@@ -411,12 +439,7 @@ export async function mount(root) {
   if (featEl) {
     handleCoverErrors(featEl);
     featEl.addEventListener('click', async (e) => {
-      const tab = e.target.closest('[data-tab]');
-      if (tab) {
-        featTab = tab.dataset.tab;
-        return paintFeatured();
-      }
-      if (e.target.closest('[data-hot-retry]')) return paintHot();
+      if (e.target.closest('[data-hot-retry]')) return loadHot();
       const hotCard = e.target.closest('[data-hot]');
       if (hotCard) {
         if (e.target.closest('[data-hot-use]')) {
@@ -434,7 +457,7 @@ export async function mount(root) {
       }
       const pl = e.target.closest('[data-plat]');
       if (pl) {
-        featPlatform = pl.dataset.plat;
+        featPlat = pl.dataset.plat;
         return paintFeatured();
       }
       if (e.target.closest('[data-scope]')) {

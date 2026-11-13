@@ -1,11 +1,20 @@
 /* 创作精选：卡片网格、详情弹窗。点「做同款」由调用方把内容套进创作表单。 */
 import { $, esc, icon, toast, tplOf, tplColor, state } from './core.js';
 
-export const PLATFORMS = ['全部', '抖音向', '小红书向'];
+/** 平台筛选：key 对应卡片的来源。目前只有 B 站有真实的播放量数据；抖音 / 小红书是按其内容形态写的示范，公众号暂无数据源 */
+export const PLAT_FILTERS = [
+  { key: 'all', name: '全部' },
+  { key: 'dy', name: '抖音' },
+  { key: 'xhs', name: '小红书' },
+  { key: 'wx', name: '微信公众号' },
+  { key: 'bili', name: 'B 站' },
+];
 
 const orientName = (o) => (o === 'portrait' ? '竖屏 9:16' : '横屏 16:9');
 const styleName = (item) => state.meta.stylePresets.find((s) => s.value === item.style)?.name || item.styleName;
 const platformCls = (p) => (p === '抖音向' ? 'dy' : 'xhs');
+const platName = (p) => String(p).replace(/向$/, '');
+const DEMO_TIP = '按该平台常见的内容形态（画幅、节奏、题材）写的示范，不是平台上的原视频，没有播放量数据';
 
 function coverHtml(item) {
   const t = tplOf(item.template);
@@ -18,14 +27,13 @@ function coverHtml(item) {
 /** 画面区：封面 + 角标 + 播放按钮（有示范视频时） */
 function mediaInner(f) {
   return `${coverHtml(f)}
-    <span class="feat-plat ${platformCls(f.platform)}" title="按该平台常见的内容形态（画幅、节奏、题材）写的示范，不是平台上的原视频，也没有播放量数据；真实的高播放视频请看「热门动画」页签">${esc(f.platform)}</span>
+    <span class="feat-plat ${platformCls(f.platform)}" title="${DEMO_TIP}">${esc(platName(f.platform))} · 示范</span>
     <span class="feat-ori">${f.orientation === 'portrait' ? '竖屏' : '横屏'}</span>
     ${f.video ? `<button type="button" class="feat-play" data-play aria-label="播放示范视频">${icon('play')}</button>` : ''}
     <button type="button" class="feat-use" data-use>做同款</button>`;
 }
 
 export function featuredCardsHtml(list) {
-  if (!list.length) return '<div class="empty"><b>暂无内容</b></div>';
   return list
     .map((f) => {
       const t = tplOf(f.template);
@@ -71,13 +79,13 @@ const fmtDate = (ts) => (ts ? new Date(ts * 1000).toLocaleDateString('zh-CN', { 
 function hotMedia(v, i) {
   return `<div class="feat-cover hot-cover"><img src="${esc(v.pic)}" loading="lazy" alt="" referrerpolicy="no-referrer" /></div>
     <span class="hot-rank r${i < 3 ? i + 1 : 0}">${i + 1}</span>
+    <span class="feat-ori src">B 站</span>
     <span class="hot-dur">${fmtDur(v.duration)}</span>
     <button type="button" class="feat-play" data-hplay aria-label="播放">${icon('play')}</button>
     <button type="button" class="feat-use" data-hot-use>做同款</button>`;
 }
 
 export function hotCardsHtml(items) {
-  if (!items.length) return '<div class="empty"><b>暂无内容</b></div>';
   return items
     .map(
       (v, i) => `<div class="feat hot" data-hot="${esc(v.bvid)}">
@@ -92,16 +100,6 @@ export function hotCardsHtml(items) {
     .join('');
 }
 
-/* 按平台分组：每组内部按播放量从高到低。目前只有 B 站有开放的搜索 + 官方外嵌播放器，
- * 能把视频直接拉进来；其他平台没有合规的数据源，不展示空分组。接入后在 PLAT_GROUPS 里加一项即可。 */
-const PLAT_GROUPS = [{ key: 'bili', name: 'B 站', note: '按播放量从高到低，点 ▶ 直接在卡片里播放' }];
-export function hotGroupsHtml(items) {
-  return PLAT_GROUPS.map((g) => {
-    const list = g.key === 'bili' ? items : [];
-    if (!list.length) return '';
-    return `<section class="hot-group"><div class="hot-group-head"><b class="plat-name ${g.key}">${g.name}</b><span class="n">${list.length} 条 · ${g.note}</span></div><div class="feat-grid hot-grid">${hotCardsHtml(list)}</div></section>`;
-  }).join('') || '<div class="empty"><b>暂无内容</b></div>';
-}
 /** 在卡片画面区内嵌 B 站官方外嵌播放器（16:9 正好铺满封面位置） */
 export function playHotInCard(card, v) {
   const media = $('.feat-media', card);
@@ -137,7 +135,7 @@ export function openFeatured(item) {
             : coverHtml(item)
         }</div>
         <div class="fd-info">
-          <div class="fd-tags"><span class="feat-plat inline ${platformCls(item.platform)}" title="按该平台常见的内容形态（画幅、节奏、题材）写的示范，不是平台上的原视频，也没有播放量数据；真实的高播放视频请看「热门动画」页签">${esc(item.platform)}</span><span class="tag">${esc(item.topic)}</span></div>
+          <div class="fd-tags"><span class="feat-plat inline ${platformCls(item.platform)}" title="${DEMO_TIP}">${esc(platName(item.platform))} · 示范</span><span class="tag">${esc(item.topic)}</span></div>
           <h3>${esc(item.title)}${item.author ? ` <small>· ${esc(item.author)}</small>` : ''}</h3>
           <p class="fd-desc">${esc(item.desc)}</p>
           <div class="fd-params">

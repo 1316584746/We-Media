@@ -277,18 +277,19 @@ const ok = (c, m) => {
   ok(await js(`!document.querySelector('[data-skill]').classList.contains('on')`), '点击可取消勾选');
   // 创作精选：筛选、详情、做同款
   ok(await js(`!document.querySelector('#recent') && ![...document.querySelectorAll('h2')].some(h=>h.textContent.includes('最近项目'))`), '创作页不再展示「最近项目」');
-  // 热门动画页签（默认）：B 站同主题视频按播放量排序，原地播放。依赖外网，联网失败时只校验错误提示
+  // 创作精选：各平台视频聚合在一起、按播放量排序，可按平台筛选；B 站有真实数据，依赖外网，联网失败时只校验错误提示
   await click('[data-tpl="poem"]');
-  ok(await js(`document.querySelector('[data-tab="hot"]').classList.contains('on')`), '创作精选默认是「热门动画」页签');
-  ok(await waitFor(`document.querySelectorAll('.hot').length > 0 || !!document.querySelector('[data-hot-retry]')`, 30000), '热门动画：加载出视频或给出可重试的错误提示');
+  ok(await js(`[...document.querySelectorAll('#featFilter [data-plat]')].map(b=>b.textContent.trim()).join() === '全部,抖音,小红书,微信公众号,B 站' && document.querySelector('#featFilter [data-plat="all"]').classList.contains('on')`), '平台筛选：全部 / 抖音 / 小红书 / 微信公众号 / B 站，默认「全部」');
+  ok(await js(`!document.querySelector('[data-tab="hot"], [data-tab="demo"]')`), '不再有「热门动画 / 做同款示范」两个页签');
+  ok(await waitFor(`document.querySelectorAll('.hot').length > 0 || !!document.querySelector('[data-hot-retry]')`, 30000), '热门视频：加载出视频或给出可重试的错误提示');
   if (await js(`document.querySelectorAll('.hot').length > 0`)) {
     const hotApi = await (await fetch(`${BASE}/api/discover?template=poem`)).json();
     ok(hotApi.items.length >= 6 && hotApi.items.every((v, i) => i === 0 || hotApi.items[i - 1].play >= v.play), `热门视频 ${hotApi.items.length} 条，按播放量从高到低`);
     ok(await js(`JSON.stringify([...document.querySelectorAll('.hot')].map(c=>c.dataset.hot)) === ${JSON.stringify(JSON.stringify(hotApi.items.map((v) => v.bvid)))}`), '页面顺序与接口一致');
     ok(await js(`[...document.querySelectorAll('.hot')].every(c => c.querySelector('.hot-play') && c.querySelector('.hot-dur') && !c.querySelector('a[href]'))`), '每张卡片有播放量、时长，且没有跳转到平台的链接');
-    ok(await js(`!document.querySelector('#hotNote').textContent.includes('来源') && document.querySelector('[data-tab="hot"]').textContent.trim() === '热门动画'`), '热门动画页签不再有说明文字');
-    ok(await js(`(() => { const g = [...document.querySelectorAll('.hot-group')]; const names = g.map(x => x.querySelector('.plat-name').textContent.trim()); return JSON.stringify(names) === '[\"B 站\"]' && g[0].querySelectorAll('.hot').length > 0 && !document.querySelector('.plat-links') && !document.querySelector('#featGrid a[href]'); })()`), '按平台分组（目前只有 B 站一组，没有空的「未接入」分组），B 站有视频，没有「跳转到平台」的关键词链接');
-    await js(`document.querySelector('.hot-groups').scrollIntoView({block:'start'})`);
+    ok(await js(`!document.querySelector('#hotNote').textContent.includes('来源') && !document.querySelector('.hot-group')`), '没有说明文字，也没有按平台拆开的分组');
+    ok(await js(`[...document.querySelectorAll('.hot')].every(c => c.querySelector('.feat-ori.src').textContent === 'B 站') && !document.querySelector('.plat-links') && !document.querySelector('#featGrid a[href]')`), '热门视频带来源标识「B 站」，没有跳转到平台的链接');
+    await js(`document.querySelector('#featGrid').scrollIntoView({block:'start'})`);
     await sleep(300);
     await shot('ui-hot-groups');
     await js(`document.querySelector('#featured').scrollIntoView()`);
@@ -310,22 +311,26 @@ const ok = (c, m) => {
     ok(await js(`!document.querySelector('.ref-banner')`), '点 ✕ 移除参考横幅');
     await click('[data-tpl="poem"]');
   }
-  // 示范页签
-  await click('[data-tab="demo"]');
-  ok(await waitFor(`document.querySelectorAll('.feat:not(.hot)').length === 4`, 3000), '切到「做同款示范」页签');
+  // 「全部」：有真实播放量的（B 站）排前面，示范排后面
+  ok(await waitFor(`document.querySelectorAll('.feat:not(.hot)').length === 4`, 3000), '「全部」里包含 4 条诗词示范');
+  ok(await js(`(() => { const cs = [...document.querySelectorAll('#featGrid .feat')]; const lastHot = cs.map(c => c.classList.contains('hot')).lastIndexOf(true); const firstDemo = cs.findIndex(c => !c.classList.contains('hot')); return lastHot < firstDemo; })()`), '有真实播放量的视频排在示范前面');
   // 精选跟随模板：选「古诗词动画」→ 只推荐诗词
   await click('[data-tpl="poem"]');
-  ok(await waitFor(`document.querySelectorAll('.feat').length === 4 && document.querySelector('#featured h2').textContent.includes('古诗词')`, 3000), '默认模板是古诗词，精选只展示 4 条诗词');
-  ok(await js(`[...document.querySelectorAll('.feat')].every(c => ['shanju-qiuming','jingyesi','dengguanque','jiangxue'].includes(c.dataset.feat))`), '展示的都是诗词类');
-  await click('[data-plat="抖音向"]');
-  ok(await js(`document.querySelectorAll('.feat').length === 2 && [...document.querySelectorAll('.feat-plat')].every(e=>e.textContent==='抖音向')`), '筛选抖音向');
-  await click('[data-plat="小红书向"]');
-  ok(await js(`document.querySelectorAll('.feat').length === 2 && [...document.querySelectorAll('.feat-plat')].every(e=>e.textContent==='小红书向')`), '筛选小红书向');
-  await click('[data-plat="全部"]');
+  ok(await waitFor(`document.querySelectorAll('.feat:not(.hot)').length === 4 && document.querySelector('#featured h2').textContent.includes('古诗词')`, 3000), '默认模板是古诗词，精选只展示 4 条诗词');
+  ok(await js(`[...document.querySelectorAll('.feat:not(.hot)')].every(c => ['shanju-qiuming','jingyesi','dengguanque','jiangxue'].includes(c.dataset.feat))`), '展示的都是诗词类');
+  await click('[data-plat="dy"]');
+  ok(await js(`document.querySelectorAll('.feat').length === 2 && !document.querySelector('.hot') && [...document.querySelectorAll('.feat-plat')].every(e=>e.textContent==='抖音 · 示范')`), '筛选「抖音」：只有抖音向示范，没有 B 站视频');
+  await click('[data-plat="xhs"]');
+  ok(await js(`document.querySelectorAll('.feat').length === 2 && [...document.querySelectorAll('.feat-plat')].every(e=>e.textContent==='小红书 · 示范')`), '筛选「小红书」');
+  await click('[data-plat="wx"]');
+  ok(await js(`document.querySelectorAll('.feat').length === 0 && document.querySelector('#featGrid .empty b').textContent.includes('微信公众号')`), '筛选「微信公众号」：暂无数据源，给出说明而不是假数据');
+  await click('[data-plat="bili"]');
+  ok(await waitFor(`document.querySelectorAll('.feat:not(.hot)').length === 0 && (document.querySelectorAll('.hot').length > 0 || !!document.querySelector('[data-hot-retry]'))`, 30000), '筛选「B 站」：只有 B 站视频（或可重试的错误提示）');
+  await click('[data-plat="all"]');
   // 示范视频原地播放：卡片不变，只在画面区出现播放器，同一时间只播一个
   await js(`document.querySelector('#featured').scrollIntoView()`);
   await click('[data-feat="shanju-qiuming"] [data-play]');
-  ok(await waitFor(`!!document.querySelector('[data-feat="shanju-qiuming"] .feat-media video') && document.querySelectorAll('.feat').length === 4 && !document.querySelector('dialog[open]')`, 3000), '点播放：在当前卡片内出现播放器，不弹窗');
+  ok(await waitFor(`!!document.querySelector('[data-feat="shanju-qiuming"] .feat-media video') && document.querySelectorAll('.feat:not(.hot)').length === 4 && !document.querySelector('dialog[open]')`, 3000), '点播放：在当前卡片内出现播放器，不弹窗');
   ok(await waitFor(`(()=>{const v=document.querySelector('[data-feat="shanju-qiuming"] video');return v && v.readyState>=1 && v.duration>5 && !v.error})()`, 8000), '示范视频能加载，时长正常');
   await click('[data-feat="jingyesi"] [data-play]');
   ok(await js(`document.querySelectorAll('.feat video').length === 1 && !!document.querySelector('[data-feat="jingyesi"] video') && !!document.querySelector('[data-feat="shanju-qiuming"] [data-play]')`), '再播另一条：上一条自动恢复成封面，同时只有一个播放器');
@@ -335,14 +340,14 @@ const ok = (c, m) => {
   ok(await js(`!document.querySelector('.feat video') && !!document.querySelector('[data-feat="jingyesi"] [data-play]')`), '点 ✕ 关闭播放器，恢复封面');
   // 切换模板 → 精选同步
   await click('[data-tpl="explainer"]');
-  ok(await waitFor(`document.querySelectorAll('.feat').length === 4 && document.querySelector('#featured h2').textContent.includes('知识科普') && [...document.querySelectorAll('.feat')].every(c=>['sky-blue','coffee-journey','rainbow','yawn'].includes(c.dataset.feat))`, 3000), '切到知识科普，精选同步成科普类');
+  ok(await waitFor(`document.querySelectorAll('.feat:not(.hot)').length === 4 && document.querySelector('#featured h2').textContent.includes('知识科普') && [...document.querySelectorAll('.feat:not(.hot)')].every(c=>['sky-blue','coffee-journey','rainbow','yawn'].includes(c.dataset.feat))`, 3000), '切到知识科普，精选同步成科普类');
   await click('[data-tpl="heal"]');
-  ok(await waitFor(`document.querySelectorAll('.feat').length === 4 && [...document.querySelectorAll('.feat')].every(c=>c.dataset.feat.startsWith('heal-'))`, 3000), '切到心灵鸡汤，精选同步成治愈类');
+  ok(await waitFor(`document.querySelectorAll('.feat:not(.hot)').length === 4 && [...document.querySelectorAll('.feat:not(.hot)')].every(c=>c.dataset.feat.startsWith('heal-'))`, 3000), '切到心灵鸡汤，精选同步成治愈类');
   await click('[data-tpl="free"]');
-  ok(await waitFor(`document.querySelectorAll('.feat').length === 24 && !document.querySelector('[data-scope]')`, 3000), '自由创作不限题材：展示全部精选');
+  ok(await waitFor(`document.querySelectorAll('.feat:not(.hot)').length === 24 && !document.querySelector('[data-scope]')`, 3000), '自由创作不限题材：展示全部精选');
   await click('[data-tpl="explainer"]');
   await click('[data-scope]');
-  ok(await waitFor(`document.querySelectorAll('.feat').length === 24`, 3000), '「看全部模板」展示全部 24 条');
+  ok(await waitFor(`document.querySelectorAll('.feat:not(.hot)').length === 24`, 3000), '「看全部模板」展示全部 24 条');
   await js(`document.querySelector('#featured').scrollIntoView()`);
   await sleep(800);
   await shot('ui-featured');
