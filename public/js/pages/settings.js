@@ -53,7 +53,7 @@ const PANES = `
 
 <div class="st-pane" data-sec="model"><h2 class="st-h">模型</h2><p class="st-desc">分镜、文生图、配音、视频生成用到的模型与密钥，只保存在本机 <code class="mono">data/settings.json</code>，不会上传。</p>
 <section class="st-blk" data-blk="llm"><div class="st-sub"><span>AI Agent</span><span class="badge" data-badge="llm"></span></div><div class="st-inner">
-  <p class="hint">分镜、M Agent 写文案、做同款、工具增强等所有 AI 对话功能，都用这里的 API Key 和默认模型。填好 Key 后点「获取列表」，从下拉里选模型。</p>
+  <p class="hint">分镜、M Agent 写文案、做同款、工具增强等所有 AI 对话功能，都用这里的 API Key 和默认模型：百炼 Key 和 Cursor Key 都可以，填好 Key 会自动获取模型，从下拉里选。文生图、配音、视频生成是另外的服务，在下面单独配置。</p>
   <div class="field"><label>服务商</label>
     <select name="llm.provider"><option value="openai">阿里百炼 / 其他 OpenAI 兼容服务</option><option value="cursor">Cursor</option></select>
   </div>
@@ -67,11 +67,6 @@ const PANES = `
   </details>
   <div class="cost" data-cost="llm"></div>
 </div></section>
-<section class="st-blk" data-blk="dash"><div class="st-sub"><span>阿里百炼一键配置</span></div><div class="st-inner">
-  <label class="lbl-sm">API Key <span class="hint">一个百炼 Key 同时填给下面的文生图、配音、图生视频，并切到百炼推荐配置。AI Agent 用什么服务商都不影响。填入后点「套用」，再点「保存设置」。</span></label>
-  <div class="quick-row"><input id="dashKey" type="password" placeholder="sk-xxxxxxxx" autocomplete="off" /><button type="button" class="btn" id="btnApplyDash">套用</button></div>
-</div></section>
-
 <section class="st-blk" data-blk="image"><div class="st-sub"><span>文生图</span><span class="badge" data-badge="image"></span></div><div class="st-inner">
   <div class="field"><label>模式</label>
     <select name="image.mode">${modeOpts('image.mode')}</select>
@@ -393,30 +388,6 @@ export async function mount(root, params = []) {
   syncProvider();
   if (s.llm.apiKey) fetchModels({ quiet: true });
   else mdlHint.textContent = '填好 API Key 后点「获取列表」。';
-
-  $('#btnApplyDash', root).addEventListener('click', () => {
-    const dashKey = $('#dashKey', root);
-    const llmKey = field('llm.apiKey').value.trim();
-    // 优先用这里填的 Key；没填时，如果 AI Agent 里正好是一个新输入的百炼 Key，也可以直接用
-    const key = dashKey.value.trim() || (provSel.value === 'openai' && !llmKey.startsWith('********') ? llmKey : '');
-    if (!key) return toast('请先填入百炼 API Key', 'err');
-    const vals = {
-      'image.mode': 'dashscope', 'image.baseUrl': '', 'image.apiKey': key, 'image.model': 'qwen-image-2.0',
-      'tts.mode': 'dashscope', 'tts.baseUrl': '', 'tts.apiKey': key, 'tts.model': 'qwen3-tts-flash', 'tts.voice': 'Ethan',
-      'video.mode': 'dashscope_i2v', 'video.baseUrl': '', 'video.apiKey': key, 'video.model': 'wan2.7-i2v', 'video.resolution': '720P',
-      'render.visual': 'i2v',
-    };
-    Object.entries(vals).forEach(([k, v]) => {
-      const el = field(k);
-      if (!el) return;
-      if (el.type === 'checkbox') el.checked = !!v;
-      else el.value = v;
-    });
-    dashKey.value = '';
-    paintCosts();
-    $('#saveHint', root).textContent = '已套用：文生图、配音、图生视频都用这个百炼 Key，并切到推荐配置。点「保存设置」生效';
-    toast('已套用百炼推荐配置，记得点「保存设置」', 'ok');
-  });
 
   $('#btnSave', root).addEventListener('click', async () => {
     const body = {};

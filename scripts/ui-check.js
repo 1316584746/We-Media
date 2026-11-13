@@ -380,11 +380,11 @@ const ok = (c, m) => {
   await sleep(200);
   ok(await js(`(() => { const b = document.querySelector('#btnSave').getBoundingClientRect(); return b.top >= 0 && b.bottom < 120; })()`), '设置：往下滚动时「保存设置」吸在页面顶部，随时能点');
   await js(`window.scrollTo(0, 0)`);
-  ok(await js(`document.querySelectorAll('[data-blk]').length === 5 && document.querySelectorAll('[data-badge]').length === 4`), '模型分区有 5 个块（含百炼一键配置），4 个带状态');
+  ok(await js(`document.querySelectorAll('[data-blk]').length === 4 && document.querySelectorAll('[data-badge]').length === 4 && !document.querySelector('#btnApplyDash') && !document.querySelector('#dashKey')`), '模型分区有 4 个块，各带状态，没有「阿里百炼一键配置」');
   ok(await js(`!!document.querySelector('[data-preview="edge"]') && !!document.querySelector('[data-preview="remote"]')`), '配音设置里 Edge 音色和百炼音色都有试听按钮');
   await shot('ui-settings-model');
   // API Key 输入框带「眼睛」：默认隐藏，点一下显示，再点隐藏
-  ok(await js(`document.querySelectorAll('.pw-eye').length >= 5 && [...document.querySelectorAll('input[name$=".apiKey"]')].every(i => i.type === 'password' && i.parentElement.classList.contains('pw-wrap'))`), '所有 API Key 输入框默认隐藏，右侧有眼睛按钮');
+  ok(await js(`document.querySelectorAll('.pw-eye').length >= 4 && [...document.querySelectorAll('input[name$=".apiKey"]')].every(i => i.type === 'password' && i.parentElement.classList.contains('pw-wrap'))`), '所有 API Key 输入框默认隐藏，右侧有眼睛按钮');
   await setVal('[name="video.apiKey"]', 'sk-test-eye-1234');
   await click('[name="video.apiKey"] + .pw-eye');
   ok(await js(`(()=>{const i=document.querySelector('[name="video.apiKey"]');const b=i.nextElementSibling;return i.type==='text' && i.value==='sk-test-eye-1234' && b.classList.contains('on') && b.title==='隐藏'})()`), '点眼睛：明文显示，图标变为「隐藏」');
@@ -481,10 +481,6 @@ const ok = (c, m) => {
     await setVal('[name="llm.apiKey"]', 'sk-ui-new-123456');
     ok(await waitFor(`/共有 3 个对话模型/.test(document.querySelector('#llmModelsHint').textContent)`, 5000), '设置：粘贴 / 输入 Key 后不用点按钮，自动获取模型');
     ok(await js(`(() => { const b = document.querySelector('#btnLlmModels'), s = document.querySelector('#llmModelSel'); return b.parentElement === s.parentElement && b.getBoundingClientRect().left > s.getBoundingClientRect().right - 2 && Math.abs(b.getBoundingClientRect().top - s.getBoundingClientRect().top) < 30; })()`), '设置：「获取列表」按钮在模型下拉的右边同一行');
-    ok(await js(`(() => { const b = document.querySelector('#btnApplyDash'), a = document.querySelector('[data-blk="llm"]'), i = document.querySelector('[data-blk="image"]'); return !!document.querySelector('#dashKey') && b.offsetParent !== null && a.compareDocumentPosition(b) & 4 && b.compareDocumentPosition(i) & 4; })()`), '设置：「阿里百炼一键配置」的「套用」按钮在 AI Agent 和文生图之间，一直显示');
-    await setVal('#dashKey', 'sk-dash-apply-1234');
-    await click('#btnApplyDash');
-    ok(await js(`['image','tts','video'].every(k => document.querySelector('[name="' + k + '.apiKey"]').value === 'sk-dash-apply-1234') && document.querySelector('[name="video.mode"]').value === 'dashscope_i2v' && document.querySelector('#dashKey').value === ''`), '设置：点「套用」把百炼 Key 填给文生图 / 配音 / 视频并切到推荐配置');
     await click('#btnLlmModels');
     ok(await waitFor(`/共有 3 个对话模型/.test(document.querySelector('#llmModelsHint').textContent)`, 5000), '设置：点「获取列表」后提示这个 Key 共有 3 个对话模型');
     await js(`(() => { const s = document.querySelector('#llmModelSel'); s.value = 'qwen-turbo'; s.dispatchEvent(new Event('change', { bubbles: true })); })()`);
@@ -496,7 +492,7 @@ const ok = (c, m) => {
     await shot('ui-settings-models');
     // 填 Cursor 的 Key（crsr_ 开头）：服务商自动切到 Cursor，隐藏百炼专用的接口地址和一键配置
     await setVal('[name="llm.apiKey"]', 'crsr_ui_test');
-    ok(await js(`document.querySelector('[name="llm.provider"]').value === 'cursor' && document.querySelector('#llmAdv').hidden && document.querySelector('#btnApplyDash').offsetParent !== null && /cursor\\.com/.test(document.querySelector('#llmKeyHint').innerHTML)`), '设置：填 crsr_ 开头的 Key 自动切到 Cursor，提示去 cursor.com 创建');
+    ok(await js(`document.querySelector('[name="llm.provider"]').value === 'cursor' && document.querySelector('#llmAdv').hidden && /cursor\\.com/.test(document.querySelector('#llmKeyHint').innerHTML)`), '设置：填 crsr_ 开头的 Key 自动切到 Cursor，提示去 cursor.com 创建');
     ok(await waitFor(`document.querySelector('#llmModelSel').value === '' && document.querySelector('[data-badge="llm"]').textContent.includes('未启用')`, 2000), '设置：换了服务商后模型清空，要重新获取列表并选一个才启用');
     await shot('ui-settings-cursor');
     await goto('#/settings');
