@@ -403,10 +403,8 @@ const ok = (c, m) => {
   ok(await js(`document.querySelector('[data-cost="video"]').textContent.includes('1 元 / 秒')`), '切到 1080P：费用卡片实时变成 1 元/秒');
   await setVal('[name="tts.mode"]', 'edge');
   ok(await js(`document.querySelector('[data-cost="tts"]').classList.contains('cost-free') && document.querySelector('[data-badge="tts"]').textContent === '免费'`), '配音选 Edge：卡片和徽标都显示免费');
-  await js(`document.querySelector('#costAll').open = true`);
-  ok(await js(`document.querySelectorAll('#costAll .cost-table tbody tr').length >= 12`), '费用一览表可展开');
+  ok(await js(`!document.querySelector('#costAll')`), '设置页没有「费用一览」');
   await shot('ui-settings-cost');
-  await js(`document.querySelector('#costAll').open = false`);
   await setVal('[name="video.mode"]', 'mock');
   await setVal('[name="tts.mode"]', 'mock');
   await setVal('[name="image.model"]', 'qwen-max-ui');

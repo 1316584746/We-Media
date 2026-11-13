@@ -1,7 +1,7 @@
 import { $, $$, api, esc, icon, paintIcons, state, toast, loadMeta, paintRailStatus, previewVoice, stopPreview } from '../core.js';
 import { mountPanel } from './extensions.js';
 import { mountPublishPanel } from './publish-panel.js';
-import { MODE_LABEL, costHtml, describe, overviewHtml, kindOf } from '../pricing.js';
+import { MODE_LABEL, costHtml, describe, kindOf } from '../pricing.js';
 
 const modeOpts = (name) => Object.entries(MODE_LABEL[name]).map(([v, t]) => `<option value="${v}">${t}</option>`).join('');
 
@@ -52,7 +52,6 @@ const PANES = `
 </div></div>
 
 <div class="st-pane" data-sec="model"><h2 class="st-h">模型</h2><p class="st-desc">分镜、文生图、配音、视频生成用到的模型与密钥，只保存在本机 <code class="mono">data/settings.json</code>，不会上传。</p>
-<details class="cost-all" id="costAll"></details>
 <section class="st-blk" data-blk="llm"><div class="st-sub"><span>AI Agent</span><span class="badge" data-badge="llm"></span></div><div class="st-inner">
   <p class="hint">分镜、M Agent 写文案、做同款、工具增强等所有 AI 对话功能，都用这里的 API Key 和默认模型。填好 Key 后点「获取列表」，从下拉里选模型。</p>
   <div class="field"><label>服务商</label>
@@ -263,7 +262,6 @@ export async function mount(root, params = []) {
     });
     paintBadges();
   };
-  $('#costAll', root).innerHTML = overviewHtml(esc);
   const soraOpt = field('video.mode').querySelector('[value="openai"]');
   if (soraOpt) soraOpt.disabled = s.video.mode !== 'openai'; // 已停用：除非原来就选着，否则不让新选
   form.addEventListener('input', paintCosts);
