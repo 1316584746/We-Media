@@ -169,7 +169,7 @@ export async function mount(root) {
     $('#agGrid', root).innerHTML = list.length
       ? list.map(cardHtml).join('')
       : `<div class="empty ag-empty"><b>${tab === 'mine' ? '还没有添加 Skill' : tab === 'fav' ? '还没有收藏' : '没有找到匹配的 Skill'}</b><p>${
-          tab === 'mine' ? '到「Skill」里挑一个，点开后「添加 Skill」就会出现在这里；也可以在 <a href="#/settings/skills">设置 → 技能</a> 自己写。' : tab === 'fav' ? '点技能卡片左上角的星标收藏常用的。' : '换个关键词试试。'
+          tab === 'mine' ? '到「Skill」里挑一个，点开后「添加 Skill」就会出现在这里；也可以在 <a href="#/settings/skills">设置 → SKILLS</a> 自己写。' : tab === 'fav' ? '点技能卡片左上角的星标收藏常用的。' : '换个关键词试试。'
         }</p></div>`;
     paintIcons($('#agGrid', root));
   };
@@ -210,8 +210,8 @@ export async function mount(root) {
           <pre class="ag-d-pre">${esc(it.content)}</pre>
           <p class="hint">${
             it.user
-              ? '已存进本机「设置 → 技能」，可以随时修改；创作页生成分镜时会自动带上（可在创作页取消勾选）。'
-              : '点「添加 Skill」会把它存进本机「设置 → 技能」，之后 M Agent 和创作页都会按它的指引来写。'
+              ? '已存进本机「设置 → SKILLS」，可以随时修改；创作页生成分镜时会自动带上（可在创作页取消勾选）。'
+              : '点「添加 Skill」会把它存进本机「设置 → SKILLS」，之后 M Agent 和创作页都会按它的指引来写。'
           }</p>
         </div>
         <div class="ag-d-foot">${it.user && m ? '<button type="button" class="btn ghost danger" data-remove>移除</button>' : ''}<span class="spacer"></span><button type="button" class="btn ghost" data-close>关闭</button></div>
@@ -258,7 +258,7 @@ export async function mount(root) {
         return;
       }
       if (e.target.closest('[data-remove]') && it.user) {
-        if (!(await confirmDlg({ title: `移除「${it.name}」？`, body: '只是从「设置 → 技能」里删除这条技能，之后还能重新添加。', okText: '移除', danger: true }))) return;
+        if (!(await confirmDlg({ title: `移除「${it.name}」？`, body: '只是从「设置 → SKILLS」里删除这条技能，之后还能重新添加。', okText: '移除', danger: true }))) return;
         try {
           await api(`/api/skills/${it.user.id}`, { method: 'DELETE' });
         } catch (err) {

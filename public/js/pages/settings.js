@@ -24,7 +24,7 @@ const VOICE_PRESETS = { dashscope: 'Ethan', openai: 'alloy' };
 
 const SECTIONS = [
   ['model', '模型'],
-  ['skills', '技能'],
+  ['skills', 'SKILLS'],
   ['mcp', 'MCP 服务'],
   ['publish', '发布'],
   ['prefs', '偏好'],
@@ -157,7 +157,7 @@ export async function mount(root, params = []) {
       </div>
       <div class="st-card">
         <form id="form" autocomplete="off" onsubmit="return false">${PANES}</form>
-        ${extPane('skills', '技能')}
+        ${extPane('skills', 'SKILLS')}
         ${extPane('mcp', 'MCP 服务')}
         ${extPane('publish', '发布')}
       </div>
