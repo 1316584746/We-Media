@@ -231,10 +231,21 @@ export function voiceChoices() {
 
 /** 侧边栏底部的模型配置状态 */
 export function paintRailStatus() {
-  const mocks = state.settings ? mockParts(state.settings, state.settings.render.visual) : [];
-  $('#railFoot').innerHTML = mocks.length
-    ? `<a href="#/settings" class="dot-note" title="未配置真实模型：${mocks.join('、')}，会生成占位内容"><i class="dot warn"></i>未配置<br>模型</a>`
-    : `<div class="dot-note"><i class="dot"></i>模型已<br>配置</div>`;
+  const s = state.settings;
+  const missing = [];
+  if (s) {
+    if (!(s.llm.enabled && s.llm.apiKey)) missing.push('AI 文案');
+    missing.push(...mockParts(s, s.render.visual));
+  }
+  if (!missing.length) {
+    $('#railFoot').innerHTML = '<div class="dot-note"><i class="dot"></i>模型已<br>配置</div>';
+    return;
+  }
+  const aiOk = s && s.llm.enabled && s.llm.apiKey;
+  const first = missing[0].replace(/\s/g, '');
+  const more = missing.length > 1 ? '等' : '';
+  const tip = `${aiOk ? 'AI 文案已配置（Cursor / 百炼 Key）。' : ''}还没配置：${missing.join('、')}${aiOk ? '（这些会生成占位内容）' : ''}。点击去设置`;
+  $('#railFoot').innerHTML = `<a href="#/settings" class="dot-note" title="${tip}"><i class="dot warn"></i>待配置<br>${first}${more}</a>`;
 }
 
 /** 当前配置里还是 mock 的能力（按画面方式判断哪些会用到） */
