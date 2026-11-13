@@ -123,7 +123,7 @@ async function waitDone(id, timeoutMs = 180000) {
   ok(r.json.enabled === false && r.json.name === skill.name, '停用技能（只改开关，其它字段保留）');
   r = await api('POST', '/api/skills', { name: 'x', content: '' });
   ok(r.status === 400, '技能内容为空被拒绝');
-  r = await api('POST', '/api/skills', { name: 'x', content: 'a'.repeat(20001) });
+  r = await api('POST', '/api/skills', { name: 'x', content: 'a'.repeat(40001) });
   ok(r.status === 400, '技能内容过长被拒绝');
 
   /* ---------- 扩展：MCP ---------- */
@@ -217,7 +217,7 @@ async function waitDone(id, timeoutMs = 180000) {
       const reqBody = JSON.parse(body);
       globalThis.__lastModel = reqBody.model;
       const asked = reqBody.messages.map((m) => m.content).join('\n');
-      const reply = asked.includes('开头钩子规则') ? '{"title":"开头钩子版","author":"","script":"你以为很累。\\n其实是方法不对。\\n换个做法。"}' : asked.includes('M Agent') ? '{"title":"秋夜小记","author":"","script":"风起了。\\n叶子落满小路。\\n你慢慢走。"}' : asked.includes('晚安小熊') ? '{"title":"给你的晚安","author":"","script":"今天辛苦了。\\n把烦恼放下吧。\\n晚安。"}' : 'not json';
+      const reply = asked.includes('100 formulas') ? '{"title":"开头钩子版","author":"","script":"你以为很累。\\n其实是方法不对。\\n换个做法。"}' : asked.includes('M Agent') ? '{"title":"秋夜小记","author":"","script":"风起了。\\n叶子落满小路。\\n你慢慢走。"}' : asked.includes('晚安小熊') ? '{"title":"给你的晚安","author":"","script":"今天辛苦了。\\n把烦恼放下吧。\\n晚安。"}' : 'not json';
       res.setHeader('Content-Type', 'application/json');
       res.end(JSON.stringify({ choices: [{ message: { content: reply } }] }));
     });
@@ -233,12 +233,12 @@ async function waitDone(id, timeoutMs = 180000) {
   // M Agent：精选 Skill 列表 → 添加成「技能」→ 灵感 + 技能 → 文案
   const ags = await api('GET', '/api/agent/skills');
   const sk = ags.json.skills;
-  ok(ags.status === 200 && sk.length >= 12 && ags.json.categories[0] === '推荐' && sk.every((s) => s.content && s.intro && s.scene && s.how && s.output && s.glyph), `M Agent：${sk.length} 个精选 Skill，分类 ${ags.json.categories.join('/')}`);
+  ok(ags.status === 200 && sk.length >= 10 && ags.json.categories[0] === '推荐' && sk.every((s) => s.content && s.intro && s.scene && s.how && s.output && s.glyph), `M Agent：${sk.length} 个精选 Skill，分类 ${ags.json.categories.join('/')}`);
   ok(sk.every((s) => s.templates.every((t) => meta.templates.some((x) => x.id === t))), 'M Agent：每个 Skill 适用的模板都存在');
   ok(sk.filter((s) => s.cats.includes('推荐')).length >= 6 && ags.json.categories.slice(1).every((c) => sk.some((s) => s.cats.includes(c))), 'M Agent：「推荐」里有多个，每个分类下都有 Skill');
-  const hook = sk.find((s) => s.id === 'hook-3s');
+  const hook = sk.find((s) => s.id === 'viral-hooks');
   const added = await api('POST', '/api/skills', { name: hook.name, description: hook.desc, content: hook.content, templates: hook.templates, source: `market:${hook.id}` });
-  ok(added.status === 200 && added.json.source === 'market:hook-3s', `M Agent：「添加 Skill」存成技能 ${added.json.id}`);
+  ok(added.status === 200 && added.json.source === 'market:viral-hooks', `M Agent：「添加 Skill」存成技能 ${added.json.id}`);
   const ag1 = await api('POST', '/api/agent/run', { template: 'free', idea: '租房改造', skills: [added.json.id], orientation: 'portrait' });
   ok(ag1.status === 200 && ag1.json.template === 'free' && ag1.json.orientation === 'portrait' && ag1.json.title === '开头钩子版' && ag1.json.script.split('\n').length === 3 && ag1.json.skillsUsed[0]?.id === added.json.id, `M Agent：Skill 指引随请求发给模型，返回 ${JSON.stringify(ag1.json).slice(0, 70)}`);
   ok(globalThis.__lastModel === 'fake', `M Agent：不指定模型时用设置里的（${globalThis.__lastModel}）`);

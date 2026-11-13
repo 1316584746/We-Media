@@ -11,7 +11,7 @@ const settingsStore = require('./settings');
 
 const FILE = path.join(settingsStore.DATA_DIR, 'extensions.json');
 const MASK = '********';
-const MAX_SKILL_CHARS = 20000;
+const MAX_SKILL_CHARS = 40000;
 
 function httpError(status, message) {
   const e = new Error(message);

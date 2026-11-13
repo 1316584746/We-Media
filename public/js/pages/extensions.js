@@ -89,7 +89,7 @@ async function skillModal({ skill, mode }) {
         ok.disabled = false;
         count();
       };
-      const count = () => ($('#skCount', dlg).textContent = `${$('#skContent', dlg).value.length} / 20000 字`);
+      const count = () => ($('#skCount', dlg).textContent = `${$('#skContent', dlg).value.length} / 40000 字`);
       count();
       $('#skContent', dlg).addEventListener('input', count);
       $('#skTpls', dlg).addEventListener('click', (e) => {

@@ -156,7 +156,7 @@ export async function mount(root) {
         ${it.user ? `<span class="ag-added">${on ? '使用中' : '已添加'}</span>` : ''}
       </div>
       <div class="ag-body"><b>${esc(it.name)}</b><p>${esc(it.desc)}</p>
-        <div class="ag-by"><i>${it.m ? 'M' : '我'}</i><span>${esc(it.author)}</span>${it.templates.length ? `<em>${it.templates.map((t) => esc(tplOf(t).name)).slice(0, 2).join(' / ')}${it.templates.length > 2 ? '…' : ''}</em>` : '<em>通用</em>'}</div></div>
+        <div class="ag-by"><i>${it.m ? esc(it.m.author.slice(0, 1).toUpperCase()) : '我'}</i><span>${esc(it.author)}</span>${it.templates.length ? `<em>${it.templates.map((t) => esc(tplOf(t).name)).slice(0, 2).join(' / ')}${it.templates.length > 2 ? '…' : ''}</em>` : '<em>通用</em>'}</div></div>
     </div>`;
   };
 
@@ -186,13 +186,20 @@ export async function mount(root) {
       const tpls = it.templates.length ? it.templates.map((t) => esc(tplOf(t).name)).join('、') : '所有模板';
       const used = it.user && picked.includes(it.user.id);
       const rows = m
-        ? [['介绍', m.intro], ['使用场景', m.scene], ['如何使用', m.how], ['输出内容', m.output], ['适用模板', tpls]]
+        ? [
+            ['来源', `<a href="${esc(m.url)}" target="_blank" rel="noopener noreferrer" style="text-decoration:underline">github.com/${esc(m.repo)}</a>（★${m.stars.toLocaleString()} · ${esc(m.license)} 开源）`],
+            ['介绍', m.intro],
+            ['使用场景', m.scene],
+            ['如何使用', m.how],
+            ['输出内容', m.output],
+            ['适用模板', tpls],
+          ]
         : [['适用模板', tpls]];
       dlg.innerHTML = `<div class="ag-d">
         <div class="ag-d-head">
           <div class="ag-d-cover" style="--g:${grad(it.hue)}"><span>${esc(it.glyph)}</span></div>
           <div class="ag-d-title"><h3>${esc(it.name)}</h3>
-            <div class="ag-d-meta"><span class="ag-by"><i>${m ? 'M' : '我'}</i>${esc(it.author)}</span>${m ? `<span class="tag">${esc(m.cats.filter((c) => c !== '推荐')[0])}</span>` : ''}${it.user ? '<span class="tag ok">已添加</span>' : ''}</div>
+            <div class="ag-d-meta"><span class="ag-by"><i>${m ? esc(m.author.slice(0, 1).toUpperCase()) : '我'}</i>${esc(it.author)}</span>${m ? `<span class="tag">${esc(m.cats.filter((c) => c !== '推荐')[0])}</span>` : ''}${it.user ? '<span class="tag ok">已添加</span>' : ''}</div>
             <p>${esc(it.desc)}</p></div>
           <div class="ag-d-act">
             ${m ? `<button type="button" class="icon-btn ag-d-star${fav.has(m.id) ? ' on' : ''}" data-dstar title="${fav.has(m.id) ? '取消收藏' : '收藏'}">${icon('star')}</button>` : ''}
@@ -205,7 +212,7 @@ export async function mount(root) {
         </div>
         <div class="ag-d-body">
           <h4>简介</h4>
-          <dl class="ag-d-info">${rows.map(([k, v]) => `<dt>${k}</dt><dd>${m && k !== '适用模板' ? esc(v) : v}</dd>`).join('')}</dl>
+          <dl class="ag-d-info">${rows.map(([k, v]) => `<dt>${k}</dt><dd>${m && k !== '适用模板' && k !== '来源' ? esc(v) : v}</dd>`).join('')}</dl>
           <h4>Skill 指引内容</h4>
           <pre class="ag-d-pre">${esc(it.content)}</pre>
           <p class="hint">${
