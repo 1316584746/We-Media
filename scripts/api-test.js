@@ -209,7 +209,7 @@ async function waitDone(id, timeoutMs = 180000) {
     req.on('data', (d) => (body += d));
     req.on('end', () => {
       const asked = JSON.parse(body).messages.map((m) => m.content).join('\n');
-      const reply = asked.includes('M Agent') ? '{"title":"秋夜小记","author":"","script":"风起了。\\n叶子落满小路。\\n你慢慢走。"}' : asked.includes('晚安小熊') ? '{"title":"给你的晚安","author":"","script":"今天辛苦了。\\n把烦恼放下吧。\\n晚安。"}' : 'not json';
+      const reply = asked.includes('开头钩子规则') ? '{"title":"开头钩子版","author":"","script":"你以为很累。\\n其实是方法不对。\\n换个做法。"}' : asked.includes('M Agent') ? '{"title":"秋夜小记","author":"","script":"风起了。\\n叶子落满小路。\\n你慢慢走。"}' : asked.includes('晚安小熊') ? '{"title":"给你的晚安","author":"","script":"今天辛苦了。\\n把烦恼放下吧。\\n晚安。"}' : 'not json';
       res.setHeader('Content-Type', 'application/json');
       res.end(JSON.stringify({ choices: [{ message: { content: reply } }] }));
     });
@@ -222,21 +222,28 @@ async function waitDone(id, timeoutMs = 180000) {
   ok(draft.status === 200 && draft.json.title === '给你的晚安' && draft.json.script.split('\n').length === 3, `做同款：返回原创文案 ${JSON.stringify(draft.json).slice(0, 60)}`);
   const badDraft = await api('POST', '/api/script-draft', { template: 'heal', topic: '随便' });
   ok(badDraft.status === 502 && /重试/.test(badDraft.json.error), '做同款：模型没按 JSON 返回时提示重试');
-  // M Agent：技能列表 + 灵感 → 文案
+  // M Agent：精选 Skill 列表 → 添加成「技能」→ 灵感 + 技能 → 文案
   const ags = await api('GET', '/api/agent/skills');
-  ok(ags.status === 200 && ags.json.skills.length >= 12 && ags.json.categories.includes('自媒体创作') && ags.json.skills.every((s) => !s.brief && s.template), `M Agent：${ags.json.skills.length} 个内置技能，分类 ${ags.json.categories.length} 个`);
-  ok(ags.json.skills.every((s) => meta.templates.some((t) => t.id === s.template)), 'M Agent：每个技能都指向存在的模板');
-  ok(ags.json.skills.filter((s) => s.cats.includes('推荐')).length >= 5, 'M Agent：「推荐」里有多个技能');
-  const ag1 = await api('POST', '/api/agent/run', { skill: 'media-xhs', idea: '租房改造' });
-  ok(ag1.status === 200 && ag1.json.template === 'free' && ag1.json.orientation === 'portrait' && ag1.json.title === '秋夜小记' && ag1.json.script.split('\n').length === 3 && ag1.json.style, `M Agent：返回 模板/竖屏/画风/文案 ${JSON.stringify(ag1.json).slice(0, 70)}`);
-  const ag2 = await api('POST', '/api/agent/run', { skill: 'media-xhs', idea: '租房改造', orientation: 'landscape' });
-  ok(ag2.json.orientation === 'landscape', 'M Agent：手动指定画幅优先于技能默认');
-  const ag3 = await api('POST', '/api/agent/run', { skill: '__nope__', idea: 'x' });
-  ok(ag3.status === 400, 'M Agent：未知技能返回 400');
-  const ag4 = await api('POST', '/api/agent/run', { skill: 'free-any', idea: '   ' });
+  const sk = ags.json.skills;
+  ok(ags.status === 200 && sk.length >= 12 && ags.json.categories[0] === '推荐' && sk.every((s) => s.content && s.intro && s.scene && s.how && s.output && s.glyph), `M Agent：${sk.length} 个精选 Skill，分类 ${ags.json.categories.join('/')}`);
+  ok(sk.every((s) => s.templates.every((t) => meta.templates.some((x) => x.id === t))), 'M Agent：每个 Skill 适用的模板都存在');
+  ok(sk.filter((s) => s.cats.includes('推荐')).length >= 6 && ags.json.categories.slice(1).every((c) => sk.some((s) => s.cats.includes(c))), 'M Agent：「推荐」里有多个，每个分类下都有 Skill');
+  const hook = sk.find((s) => s.id === 'hook-3s');
+  const added = await api('POST', '/api/skills', { name: hook.name, description: hook.desc, content: hook.content, templates: hook.templates, source: `market:${hook.id}` });
+  ok(added.status === 200 && added.json.source === 'market:hook-3s', `M Agent：「添加 Skill」存成技能 ${added.json.id}`);
+  const ag1 = await api('POST', '/api/agent/run', { template: 'free', idea: '租房改造', skills: [added.json.id], orientation: 'portrait' });
+  ok(ag1.status === 200 && ag1.json.template === 'free' && ag1.json.orientation === 'portrait' && ag1.json.title === '开头钩子版' && ag1.json.script.split('\n').length === 3 && ag1.json.skillsUsed[0]?.id === added.json.id, `M Agent：Skill 指引随请求发给模型，返回 ${JSON.stringify(ag1.json).slice(0, 70)}`);
+  const ag0 = await api('POST', '/api/agent/run', { template: 'free', idea: '租房改造' });
+  ok(ag0.status === 200 && ag0.json.title === '秋夜小记' && ag0.json.skillsUsed.length === 0, 'M Agent：不选 Skill 也能写（没有带 Skill 指引）');
+  const agT = await api('POST', '/api/agent/run', { template: 'poem', idea: '秋天', skills: [added.json.id] });
+  ok(agT.status === 200 && agT.json.template === 'poem' && agT.json.orientation === 'landscape', 'M Agent：不指定画幅时用模板默认');
+  const ag3 = await api('POST', '/api/agent/run', { template: '__nope__', idea: 'x' });
+  ok(ag3.status === 400, 'M Agent：未知模板返回 400');
+  const ag4 = await api('POST', '/api/agent/run', { idea: '   ' });
   ok(ag4.status === 400 && /灵感/.test(ag4.json.error), 'M Agent：空灵感返回 400');
+  await api('DELETE', `/api/skills/${added.json.id}`);
   await api('PUT', '/api/settings', { llm: { enabled: false } });
-  const ag5 = await api('POST', '/api/agent/run', { skill: 'free-any', idea: '秋天' });
+  const ag5 = await api('POST', '/api/agent/run', { idea: '秋天' });
   ok(ag5.status === 400 && /分镜 LLM/.test(ag5.json.error), 'M Agent：未启用 LLM 时给出明确提示');
   await api('PUT', '/api/settings', { llm: { enabled: !!keepLlm.enabled, baseUrl: keepLlm.baseUrl, apiKey: '', model: keepLlm.model } });
   fake.close();

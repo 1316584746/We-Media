@@ -421,24 +421,45 @@ const ok = (c, m) => {
   // ---- 剪辑：列表 → 新建 → 导入素材 → 剪辑 → 导出 ----
   // ---- M Agent ----
   await goto('#/agent');
-  ok(await waitFor(`document.querySelectorAll('.ag-card').length >= 5`, 5000), 'M Agent 页面：「推荐」里有多个技能卡片');
+  ok(await waitFor(`document.querySelectorAll('.ag-card').length >= 6`, 5000), 'M Agent 页面：「推荐」里有多个精选 Skill');
   ok(await js(`document.querySelector('.rail-nav a.active').dataset.nav === 'agent' && document.querySelector('.ag-hero h1').textContent.includes('一个 Skill') && !!document.querySelector('#agIdea') && document.querySelector('#agSend').disabled`), '侧边栏高亮 M Agent，有标题、输入框，没写灵感时发送按钮不可点');
-  ok(await js(`[...document.querySelectorAll('#agCats .chip')].map(c=>c.textContent).join() === '推荐,古诗国风,故事绘本,知识科普,口播干货,治愈情感,自媒体创作,通用技能'`), '分类：推荐 / 古诗国风 / 故事绘本 / 知识科普 / 口播干货 / 治愈情感 / 自媒体创作 / 通用技能');
+  ok(await js(`[...document.querySelectorAll('#agCats .chip')].map(c=>c.textContent).join() === '推荐,爆款短视频,分镜与镜头,口播脚本,故事剧情,知识科普,古诗国风,治愈情感'`), '分类：推荐 / 爆款短视频 / 分镜与镜头 / 口播脚本 / 故事剧情 / 知识科普 / 古诗国风 / 治愈情感');
+  ok(await js(`document.querySelector('[data-key="m:hook-3s"]') && [...document.querySelectorAll('.ag-card b')].some(b=>b.textContent==='电影镜头设计师')`), '推荐里是真正的视频制作 Skill（黄金三秒钩子、电影镜头设计师…）');
   await shot('ui-agent');
   await click('#agCats [data-cat="知识科普"]');
-  ok(await js(`document.querySelectorAll('.ag-card').length === 2`), '切到「知识科普」分类：2 个技能');
+  ok(await js(`document.querySelectorAll('.ag-card').length === 2`), '切到「知识科普」分类：2 个 Skill');
   await click('#agCats [data-cat="推荐"]');
-  await click('[data-skill="talk-dry"]');
-  ok(await js(`!!document.querySelector('.ag-chip') && document.querySelector('.ag-chip').textContent.includes('干货口播') && document.querySelector('[data-skill="talk-dry"]').classList.contains('on') && document.querySelector('#agIdea').placeholder.includes('睡不好')`), '点技能卡片：输入框里出现技能标签，占位提示换成该技能的示例');
-  await click('[data-skill="talk-dry"] [data-star]');
+  await click('[data-key="m:hook-3s"]');
+  ok(await waitFor(`!!document.querySelector('dialog.ag-dlg[open] [data-add]') && document.querySelector('dialog.ag-dlg h3').textContent === '黄金三秒钩子' && document.querySelectorAll('.ag-d-info dt').length === 5 && document.querySelector('.ag-d-pre').textContent.includes('开头钩子规则')`, 3000), '点卡片：弹出详情（简介、使用场景、如何使用、输出内容、指引正文）和「添加 Skill」');
+  await sleep(300);
+  await shot('ui-agent-detail');
+  await click('dialog.ag-dlg [data-add]');
+  ok(await waitFor(`!!document.querySelector('dialog.ag-dlg [data-use]') && !!document.querySelector('dialog.ag-dlg .tag.ok')`, 5000), '点「添加 Skill」：变成「已添加 / 用它创作」');
+  const extAfter = await (await fetch(`${BASE}/api/extensions`)).json();
+  ok(extAfter.skills.some((s) => s.source === 'market:hook-3s' && s.content.includes('开头钩子规则')), '添加后存进了「设置 → 技能」（服务端有这条技能）');
+  await click('dialog.ag-dlg [data-use]');
+  ok(await waitFor(`!document.querySelector('dialog.ag-dlg[open]') && document.querySelector('.ag-chip')?.textContent.includes('黄金三秒钩子') && document.querySelector('[data-key="m:hook-3s"]').classList.contains('on')`, 3000), '点「用它创作」：输入框里出现 Skill 标签，卡片显示「使用中」');
+  await click('[data-key="m:hook-3s"] [data-star]');
   await click('#agTabs [data-t="fav"]');
-  ok(await js(`document.querySelectorAll('.ag-card').length === 1 && document.querySelector('.ag-card').dataset.skill === 'talk-dry'`), '收藏：星标后出现在「收藏」页签');
+  ok(await js(`document.querySelectorAll('.ag-card').length === 1 && document.querySelector('.ag-card').dataset.key === 'm:hook-3s'`), '收藏：星标后出现在「收藏」页签');
   await click('#agTabs [data-t="mine"]');
-  ok(await js(`document.querySelectorAll('.ag-card').length === 0 && document.querySelector('.ag-empty').textContent.includes('还没有自己的技能')`), '「我的」页签：没有自己的技能时给出指引');
+  ok(await js(`document.querySelectorAll('.ag-card').length === 1 && document.querySelector('.ag-card .ag-added').textContent === '使用中'`), '「我的」页签：出现刚添加的 Skill');
   await click('#agTabs [data-t="skill"]');
   await setVal('#agQ', '口播');
-  ok(await js(`document.querySelectorAll('.ag-card').length >= 2 && [...document.querySelectorAll('.ag-card')].every(c=>/口播/.test(c.textContent))`), '搜索「口播」只留下相关技能');
+  ok(await js(`document.querySelectorAll('.ag-card').length >= 2 && [...document.querySelectorAll('.ag-card')].every(c=>/口播/.test(c.textContent))`), '搜索「口播」只留下相关 Skill');
   await setVal('#agQ', '');
+  // 移除
+  await click('[data-key="m:hook-3s"]');
+  await waitFor(`!!document.querySelector('dialog.ag-dlg[open] [data-remove]')`, 3000);
+  await click('dialog.ag-dlg [data-remove]');
+  await waitFor(`!!document.querySelector('dialog.dlg[open] button[value="yes"]')`, 3000);
+  await click('dialog.dlg[open] button[value="yes"]');
+  ok(await waitFor(`!document.querySelector('.ag-chip') && !document.querySelector('[data-key="m:hook-3s"] .ag-added')`, 4000), '移除后：Skill 标签和「已添加」标记都消失');
+  await js(`document.querySelector('dialog.ag-dlg[open]')?.close()`);
+  const extGone = await (await fetch(`${BASE}/api/extensions`)).json();
+  ok(!extGone.skills.some((s) => s.source === 'market:hook-3s'), '服务端也删掉了');
+  // 灵感 → 没启用 LLM 时给出提示，并能直接去创作页
+  await js(`(() => { const s = document.querySelector('#agTpl'); s.value = 'talk'; s.dispatchEvent(new Event('change')); })()`);
   await setVal('#agIdea', '睡眠');
   ok(await js(`!document.querySelector('#agSend').disabled && document.querySelector('#agCount').textContent === '2 / 300'`), '写了灵感后发送按钮可点，字数计数');
   await click('#agSend');
@@ -447,7 +468,6 @@ const ok = (c, m) => {
   ok(await waitFor(`(location.hash === '#/' || location.hash === '') && document.querySelector('.tpl.on')?.dataset.tpl === 'talk' && document.querySelector('[data-k="title"]')?.value === '睡眠'`, 5000), '带到创作页：套用口播模板，标题填入灵感');
   ok(await js(`!sessionStorage.getItem('wm.agentDraft')`), '草稿只用一次');
   await js(`localStorage.removeItem('wm.agent.fav')`);
-
   const ff = require('../server/ffmpeg');
   const cutDir = fs.mkdtempSync(path.join(TMP, 'cut-'));
   const mk = (n) => path.join(cutDir, n);

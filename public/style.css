@@ -983,3 +983,31 @@ body[data-theme='free'] {
 .ag-by i { display: grid; place-items: center; width: 18px; height: 18px; border-radius: 50%; background: linear-gradient(135deg, var(--accent), var(--accent2)); color: #fff; font-style: normal; font-size: 10px; font-weight: 700; }
 .ag-by em { margin-left: auto; font-style: normal; padding: 0 7px; border-radius: 99px; background: var(--panel2); font-size: 11px; white-space: nowrap; }
 @media (max-width: 720px) { .ag-grid { grid-template-columns: 1fr; } .ag-search { min-width: 0; flex: 1; } .ag-tabs { flex-wrap: wrap; } }
+/* M Agent：精选 Skill 详情、已添加标记、模板选择 */
+.ag-tpl { height: 30px; padding: 0 28px 0 10px !important; border-radius: 99px !important; font-size: 12.5px !important; width: auto !important; max-width: 160px; }
+.ag-added { position: absolute; left: 6px; bottom: 6px; z-index: 2; padding: 0 8px; height: 19px; line-height: 19px; font-size: 11px; color: #fff; border-radius: 99px; background: rgba(18, 165, 116, 0.92); }
+.ag-chip.off { background: rgba(199, 125, 10, 0.12); color: var(--warn-text); }
+.tag.ok { color: var(--ok); border-color: rgba(18, 165, 116, 0.35); background: rgba(18, 165, 116, 0.1); }
+.ag-dlg { padding: 0; width: min(760px, 94vw); }
+.ag-d { display: flex; flex-direction: column; max-height: min(86vh, 760px); }
+.ag-d-head { display: flex; gap: 16px; align-items: flex-start; padding: 22px 24px 16px; border-bottom: 1px solid var(--line); }
+.ag-d-cover { flex: none; width: 84px; height: 84px; border-radius: 16px; background: var(--g); display: grid; place-items: center; box-shadow: 0 8px 20px rgba(36, 44, 74, 0.18); }
+.ag-d-cover span { font-size: 38px; color: rgba(255, 255, 255, 0.95); text-shadow: 0 3px 10px rgba(0, 0, 0, 0.25); }
+.ag-d-title { flex: 1; min-width: 0; }
+.ag-d-title h3 { font-size: 20px; }
+.ag-d-meta { display: flex; align-items: center; gap: 10px; margin: 6px 0; flex-wrap: wrap; }
+.ag-d-title p { color: var(--text2); font-size: 13.5px; line-height: 1.6; }
+.ag-d-act { display: flex; gap: 8px; align-items: center; flex: none; }
+.ag-d-star { width: 38px; height: 38px; border: 1px solid var(--line2); border-radius: 10px; }
+.ag-d-star svg { width: 17px; height: 17px; stroke: currentColor; fill: none; stroke-width: 2; stroke-linejoin: round; }
+.ag-d-star.on { color: #f0a500; border-color: #f0a500; }
+.ag-d-star.on svg { fill: currentColor; }
+.ag-d-body { padding: 16px 24px; overflow-y: auto; display: flex; flex-direction: column; gap: 10px; }
+.ag-d-body h4 { font-size: 14px; margin-top: 6px; }
+.ag-d-info { display: grid; grid-template-columns: 78px 1fr; gap: 10px 14px; margin: 0; font-size: 13.5px; line-height: 1.6; }
+.ag-d-info dt { color: var(--muted); }
+.ag-d-info dd { margin: 0; font-weight: 600; }
+.ag-d-pre { margin: 0; padding: 12px 14px; background: var(--bg2); border: 1px solid var(--line); border-radius: 12px; white-space: pre-wrap; font-family: inherit; font-size: 13px; line-height: 1.7; color: var(--text2); max-height: 240px; overflow-y: auto; }
+.ag-d-foot { display: flex; align-items: center; gap: 10px; padding: 12px 24px 18px; border-top: 1px solid var(--line); }
+.ag-d-foot .spacer { flex: 1; }
+@media (max-width: 720px) { .ag-d-head { flex-wrap: wrap; } .ag-d-act { width: 100%; justify-content: flex-end; } }
