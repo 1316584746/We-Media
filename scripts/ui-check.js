@@ -426,11 +426,11 @@ const ok = (c, m) => {
   await goto('#/agent');
   ok(await waitFor(`document.querySelectorAll('.ag-card').length >= 6`, 5000), 'M Agent 页面：「推荐」里有多个精选 Skill');
   ok(await js(`document.querySelector('.rail-nav a.active').dataset.nav === 'agent' && document.querySelector('.ag-hero h1').textContent.includes('一个 Skill') && !!document.querySelector('#agIdea') && document.querySelector('#agSend').disabled`), '侧边栏高亮 M Agent，有标题、输入框，没写灵感时发送按钮不可点');
-  ok(await js(`[...document.querySelectorAll('#agCats .chip')].map(c=>c.textContent).join() === '推荐,爆款短视频,口播脚本,分镜与镜头,故事剧情,知识科普,文案润色,小红书图文'`), '分类：推荐 / 爆款短视频 / 口播脚本 / 分镜与镜头 / 故事剧情 / 知识科普 / 文案润色 / 小红书图文');
+  ok(await js(`[...document.querySelectorAll('#agCats .chip')].map(c=>c.textContent).join() === '推荐,爆款短视频,口播脚本,分镜与镜头,动画制作,故事剧情,知识科普,文案润色,小红书图文'`), '分类：推荐 / 爆款短视频 / 口播脚本 / 分镜与镜头 / 动画制作 / 故事剧情 / 知识科普 / 文案润色 / 小红书图文');
   ok(await js(`document.querySelector('[data-key="m:viral-hooks"]') && [...document.querySelectorAll('.ag-card b')].some(b=>b.textContent==='短剧分镜与首帧提示词')`), '推荐里是 GitHub 上的开源 Skill（Viral Hooks、短剧分镜…）');
   await shot('ui-agent');
   await click('#agCats [data-cat="知识科普"]');
-  ok(await js(`document.querySelectorAll('.ag-card').length === 1`), '切到「知识科普」分类：1 个 Skill');
+  ok(await js(`document.querySelectorAll('.ag-card').length === 3`), '切到「知识科普」分类：3 个 Skill');
   await click('#agCats [data-cat="推荐"]');
   await click('[data-key="m:viral-hooks"]');
   ok(await waitFor(`!!document.querySelector('dialog.ag-dlg[open] [data-add]') && document.querySelector('dialog.ag-dlg h3').textContent === 'Viral Hooks 百个爆款开头' && document.querySelectorAll('.ag-d-info dt').length === 6 && document.querySelector('.ag-d-pre').textContent.includes('100 formulas')`, 3000), '点卡片：弹出详情（简介、使用场景、如何使用、输出内容、指引正文）和「添加 Skill」');
