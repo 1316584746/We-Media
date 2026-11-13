@@ -12,7 +12,7 @@ const DEFAULTS = {
     enabled: false,
     baseUrl: 'https://dashscope.aliyuncs.com/compatible-mode/v1',
     apiKey: '',
-    model: 'qwen-plus',
+    model: '', // 没有默认值：填好 Key 后在设置里「获取列表」，从这个 Key 拥有的模型里选
   },
   tts: {
     // dashscope(百炼 qwen3-tts) | edge(免费) | openai | custom | mock

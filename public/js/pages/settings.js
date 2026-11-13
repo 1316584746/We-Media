@@ -62,12 +62,8 @@ const PANES = `
   <details class="mdl-adv"><summary>接口地址（默认阿里百炼，也可以换成其他 OpenAI 兼容服务）</summary>
     <div class="field"><label>Base URL</label><input name="llm.baseUrl" /></div>
   </details>
-  <label class="switch"><input type="checkbox" name="llm.enabled" />启用 AI 分镜 / 文案（不启用则用规则模板，不产生费用）</label>
   <div class="cost" data-cost="llm"></div>
-</div></section>
-<section class="st-blk"><div class="st-sub"><span>阿里百炼一键配置</span></div><div class="st-inner">
-  <label class="lbl-sm">API Key <span class="hint">一个 Key 同时用于 AI Agent、文生图、配音、图生视频。填入后点「套用」，再保存。</span></label>
-  <div class="quick-row"><input id="dashKey" type="password" placeholder="sk-xxxxxxxx" autocomplete="off" /><button type="button" class="btn" id="btnApplyDash">套用</button></div>
+  <div class="mdl-all"><button type="button" class="btn ghost" id="btnApplyDash">同时用于文生图、配音、图生视频</button><span class="hint">把上面这个百炼 Key 一并填给下面三项，并切到百炼的推荐配置（要先重新输入一次完整的 Key）。</span></div>
 </div></section>
 
 <section class="st-blk" data-blk="image"><div class="st-sub"><span>文生图</span><span class="badge" data-badge="image"></span></div><div class="st-inner">
@@ -197,10 +193,9 @@ export async function mount(root, params = []) {
   const MODEL_HINT = { 'qwen-plus': '0.8 / 2 元每百万 token', 'qwen-max': '2.4 / 9.6 元每百万 token', 'qwen3.5-plus': '0.8 / 4.8 元每百万 token', 'qwen3.7-plus': '2 / 8 元每百万 token' };
   const modelSel = $('#llmModelSel', form);
   const fillModelSelect = (ids, selected) => {
-    modelSel.innerHTML = ids.length
-      ? ids.map((m) => `<option value="${esc(m)}">${esc(m)}${MODEL_HINT[m] ? `　· ${MODEL_HINT[m]}` : ''}</option>`).join('')
-      : '<option value="">请先填写 API Key，点「获取列表」</option>';
-    modelSel.value = ids.includes(selected) ? selected : ids[0] || '';
+    const ph = ids.length ? '请选择模型' : '请先填写 API Key，点「获取列表」';
+    modelSel.innerHTML = `<option value="">${ph}</option>` + ids.map((m) => `<option value="${esc(m)}">${esc(m)}${MODEL_HINT[m] ? `　· ${MODEL_HINT[m]}` : ''}</option>`).join('');
+    modelSel.value = ids.includes(selected) ? selected : '';
   };
   fillModelSelect(s.llm.model ? [s.llm.model] : [], s.llm.model);
   $$('[name]', form).forEach((el) => {
@@ -245,6 +240,7 @@ export async function mount(root, params = []) {
       const key = el.name.slice(k.length + 1);
       out[key] = el.type === 'checkbox' ? el.checked : el.value;
     });
+    if (k === 'llm') out.enabled = !!(out.apiKey && out.model);
     return out;
   };
   const paintBadges = () => {
@@ -331,9 +327,9 @@ export async function mount(root, params = []) {
       }
       const cur = field('llm.model').value.trim();
       const list = !cur || r.models.includes(cur) ? r.models : [cur, ...r.models];
-      fillModelSelect(list, cur || r.models[0], cur && !r.models.includes(cur) ? cur : '');
+      fillModelSelect(list, cur);
       paintCosts();
-      mdlHint.textContent = `这个 Key 共有 ${r.models.length} 个对话模型${cur && !r.models.includes(cur) ? `；当前的「${cur}」不在列表里，可能用不了` : ''}。选好后点「保存设置」。`;
+      mdlHint.textContent = `这个 Key 共有 ${r.models.length} 个对话模型${cur && !r.models.includes(cur) ? `；当前的「${cur}」不在列表里，可能用不了` : ''}。${cur ? '' : '请选一个，'}选好后点「保存设置」。`;
     } catch (e) {
       if (seq === mdlSeq) mdlHint.textContent = e.message;
     } finally {
@@ -347,27 +343,23 @@ export async function mount(root, params = []) {
   else mdlHint.textContent = '填好 API Key 后点「获取列表」。';
 
   $('#btnApplyDash', root).addEventListener('click', () => {
-    const key = $('#dashKey', root).value.trim();
+    const key = field('llm.apiKey').value.trim();
     if (!key) return toast('请先填入百炼 API Key', 'err');
-    const base = 'https://dashscope.aliyuncs.com/compatible-mode/v1';
+    if (key.startsWith('********')) return toast('已保存的 Key 只显示后 4 位，请重新输入一次完整的 Key 再点', 'err');
     const vals = {
-      'llm.enabled': true, 'llm.baseUrl': base, 'llm.apiKey': key, 'llm.model': 'qwen-plus',
       'image.mode': 'dashscope', 'image.baseUrl': '', 'image.apiKey': key, 'image.model': 'qwen-image-2.0',
       'tts.mode': 'dashscope', 'tts.baseUrl': '', 'tts.apiKey': key, 'tts.model': 'qwen3-tts-flash', 'tts.voice': 'Ethan',
       'video.mode': 'dashscope_i2v', 'video.baseUrl': '', 'video.apiKey': key, 'video.model': 'wan2.7-i2v', 'video.resolution': '720P',
       'render.visual': 'i2v',
     };
-    fillModelSelect(['qwen-plus'], 'qwen-plus');
     Object.entries(vals).forEach(([k, v]) => {
       const el = field(k);
       if (!el) return;
       if (el.type === 'checkbox') el.checked = !!v;
       else el.value = v;
     });
-    $('#dashKey', root).value = '';
     paintCosts();
-    fetchModels({ quiet: true });
-    $('#saveHint', root).textContent = '已套用百炼推荐配置，点「保存设置」生效';
+    $('#saveHint', root).textContent = '已把这个 Key 填给文生图、配音、图生视频并切到百炼推荐配置，点「保存设置」生效';
   });
 
   $('#btnSave', root).addEventListener('click', async () => {
@@ -381,6 +373,8 @@ export async function mount(root, params = []) {
         else v = el.value;
         setByPath(body, el.name, v);
       });
+      // AI Agent 没有单独的开关：填了 Key 并选了模型就启用，清掉 Key 或没选模型就是不启用
+      setByPath(body, 'llm.enabled', !!(body.llm.apiKey && body.llm.model));
     } catch (e) {
       $('#saveHint', root).textContent = `自定义模板 JSON 格式有误：${e.message}`;
       return;

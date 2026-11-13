@@ -379,7 +379,7 @@ const ok = (c, m) => {
   ok(await js(`!!document.querySelector('[data-preview="edge"]') && !!document.querySelector('[data-preview="remote"]')`), '配音设置里 Edge 音色和百炼音色都有试听按钮');
   await shot('ui-settings-model');
   // API Key 输入框带「眼睛」：默认隐藏，点一下显示，再点隐藏
-  ok(await js(`document.querySelectorAll('.pw-eye').length >= 5 && [...document.querySelectorAll('input[name$=".apiKey"], #dashKey')].every(i => i.type === 'password' && i.parentElement.classList.contains('pw-wrap'))`), '所有 API Key 输入框默认隐藏，右侧有眼睛按钮');
+  ok(await js(`document.querySelectorAll('.pw-eye').length >= 4 && !document.querySelector('#dashKey') && [...document.querySelectorAll('input[name$=".apiKey"]')].every(i => i.type === 'password' && i.parentElement.classList.contains('pw-wrap'))`), '所有 API Key 输入框默认隐藏，右侧有眼睛按钮');
   await setVal('[name="video.apiKey"]', 'sk-test-eye-1234');
   await click('[name="video.apiKey"] + .pw-eye');
   ok(await js(`(()=>{const i=document.querySelector('[name="video.apiKey"]');const b=i.nextElementSibling;return i.type==='text' && i.value==='sk-test-eye-1234' && b.classList.contains('on') && b.title==='隐藏'})()`), '点眼睛：明文显示，图标变为「隐藏」');
@@ -474,7 +474,7 @@ const ok = (c, m) => {
     // 设置页：读取表单里 Key 的模型，点标签填进「模型」
     await goto('#/settings/model');
     const optVals = `[...document.querySelectorAll('#llmModelSel option')].map(o=>o.value).join()`;
-    ok(await waitFor(`${optVals} === 'qwen-max,qwen-plus,qwen-turbo' && document.querySelector('#llmModelSel').value === 'qwen-plus'`, 5000), '设置：已保存 Key 时打开页面自动获取模型，下拉里是 Key 拥有的对话模型，当前模型被选中');
+    ok(await waitFor(`${optVals} === ',qwen-max,qwen-plus,qwen-turbo' && document.querySelector('#llmModelSel').value === 'qwen-plus'`, 5000), '设置：已保存 Key 时打开页面自动获取模型，下拉里是 Key 拥有的对话模型，当前模型被选中');
     await setVal('[name="llm.apiKey"]', 'sk-ui-new');
     await click('#btnLlmModels');
     ok(await waitFor(`/共有 3 个对话模型/.test(document.querySelector('#llmModelsHint').textContent)`, 5000), '设置：点「获取列表」后提示这个 Key 共有 3 个对话模型');
