@@ -422,6 +422,17 @@ const ok = (c, m) => {
   await click('.st-back');
   ok(await waitFor(`location.hash === '#/projects' && getComputedStyle(document.querySelector('.rail')).display !== 'none'`, 3000), '返回后恢复主导航');
   // ---- 剪辑：列表 → 新建 → 导入素材 → 剪辑 → 导出 ----
+  // ---- 数据看板 ----
+  await goto('#/');
+  ok(await js(`document.querySelector('#railFoot a[data-nav="dashboard"]')?.textContent.includes('数据看板') && !document.querySelector('#railFoot').textContent.includes('待配置')`), '左下角是「数据看板」入口，不再是模型状态提示');
+  await click('#railFoot a[data-nav="dashboard"]');
+  ok(await waitFor(`location.hash === '#/dashboard' && document.querySelectorAll('.db-plat').length === 5 && document.querySelectorAll('.db-stat').length === 6 && document.querySelectorAll('.db-table tbody tr').length === 5`, 6000), '点左下角：进数据看板，有总览卡片、5 个平台的总览表、5 个平台详情');
+  ok(await js(`document.querySelector('#railFoot a.active') && ['微信公众号','抖音','小红书','视频号','B 站'].every((n) => [...document.querySelectorAll('.db-plat h3')].some((h) => h.textContent === n))`), '看板里按平台分别列出：公众号、抖音、小红书、视频号、B 站');
+  ok(await js(`[...document.querySelectorAll('.db-plat')].filter((c) => /没有对个人账号开放/.test(c.textContent)).length === 3 && !!document.querySelector('#dbBiliUid')`), '没有数据接口的平台如实写明，B 站有填 UID 的地方');
+  await shot('ui-dashboard');
+  await goto('#/settings/model');
+  ok(await waitFor(`document.querySelector('#modelStatus')?.textContent.length > 5`, 3000), '模型配置状态挪到了「设置 → 模型」里');
+
   // ---- M Agent ----
   await goto('#/agent');
   ok(await waitFor(`document.querySelectorAll('.ag-card').length >= 6`, 5000), 'M Agent 页面：「推荐」里有多个精选 Skill');

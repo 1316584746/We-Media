@@ -429,6 +429,8 @@ app.post(
 app.get('/api/publish', (req, res) =>
   res.json({ platforms: publish.PLATFORMS, wechat: publish.publicWechat(publish.load().wechat), tasks: publish.listTasks(), sources: publish.listSources(), now: Date.now() }),
 );
+app.get('/api/dashboard', wrap(async (req, res) => res.json(await publish.dashboard({ refresh: req.query.refresh === '1' }))));
+app.put('/api/publish/bili', wrap((req, res) => res.json(publish.saveBili(req.body || {}))));
 app.put('/api/publish/wechat', wrap((req, res) => res.json(publish.saveWechat(req.body || {}))));
 app.post('/api/publish/wechat/test', wrap(async (req, res) => res.json(await publish.testWechat().catch((e) => ({ ok: false, message: e.message })))));
 app.post('/api/publish/tasks', wrap((req, res) => res.json(publish.createTask(req.body || {}))));

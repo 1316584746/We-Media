@@ -1,4 +1,4 @@
-import { $, $$, api, esc, icon, paintIcons, state, toast, loadMeta, paintRailStatus, previewVoice, stopPreview } from '../core.js';
+import { $, $$, api, esc, icon, paintIcons, state, toast, loadMeta, paintRailStatus, modelStatus, previewVoice, stopPreview } from '../core.js';
 import { mountPanel } from './extensions.js';
 import { mountPublishPanel } from './publish-panel.js';
 import { MODE_LABEL, costHtml, describe, kindOf } from '../pricing.js';
@@ -52,6 +52,7 @@ const PANES = `
 </div></div>
 
 <div class="st-pane" data-sec="model"><h2 class="st-h">模型</h2><p class="st-desc">分镜、文生图、配音、视频生成用到的模型与密钥，只保存在本机 <code class="mono">data/settings.json</code>，不会上传。</p>
+<div class="model-status" id="modelStatus"></div>
 <section class="st-blk" data-blk="llm"><div class="st-sub"><span>AI Agent</span><span class="badge" data-badge="llm"></span></div><div class="st-inner">
   <p class="hint">分镜、M Agent 写文案、做同款、工具增强等所有 AI 对话功能，都用这里的 API Key 和默认模型：百炼 Key 和 Cursor Key 都可以，填好 Key 会自动获取模型，从下拉里选。文生图、配音、视频生成是另外的服务，在下面单独配置。</p>
   <div class="field"><label>服务商</label>
@@ -252,6 +253,12 @@ export async function mount(root, params = []) {
       el.textContent = txt;
       el.className = `badge ${cls}`;
     });
+    const ms = modelStatus();
+    const box = $('#modelStatus', root);
+    box.className = `model-status ${ms.missing.length ? 'warn' : 'ok'}`;
+    box.innerHTML = ms.missing.length
+      ? `<i class="dot warn"></i><span>还没配置：<b>${esc(ms.missing.join('、'))}</b>${ms.aiOk ? '（AI 文案已配置）' : ''}。没配置的功能会生成占位内容。</span>`
+      : '<i class="dot"></i><span>文案、文生图、配音、视频生成都已配置。</span>';
   };
   const paintCosts = () => {
     ['llm', 'image', 'tts', 'video'].forEach((k) => {

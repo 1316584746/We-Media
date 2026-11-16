@@ -65,6 +65,7 @@ const PATHS = {
   eyeoff: '<path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19m-6.72-1.07a3 3 0 1 1-4.24-4.24"/><line x1="1" y1="1" x2="23" y2="23"/>',
   stop: '<rect x="6" y="6" width="12" height="12" rx="1.5"/>',
   pause: '<rect x="6" y="4" width="4" height="16"/><rect x="14" y="4" width="4" height="16"/>',
+  chart: '<line x1="18" y1="20" x2="18" y2="10"/><line x1="12" y1="20" x2="12" y2="4"/><line x1="6" y1="20" x2="6" y2="14"/><line x1="3" y1="20" x2="21" y2="20"/>',
   scissors: '<circle cx="6" cy="6" r="3"/><circle cx="6" cy="18" r="3"/><line x1="20" y1="4" x2="8.12" y2="15.88"/><line x1="14.47" y1="14.48" x2="20" y2="20"/><line x1="8.12" y1="8.12" x2="12" y2="12"/>',
   undo: '<polyline points="1 4 1 10 7 10"/><path d="M3.51 15a9 9 0 1 0 2.13-9.36L1 10"/>',
   redo: '<polyline points="23 4 23 10 17 10"/><path d="M20.49 15a9 9 0 1 1-2.13-9.36L23 10"/>',
@@ -229,23 +230,25 @@ export function voiceChoices() {
   return ttsMode === 'edge' ? voices.edge : ttsMode === 'dashscope' ? voices.dashscope : null;
 }
 
-/** 侧边栏底部的模型配置状态 */
+/** 侧边栏左下角：数据看板入口（模型配置状态已挪到「设置 → 模型」） */
 export function paintRailStatus() {
+  const host = $('#railFoot');
+  if (!host) return;
+  host.innerHTML = '<nav class="rail-nav"><a href="#/dashboard" data-nav="dashboard" title="所有平台的数据看板"><span class="ic" data-ic="chart"></span><span>数据看板</span></a></nav>';
+  paintIcons(host);
+  host.querySelector('[data-nav]').classList.toggle('active', location.hash === '#/dashboard');
+}
+
+/** 模型配置状态：哪些能力还没配置（没配的会生成占位内容） */
+export function modelStatus() {
   const s = state.settings;
+  const aiOk = !!(s && s.llm.enabled && s.llm.apiKey);
   const missing = [];
   if (s) {
-    if (!(s.llm.enabled && s.llm.apiKey)) missing.push('AI 文案');
+    if (!aiOk) missing.push('AI 文案');
     missing.push(...mockParts(s, s.render.visual));
   }
-  if (!missing.length) {
-    $('#railFoot').innerHTML = '<div class="dot-note"><i class="dot"></i>模型已<br>配置</div>';
-    return;
-  }
-  const aiOk = s && s.llm.enabled && s.llm.apiKey;
-  const first = missing[0].replace(/\s/g, '');
-  const more = missing.length > 1 ? '等' : '';
-  const tip = `${aiOk ? 'AI 文案已配置（Cursor / 百炼 Key）。' : ''}还没配置：${missing.join('、')}${aiOk ? '（这些会生成占位内容）' : ''}。点击去设置`;
-  $('#railFoot').innerHTML = `<a href="#/settings" class="dot-note" title="${tip}"><i class="dot warn"></i>待配置<br>${first}${more}</a>`;
+  return { aiOk, missing };
 }
 
 /** 当前配置里还是 mock 的能力（按画面方式判断哪些会用到） */

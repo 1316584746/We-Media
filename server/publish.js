@@ -37,9 +37,9 @@ const str = (v, max) => (typeof v === 'string' ? v.trim().slice(0, max) : '');
 function load() {
   try {
     const d = JSON.parse(fs.readFileSync(FILE, 'utf8'));
-    return { wechat: d.wechat || {}, tasks: Array.isArray(d.tasks) ? d.tasks : [] };
+    return { wechat: d.wechat || {}, bili: d.bili || {}, tasks: Array.isArray(d.tasks) ? d.tasks : [] };
   } catch {
-    return { wechat: {}, tasks: [] };
+    return { wechat: {}, bili: {}, tasks: [] };
   }
 }
 function save(d) {
@@ -63,7 +63,19 @@ function saveWechat(input = {}) {
   }
   d.wechat = w;
   save(d);
+  statsCache.delete('wechat');
   return publicWechat(w);
+}
+
+/** B 站：只存自己的 UID（公开接口按 UID 读粉丝、投稿、获赞，不需要登录） */
+function saveBili(input = {}) {
+  const uid = String(input.uid ?? '').trim();
+  if (uid && !/^\d{1,18}$/.test(uid)) throw httpError(400, 'B 站 UID 是一串数字，在个人空间网址 space.bilibili.com/ 后面');
+  const d = load();
+  d.bili = { uid };
+  save(d);
+  statsCache.delete('bili');
+  return { uid };
 }
 
 /* ----------------------------- 视频来源 ----------------------------- */
@@ -273,6 +285,144 @@ async function publishWechat(t, src) {
   }
 }
 
+/* ----------------------------- 数据看板 ----------------------------- */
+
+const STATS_TTL = 5 * 60 * 1000;
+const statsCache = new Map();
+/** 远端数据 5 分钟内不重复请求（微信接口有调用次数限制） */
+async function cachedStats(key, fn, force) {
+  const hit = statsCache.get(key);
+  if (!force && hit && Date.now() - hit.at < STATS_TTL) return hit.value;
+  const value = { ...(await fn()), updatedAt: Date.now() };
+  statsCache.set(key, { at: Date.now(), value });
+  return value;
+}
+
+const ymd = (daysAgo) => {
+  const d = new Date(Date.now() - daysAgo * 86400000);
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+};
+
+/** 公众号官方「数据统计」接口：用户总数、近 7 天新增 / 取关（认证后的号才有权限） */
+async function wechatStats() {
+  const w = load().wechat;
+  if (!w.appId || !w.appSecret) return { status: 'unconfigured', message: '还没有填写公众号的 AppID 和 AppSecret，去「设置 → 发布」填写后这里就能显示粉丝数据。', metrics: [] };
+  try {
+    const token = await wxToken(w);
+    const post = async (api, step) => {
+      let res;
+      try {
+        res = await fetch(`${wxBase(w)}/datacube/${api}?access_token=${encodeURIComponent(token)}`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ begin_date: ymd(7), end_date: ymd(1) }),
+          signal: AbortSignal.timeout(20000),
+        });
+      } catch (e) {
+        throw new Error(`${step}失败：${e.message}`);
+      }
+      return wxJson(res, step);
+    };
+    const [cum, sum] = await Promise.all([post('getusercumulate', '读取用户总数'), post('getusersummary', '读取用户增减')]);
+    const list = Array.isArray(cum.list) ? cum.list : [];
+    const last = list.length ? list[list.length - 1] : null;
+    const rows = Array.isArray(sum.list) ? sum.list : [];
+    const add = rows.reduce((n, r) => n + (Number(r.new_user) || 0), 0);
+    const cancel = rows.reduce((n, r) => n + (Number(r.cancel_user) || 0), 0);
+    return {
+      status: 'ok',
+      message: `统计到 ${last?.ref_date || ymd(1)}（微信数据有一天延迟）`,
+      metrics: [
+        { key: 'fans', label: '粉丝总数', value: Number(last?.cumulate_user) || 0 },
+        { label: '近 7 天新增', value: add },
+        { label: '近 7 天取关', value: cancel },
+        { label: '近 7 天净增', value: add - cancel },
+      ],
+    };
+  } catch (e) {
+    return { status: 'error', message: e.message, metrics: [] };
+  }
+}
+
+/** B 站公开的用户名片接口（按 UID 读粉丝、关注、投稿数、获赞） */
+async function biliStats() {
+  const uid = load().bili?.uid;
+  if (!uid) return { status: 'unconfigured', message: '填上你的 B 站 UID（个人空间网址 space.bilibili.com/ 后面那串数字），就能读到粉丝和投稿数据。', metrics: [] };
+  try {
+    const base = process.env.WM_BILI_API || 'https://api.bilibili.com';
+    const res = await fetch(`${base}/x/web-interface/card?mid=${encodeURIComponent(uid)}&photo=false`, {
+      headers: { 'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0 Safari/537.36', Referer: 'https://www.bilibili.com/' },
+      signal: AbortSignal.timeout(15000),
+    });
+    const j = await res.json().catch(() => ({}));
+    if (j.code !== 0) throw new Error(j.code === -404 ? '没有找到这个 UID，请检查是不是填对了' : `B 站接口返回：${j.message || res.status}（${j.code ?? res.status}）`);
+    const c = j.data?.card || {};
+    return {
+      status: 'ok',
+      message: `账号：${c.name || uid}`,
+      metrics: [
+        { key: 'fans', label: '粉丝', value: Number(c.fans ?? j.data?.follower) || 0 },
+        { label: '关注', value: Number(c.attention) || 0 },
+        { label: '投稿数', value: Number(j.data?.archive_count) || 0 },
+        { label: '获赞', value: Number(j.data?.like_num) || 0 },
+      ],
+    };
+  } catch (e) {
+    return { status: 'error', message: `读取 B 站数据失败：${e.message}`, metrics: [] };
+  }
+}
+
+const NO_API = '这个平台没有对个人账号开放的数据接口，暂时没法自动获取；先显示本机的发布记录，数据请到创作中心查看。';
+const REMOTE = {
+  wechat: { source: '官方接口', fn: wechatStats },
+  bili: { source: '公开接口', fn: biliStats },
+};
+
+/** 数据看板：总览（所有平台）+ 每个平台的发布记录和远端数据 */
+async function dashboard({ refresh = false } = {}) {
+  const tasks = listTasks();
+  const platforms = await Promise.all(
+    PLATFORMS.map(async (p) => {
+      const mine = tasks.map((t) => ({ t, p: t.platforms.find((x) => x.key === p.key) })).filter((x) => x.p);
+      const count = (st) => mine.filter((x) => x.p.status === st).length;
+      const recent = mine
+        .map(({ t, p: pp }) => ({ id: t.id, title: t.title, status: pp.status, message: pp.message || '', time: pp.at || t.executedAt || t.runAt }))
+        .sort((a, b) => b.time - a.time)
+        .slice(0, 5);
+      const def = REMOTE[p.key];
+      const remote = def
+        ? { source: def.source, ...(await cachedStats(p.key, def.fn, refresh)) }
+        : { source: '暂无接口', status: 'unavailable', message: NO_API, metrics: [], updatedAt: 0 };
+      return {
+        key: p.key,
+        name: p.name,
+        center: p.center,
+        mode: p.mode,
+        local: { total: mine.length, published: count('done'), waiting: count('remind'), failed: count('failed'), pending: count('pending') },
+        recent,
+        remote,
+        bili: p.key === 'bili' ? { uid: load().bili?.uid || '' } : undefined,
+      };
+    }),
+  );
+  const sum = (f) => platforms.reduce((n, p) => n + f(p), 0);
+  const fansList = platforms.map((p) => p.remote.metrics.find((m) => m.key === 'fans')).filter(Boolean);
+  return {
+    now: Date.now(),
+    totals: {
+      videos: listSources().length,
+      published: sum((p) => p.local.published),
+      pending: sum((p) => p.local.pending),
+      waiting: sum((p) => p.local.waiting),
+      failed: sum((p) => p.local.failed),
+      fans: fansList.reduce((n, m) => n + m.value, 0),
+      fansPlatforms: fansList.length,
+      apiPlatforms: platforms.filter((p) => p.remote.status === 'ok').length,
+    },
+    platforms,
+  };
+}
+
 /* ----------------------------- 执行 / 调度 ----------------------------- */
 
 const running = new Set();
@@ -341,4 +491,4 @@ function startScheduler() {
   tick().catch(() => {});
 }
 
-module.exports = { PLATFORMS, load, publicWechat, saveWechat, testWechat, listSources, listTasks, createTask, deleteTask, markDone, runTask, tick, alerts, startScheduler };
+module.exports = { PLATFORMS, load, publicWechat, saveWechat, saveBili, dashboard, testWechat, listSources, listTasks, createTask, deleteTask, markDone, runTask, tick, alerts, startScheduler };

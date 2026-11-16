@@ -328,6 +328,8 @@ async function waitDone(id, timeoutMs = 180000) {
           wxLog.push(`draft:${body.articles?.[0]?.title}|${body.articles?.[0]?.thumb_media_id}`);
           return send({ media_id: 'DRAFT1' });
         }
+        if (u.pathname === '/datacube/getusercumulate') return send({ list: [{ ref_date: '2026-11-14', cumulate_user: 1200 }, { ref_date: '2026-11-15', cumulate_user: 1234 }] });
+        if (u.pathname === '/datacube/getusersummary') return send({ list: [{ ref_date: '2026-11-14', user_source: 0, new_user: 30, cancel_user: 4 }, { ref_date: '2026-11-15', user_source: 0, new_user: 20, cancel_user: 2 }] });
         send({ errcode: 404, errmsg: 'nope' });
       });
     });
@@ -384,6 +386,24 @@ async function waitDone(id, timeoutMs = 180000) {
     ok(re.status === 200 && re.json.status === 'done', '发布：修好配置后可重试');
 
     for (const id of [future.id, due.id, bad.id]) await api('DELETE', `/api/publish/tasks/${id}`);
+    // 数据看板：各平台数据 + 本机发布记录
+    {
+      const dbTask = (await api('POST', '/api/publish/tasks', { sourceType: 'project', sourceId: talk.id, platforms: ['douyin', 'xhs'], title: '看板测试视频', runAt: Date.now() + 3600e3 })).json;
+      const db = (await api('GET', '/api/dashboard?refresh=1')).json;
+      const byKey = Object.fromEntries(db.platforms.map((p) => [p.key, p]));
+      ok(db.platforms.length === 5 && ['wechat', 'douyin', 'xhs', 'channels', 'bili'].every((k) => byKey[k]), `数据看板：${db.platforms.length} 个平台都在`);
+      ok(byKey.wechat.remote.status === 'ok' && byKey.wechat.remote.source === '官方接口' && byKey.wechat.remote.metrics[0].value === 1234 && byKey.wechat.remote.metrics.find((m) => m.label === '近 7 天新增').value === 50 && byKey.wechat.remote.metrics.find((m) => m.label === '近 7 天净增').value === 44, '数据看板：公众号读到官方接口的粉丝、新增、取关');
+      ok(['douyin', 'xhs', 'channels'].every((k) => byKey[k].remote.status === 'unavailable' && /没有对个人账号开放/.test(byKey[k].remote.message) && !byKey[k].remote.metrics.length), '数据看板：没有数据接口的平台如实标注，不编数据');
+      ok(byKey.bili.remote.status === 'unconfigured' && byKey.bili.bili.uid === '', '数据看板：B 站没填 UID 时提示去填');
+      ok(db.totals.fans === 1234 && db.totals.fansPlatforms === 1 && db.totals.apiPlatforms === 1, `数据看板：总览粉丝合计 ${db.totals.fans}（来自 ${db.totals.fansPlatforms} 个平台）`);
+      ok(byKey.douyin.local.pending >= 1 && byKey.douyin.recent[0].title === '看板测试视频' && byKey.xhs.recent[0].status === 'pending' && byKey.bili.local.total === 0 && db.totals.pending >= 2 && db.totals.published === db.platforms.reduce((n, p) => n + p.local.published, 0) && db.platforms.every((p) => p.recent.length <= 5 && p.recent.every((r) => r.title && r.time)), '数据看板：每个平台列出本机发布记录，总览是各平台之和');
+      ok((await api('PUT', '/api/publish/bili', { uid: 'abc' })).status === 400, '数据看板：B 站 UID 不是数字被拒绝');
+      ok((await api('PUT', '/api/publish/bili', { uid: '2' })).json.uid === '2', '数据看板：保存 B 站 UID');
+      const db2 = (await api('GET', '/api/dashboard?refresh=1')).json;
+      ok(['ok', 'error'].includes(db2.platforms.find((p) => p.key === 'bili').remote.status), `数据看板：填了 UID 后会去读 B 站（${db2.platforms.find((p) => p.key === 'bili').remote.status}）`);
+      await api('PUT', '/api/publish/bili', { uid: '' });
+      await api('DELETE', `/api/publish/tasks/${dbTask.id}`);
+    }
     ok((await api('DELETE', `/api/publish/tasks/${future.id}`)).status === 404, '发布：删除计划');
     await api('PUT', '/api/publish/wechat', { appId: '', appSecret: '', baseUrl: '' });
     wx.close();
