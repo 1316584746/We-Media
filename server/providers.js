@@ -48,6 +48,22 @@ function imageSpec(cfg) {
     if (!cfg.custom) throw new Error('文生图选择了 custom 模式，但没有配置自定义 JSON');
     return cfg.custom;
   }
+  if (cfg.mode === 'ark') {
+    // 火山方舟 Seedream：同步返回 data[0].url（约 24 小时有效）。
+    // 尺寸用 2560x1440 / 1440x2560：总像素 3.69M，在 Seedream 4.0 / 4.5 / 5.0 各档的允许范围内；
+    // 下载后统一缩成 1920x1080 / 1080x1920 的 PNG（方舟默认给 jpeg，而后面的图生视频按 PNG 上传）
+    return {
+      request: {
+        method: 'POST',
+        url: `${trimSlash(cfg.baseUrl) || 'https://ark.cn-beijing.volces.com'}/api/v3/images/generations`,
+        headers: { Authorization: 'Bearer {{apiKey}}' },
+        body: { model: '{{model}}', prompt: '{{prompt}}', size: '{{arkSize}}', response_format: 'url', watermark: false },
+      },
+      responseType: 'url',
+      path: 'data[0].url',
+      fitPng: true,
+    };
+  }
   // 百炼 qwen-image：同步返回 output.choices[0].message.content[0].image
   return {
     request: {
@@ -336,6 +352,7 @@ function visualVars(render, extra) {
   return {
     ratio: portrait ? '9:16' : '16:9',
     size: portrait ? '928*1664' : '1664*928',
+    arkSize: portrait ? '1440x2560' : '2560x1440',
     width: portrait ? 928 : 1664,
     height: portrait ? 1664 : 928,
     ...extra,
@@ -361,6 +378,15 @@ async function generateImage({ cfg, render, prompt, outFile }) {
   if (!val) throw new Error(`文生图响应里找不到 ${spec.path}: ${JSON.stringify(json).slice(0, 300)}`);
   if ((spec.responseType || 'url') === 'base64') {
     fs.writeFileSync(outFile, Buffer.from(String(val).replace(/^data:.*?;base64,/, ''), 'base64'));
+  } else if (spec.fitPng) {
+    const tmp = `${outFile}.dl`;
+    await downloadTo(val, tmp);
+    const [w, h] = render.orientation === 'portrait' ? [1080, 1920] : [1920, 1080];
+    try {
+      await ff.run(['-i', tmp, '-vf', `scale=${w}:${h}:force_original_aspect_ratio=increase,crop=${w}:${h}`, '-frames:v', '1', outFile]);
+    } finally {
+      fs.rmSync(tmp, { force: true });
+    }
   } else {
     await downloadTo(val, outFile);
   }

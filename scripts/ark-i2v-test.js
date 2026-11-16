@@ -1,10 +1,11 @@
-// 火山方舟「图生视频」(ark_i2v) 的请求格式自测：用本地假服务，不花钱、不需要 Key
+// 火山方舟「图生视频」(ark_i2v) 和「文生图」(Seedream) 的请求格式自测：用本地假服务，不花钱、不需要 Key
 //   node scripts/ark-i2v-test.js
 const http = require('http');
 const fs = require('fs');
 const os = require('os');
 const path = require('path');
 const providers = require('../server/providers');
+const ff = require('../server/ffmpeg');
 
 let failed = 0;
 const ok = (c, m) => {
@@ -13,7 +14,11 @@ const ok = (c, m) => {
 };
 
 (async () => {
-  const seen = { submit: null, auth: null, polled: 0 };
+  const seen = { submit: null, auth: null, polled: 0, image: null };
+  const jpgFile = path.join(os.tmpdir(), `ark-pic-${Date.now()}.jpg`);
+  await ff.run(['-f', 'lavfi', '-i', 'testsrc2=size=2560x1440:rate=1:duration=1', '-frames:v', '1', jpgFile]); // 假装是方舟返回的 2560x1440 jpeg
+  const jpg = fs.readFileSync(jpgFile);
+  fs.rmSync(jpgFile, { force: true });
   const srv = http.createServer((req, res) => {
     let body = '';
     req.on('data', (d) => (body += d));
@@ -28,6 +33,11 @@ const ok = (c, m) => {
         return res.end(JSON.stringify({ id: 'cgt-test-1', status: 'succeeded', content: { video_url: `http://127.0.0.1:${srv.address().port}/video.mp4` } }));
       }
       if (req.url === '/video.mp4') return res.end(Buffer.from('FAKE-MP4'));
+      if (req.method === 'POST' && req.url === '/api/v3/images/generations') {
+        seen.image = { body: JSON.parse(body), auth: req.headers.authorization };
+        return res.end(JSON.stringify({ model: 'doubao-seedream-5-0-flash-260915', data: [{ url: `http://127.0.0.1:${srv.address().port}/pic.jpg`, size: '2560x1440' }] }));
+      }
+      if (req.url === '/pic.jpg') return res.end(jpg);
       res.writeHead(404).end('{}');
     });
   });
@@ -52,6 +62,28 @@ const ok = (c, m) => {
   seen.submit = null;
   await providers.generateClip({ cfg: { ...cfg, mode: 'ark', model: 'doubao-seedance-1-0-lite-t2v-250428' }, render: { orientation: 'portrait' }, prompt: '一只猫', outFile: out, duration: 4 });
   ok(seen.submit.content.length === 1 && seen.submit.content[0].text === '一只猫 --ratio 9:16 --dur 4', '文生视频（ark）格式没变');
+
+  // 文生图（Seedream）
+  const picOut = path.join(tmp, 'scene', 'image.png');
+  const icfg = { mode: 'ark', baseUrl: cfg.baseUrl, apiKey: 'ark-key', model: 'doubao-seedream-5-0-flash-260915' };
+  await providers.generateImage({ cfg: icfg, render: { orientation: 'landscape' }, prompt: '一叶扁舟', outFile: picOut });
+  const ib = seen.image?.body || {};
+  ok(seen.image?.auth === 'Bearer ark-key' && ib.model === 'doubao-seedream-5-0-flash-260915', '文生图：Key 和模型 ID 传对');
+  ok(typeof ib.prompt === 'string' && ib.prompt.startsWith('一叶扁舟'), '文生图：提示词传对');
+  ok(ib.size === '2560x1440' && ib.response_format === 'url' && ib.watermark === false, '文生图：横屏 2560x1440、返回链接、不加水印');
+  const head = fs.readFileSync(picOut).subarray(0, 8);
+  ok(head[0] === 0x89 && head[1] === 0x50 && head[2] === 0x4e && head[3] === 0x47, '文生图：下载后转成了真正的 PNG（图生视频按 PNG 上传）');
+  ok(!fs.existsSync(`${picOut}.dl`), '文生图：临时文件已清理');
+  const probe = await new Promise((resolve) => {
+    const { spawn } = require('child_process');
+    const p = spawn(require('ffmpeg-static'), ['-hide_banner', '-i', picOut]);
+    let err = '';
+    p.stderr.on('data', (d) => (err += d));
+    p.on('close', () => resolve(err));
+  });
+  ok(/1920x1080/.test(probe), '文生图：统一成 1920x1080');
+  await providers.generateImage({ cfg: icfg, render: { orientation: 'portrait' }, prompt: '竖屏', outFile: picOut });
+  ok(seen.image.body.size === '1440x2560', '文生图：竖屏 1440x2560');
 
   srv.close();
   fs.rmSync(tmp, { recursive: true, force: true });

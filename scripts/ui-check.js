@@ -412,6 +412,12 @@ const ok = (c, m) => {
   ok(await js(`!!document.querySelector('[name="video.mode"] [value="ark_i2v"]') && document.querySelector('[data-cost="video"]').textContent.includes('0.09 元 / 秒') && document.querySelector('[data-cost="video"]').textContent.includes('2.70 元')`), '视频选火山方舟图生视频（Pro Fast）720P：显示约 0.09 元/秒，30 秒约 2.7 元');
   await setVal('[name="video.resolution"]', '480P');
   ok(await js(`document.querySelector('[data-cost="video"]').textContent.includes('0.04 元 / 秒')`), '切到 480P：约 0.04 元/秒');
+  const imgMode0 = await js(`document.querySelector('[name="image.mode"]').value`);
+  const imgModel0 = await js(`document.querySelector('[name="image.model"]').value`);
+  await setVal('[name="image.mode"]', 'ark');
+  ok(await js(`document.querySelector('[name="image.model"]').value === 'doubao-seedream-5-0-flash-260915' && document.querySelector('[data-cost="image"]').textContent.includes('0.12 元 / 张') && document.querySelector('[data-cost="image"]').textContent.includes('0.96 元')`), '文生图选火山方舟：模型自动填 Seedream 5.0 flash，显示 0.12 元/张，一条约 0.96 元');
+  await setVal('[name="image.mode"]', imgMode0);
+  await setVal('[name="image.model"]', imgModel0);
   await setVal('[name="video.mode"]', 'dashscope_i2v');
   await setVal('[name="video.model"]', 'wan2.7-i2v');
   await setVal('[name="video.resolution"]', '1080P');

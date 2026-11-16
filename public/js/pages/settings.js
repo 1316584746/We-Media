@@ -16,7 +16,7 @@ function setByPath(obj, p, v) {
 // 切换模式时，如果模型/音色框是空的或还是别家的默认值，就自动换成该模式的默认值
 const PRESETS = {
   'video.mode': { field: 'video.model', map: { dashscope_i2v: 'wan2.7-i2v', ark_i2v: 'doubao-seedance-1-0-pro-fast-251015', openai: 'sora-2', ark: 'doubao-seedance-1-0-lite-t2v-250428', dashscope: 'wan2.2-t2v-plus' } },
-  'image.mode': { field: 'image.model', map: { dashscope: 'qwen-image-2.0' } },
+  'image.mode': { field: 'image.model', map: { dashscope: 'qwen-image-2.0', ark: 'doubao-seedream-5-0-flash-260915' } },
   'tts.mode': { field: 'tts.model', map: { dashscope: 'qwen3-tts-flash', openai: 'tts-1' } },
 };
 const KNOWN_BASES = ['https://api.openai.com/v1', 'https://dashscope.aliyuncs.com', 'https://ark.cn-beijing.volces.com'];
@@ -79,7 +79,7 @@ const PANES = `
     <div class="field"><label>模型</label><input name="image.model" list="imageModels" /></div>
     <div class="field"><label>并发数</label><input name="image.concurrency" type="number" min="1" /></div>
   </div>
-  <datalist id="imageModels"><option value="qwen-image-2.0" label="0.2 元/张"></option><option value="qwen-image-2.0-pro" label="0.5 元/张"></option><option value="qwen-image-3.0" label="0.18 元/张，新用户 10 张免费"></option><option value="qwen-image-3.0-pro" label="0.25 元/张，新用户 10 张免费"></option><option value="z-image-turbo" label="价格见百炼官网"></option></datalist>
+  <datalist id="imageModels"><option value="doubao-seedream-5-0-flash-260915" label="火山方舟·0.12 元/张（仅火山方舟模式）"></option><option value="qwen-image-2.0" label="0.2 元/张"></option><option value="qwen-image-2.0-pro" label="0.5 元/张"></option><option value="qwen-image-3.0" label="0.18 元/张，新用户 10 张免费"></option><option value="qwen-image-3.0-pro" label="0.25 元/张，新用户 10 张免费"></option><option value="z-image-turbo" label="价格见百炼官网"></option></datalist>
   <div class="field"><label>自定义模板 JSON（仅 custom 模式）</label><textarea name="image.custom" rows="6" class="mono" placeholder='{"request":{"method":"POST","url":"https://...","headers":{"Authorization":"Bearer {{apiKey}}"},"body":{"model":"{{model}}","prompt":"{{prompt}}","size":"{{size}}"}},"responseType":"url","path":"data[0].url"}'></textarea></div>
 </div></section>
 

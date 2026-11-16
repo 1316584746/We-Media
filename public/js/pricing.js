@@ -30,6 +30,10 @@ const ARK = {
 };
 // 文生图：元/张
 const IMAGE = {
+  'doubao-seedream-5-0-flash-260915': { price: 0.12, note: '火山方舟 Seedream 5.0 flash，不管多大尺寸都是 0.12 元/张', ark: true },
+  'doubao-seedream-5-0-lite-260128': { price: 0.22, note: '火山方舟 Seedream 5.0 lite', ark: true },
+  'doubao-seedream-4-5-251128': { price: 0.25, note: '火山方舟 Seedream 4.5', ark: true },
+  'doubao-seedream-4-0-250828': { price: 0.2, note: '火山方舟 Seedream 4.0', ark: true },
   'qwen-image-2.0': { price: 0.2 },
   'qwen-image-2.0-pro': { price: 0.5 },
   'qwen-image-3.0': { price: 0.18, free: '新用户 10 张（90 天）' },
@@ -51,6 +55,7 @@ export const MODE_LABEL = {
   'image.mode': {
     mock: `${TAG.test}mock，渐变底图，不调用模型`,
     dashscope: `${TAG.paid}阿里百炼 qwen-image，0.2 元/张起`,
+    ark: `${TAG.paid}火山方舟 Seedream，0.12 元/张起（和火山方舟视频共用一个 Key）`,
     custom: `${TAG.vary}自定义请求模板`,
   },
   'tts.mode': {
@@ -217,6 +222,7 @@ export function overviewHtml(esc) {
     ['分镜 LLM', '规则模板（不启用 LLM）', 'free', '免费', '不拆得那么细，角色一致性差一些'],
     ['分镜 LLM', '阿里百炼 qwen-plus', 'paid', '输入 0.8 / 输出 2 元（每百万 token）', '一次分镜约 0.01 元'],
     ['文生图', 'mock', 'test', '免费', '渐变占位图，只用于测试'],
+    ['文生图', '火山方舟 Seedream 5.0 flash', 'paid', '0.12 元/张', '和火山方舟视频共用一个 Key；新用户有免费额度（以控制台为准）'],
     ['文生图', 'qwen-image-2.0', 'paid', '0.2 元/张', '无免费额度'],
     ['文生图', 'qwen-image-3.0', 'paid', '0.18 元/张', '新用户 10 张免费'],
     ['配音', 'Edge 在线朗读', 'free', '免费，无需 Key', '音色有限，非官方接口'],
@@ -314,7 +320,7 @@ export function estimate({ settings, split, script, visual, titleCard, endCard }
     const cfg = settings.image;
     const p = IMAGE[String(cfg.model || '').trim()];
     if (cfg.mode === 'mock') parts.push({ label: '画图', cost: 0, detail: `${n} 张 · 测试模式` });
-    else if (cfg.mode === 'dashscope' && p) parts.push({ label: '画图', cost: p.price * n, detail: `${n} 张 × ${p.price} 元` });
+    else if ((cfg.mode === 'dashscope' || cfg.mode === 'ark') && p) parts.push({ label: '画图', cost: p.price * n, detail: `${n} 张 × ${p.price} 元` });
     else parts.push({ label: '画图', cost: null, detail: `${n} 张` });
   }
 
