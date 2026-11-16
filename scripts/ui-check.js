@@ -430,6 +430,13 @@ const ok = (c, m) => {
   ok(await js(`document.querySelector('#railFoot a.active') && ['微信公众号','抖音','小红书','视频号','B 站'].every((n) => [...document.querySelectorAll('.db-plat h3')].some((h) => h.textContent === n))`), '看板里按平台分别列出：公众号、抖音、小红书、视频号、B 站');
   ok(await js(`[...document.querySelectorAll('.db-plat')].filter((c) => /没有对个人账号开放/.test(c.textContent)).length === 3 && !!document.querySelector('#dbBiliUid')`), '没有数据接口的平台如实写明，B 站有填 UID 的地方');
   await shot('ui-dashboard');
+  await sleep(1200);
+  ok(await js(`[...document.querySelectorAll('.db-stat, .db-plat')].every((e) => getComputedStyle(e).opacity === '1') && document.querySelector('.db-stat b').textContent === document.querySelector('.db-stat b').dataset.n`), '动效：看板卡片依次出现后全部可见，汇总数字涨到真实值');
+  await goto('#/');
+  ok(await waitFor(`document.querySelectorAll('#tpls .tpl').length > 0`, 4000), '创作页：模板卡片在');
+  ok(await js(`getComputedStyle(document.querySelector('.tpl-glyph')).animationName === 'mo-bob' && getComputedStyle(document.querySelector('.hero h1')).animationName === 'mo-shimmer' && getComputedStyle(document.body, '::before').animationName.includes('mo-drift')`), '动效：模板图标浮动、标题渐变流动、背景光斑漂移');
+  await sleep(1600);
+  ok(await js(`!document.querySelector('#tpls').classList.contains('intro') && [...document.querySelectorAll('#tpls .tpl')].every((e) => getComputedStyle(e).opacity === '1')`), '动效：模板卡片入场结束后全部可见，intro 标记已摘掉（点选重绘不会重播）');
   await goto('#/settings/model');
   ok(await waitFor(`document.querySelector('#modelStatus')?.textContent.length > 5`, 3000), '模型配置状态挪到了「设置 → 模型」里');
 

@@ -13,6 +13,22 @@ const REMOTE_BADGE = { ok: ['已读到数据', 'done'], unconfigured: ['待填�
 
 const badgeText = (p) => (p.remote.status === 'unavailable' ? p.remote.source : `${p.remote.source} · ${(REMOTE_BADGE[p.remote.status] || REMOTE_BADGE.unavailable)[0]}`);
 
+// 汇总数字从 0 慢慢涨到真实值（0.65 秒；系统设置了「减少动态效果」就直接显示）
+function countUp(root) {
+  if (window.matchMedia?.('(prefers-reduced-motion: reduce)').matches) return;
+  root.querySelectorAll('[data-n]').forEach((el) => {
+    const to = Number(el.dataset.n);
+    if (!(to >= 2)) return;
+    const t0 = performance.now();
+    const step = (t) => {
+      const k = Math.min(1, (t - t0) / 650);
+      el.textContent = fmtNum(Math.round(to * (1 - Math.pow(1 - k, 3))));
+      if (k < 1 && el.isConnected) requestAnimationFrame(step);
+    };
+    requestAnimationFrame(step);
+  });
+}
+
 export async function mount(root) {
   root.innerHTML = `<div class="page db">
     <div class="page-head">
@@ -27,12 +43,12 @@ export async function mount(root) {
   let data = null;
 
   const summaryHtml = (t) => `<section class="db-sum">
-    <div class="db-stat"><b>${fmtNum(t.fans)}</b><span>粉丝合计</span><em>${t.fansPlatforms ? `来自 ${t.fansPlatforms} 个已接入接口的平台` : '还没有平台接入数据接口'}</em></div>
-    <div class="db-stat"><b>${fmtNum(t.published)}</b><span>已发布</span><em>各平台累计次数</em></div>
-    <div class="db-stat"><b>${fmtNum(t.pending)}</b><span>等待发布</span><em>还没到发布时间</em></div>
-    <div class="db-stat${t.waiting ? ' warn' : ''}"><b>${fmtNum(t.waiting)}</b><span>待手动发布</span><em>到点了，要去平台发</em></div>
-    <div class="db-stat${t.failed ? ' err' : ''}"><b>${fmtNum(t.failed)}</b><span>发布失败</span><em>去「设置 → 发布」看原因</em></div>
-    <div class="db-stat"><b>${fmtNum(t.videos)}</b><span>可发布的成片</span><em>AI 成片 + 剪辑导出</em></div>
+    <div class="db-stat"><b data-n="${t.fans}">${fmtNum(t.fans)}</b><span>粉丝合计</span><em>${t.fansPlatforms ? `来自 ${t.fansPlatforms} 个已接入接口的平台` : '还没有平台接入数据接口'}</em></div>
+    <div class="db-stat"><b data-n="${t.published}">${fmtNum(t.published)}</b><span>已发布</span><em>各平台累计次数</em></div>
+    <div class="db-stat"><b data-n="${t.pending}">${fmtNum(t.pending)}</b><span>等待发布</span><em>还没到发布时间</em></div>
+    <div class="db-stat${t.waiting ? ' warn' : ''}"><b data-n="${t.waiting}">${fmtNum(t.waiting)}</b><span>待手动发布</span><em>到点了，要去平台发</em></div>
+    <div class="db-stat${t.failed ? ' err' : ''}"><b data-n="${t.failed}">${fmtNum(t.failed)}</b><span>发布失败</span><em>去「设置 → 发布」看原因</em></div>
+    <div class="db-stat"><b data-n="${t.videos}">${fmtNum(t.videos)}</b><span>可发布的成片</span><em>AI 成片 + 剪辑导出</em></div>
   </section>`;
 
   const overviewHtml = (ps) => `<section class="db-block">
@@ -56,7 +72,7 @@ export async function mount(root) {
   const platformHtml = (p) => {
     const [rt, rc] = REMOTE_BADGE[p.remote.status] || REMOTE_BADGE.unavailable;
     const metrics = p.remote.metrics.length
-      ? `<div class="db-metrics">${p.remote.metrics.map((m) => `<div><b>${fmtNum(m.value)}</b><span>${esc(m.label)}</span></div>`).join('')}</div>`
+      ? `<div class="db-metrics">${p.remote.metrics.map((m) => `<div><b data-n="${m.value}">${fmtNum(m.value)}</b><span>${esc(m.label)}</span></div>`).join('')}</div>`
       : '';
     const upd = p.remote.updatedAt && p.remote.status === 'ok' ? `<span class="muted"> · ${fmtTime(p.remote.updatedAt)} 读取</span>` : '';
     const biliForm =
@@ -93,6 +109,7 @@ export async function mount(root) {
   const paint = () => {
     if (!alive || !data) return;
     $('#dbBody', root).innerHTML = `${summaryHtml(data.totals)}${overviewHtml(data.platforms)}<section class="db-block"><h2>分平台详情</h2><div class="db-plats">${data.platforms.map(platformHtml).join('')}</div></section>`;
+    countUp(root);
     $('#dbSub', root).textContent = `更新于 ${fmtTime(data.now)} · 已接入数据接口的平台 ${data.totals.apiPlatforms} 个`;
   };
 

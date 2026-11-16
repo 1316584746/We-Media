@@ -44,6 +44,12 @@ async function render() {
   const inst = await page.mount(view, m.slice(1));
   if (seq !== renderSeq) return inst?.unmount?.(); // 渲染期间又切了路由
   current = inst || null;
+  // 创作页：模板卡片依次出现（只在刚进页面时播一次，点选模板重绘时不重播）
+  const tpls = $('#tpls');
+  if (tpls) {
+    tpls.classList.add('intro');
+    setTimeout(() => tpls.classList.remove('intro'), 1400);
+  }
 }
 
 window.addEventListener('hashchange', render);
