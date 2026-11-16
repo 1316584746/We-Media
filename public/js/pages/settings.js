@@ -126,7 +126,7 @@ const PANES = `
     <div class="field"><label>并发数</label><input name="video.concurrency" type="number" min="1" /></div>
     <div class="field"><label>单段时长（秒，仅文生视频）</label><input name="video.duration" type="number" /></div>
   </div>
-  <datalist id="videoModels"><option value="wan2.7-i2v" label="图生视频 720P 0.6 / 1080P 1 元每秒"></option><option value="wan2.6-i2v" label="图生视频 720P 0.6 / 1080P 1 元每秒"></option><option value="wan2.7-t2v" label="文生视频 720P 0.6 / 1080P 1 元每秒"></option><option value="wan2.2-t2v-plus" label="文生视频 480P 0.14 / 1080P 0.7 元每秒"></option><option value="doubao-seedance-1-0-lite-t2v-250428" label="约 0.2 元每秒（按 token 计费）"></option></datalist>
+  <datalist id="videoModels"><option value="doubao-seedance-1-0-pro-fast-251015" label="火山方舟·最便宜 480P 约 0.04 / 720P 约 0.09 元每秒（按 token 估算，仅火山方舟模式）"></option><option value="doubao-seedance-2-0-mini-260615" label="火山方舟·2.0 mini 480P 0.23 / 720P 0.5 元每秒（仅火山方舟模式）"></option><option value="wan2.7-i2v" label="图生视频 720P 0.6 / 1080P 1 元每秒"></option><option value="wan2.6-i2v" label="图生视频 720P 0.6 / 1080P 1 元每秒"></option><option value="wan2.7-t2v" label="文生视频 720P 0.6 / 1080P 1 元每秒"></option><option value="wan2.2-t2v-plus" label="文生视频 480P 0.14 / 1080P 0.7 元每秒"></option><option value="doubao-seedance-1-0-lite-t2v-250428" label="约 0.2 元每秒（按 token 计费）"></option></datalist>
   <div class="field"><label>自定义模板 JSON（仅 custom 模式）</label><textarea name="video.custom" rows="8" class="mono"></textarea></div>
 </div></section></div>`;
 
