@@ -452,6 +452,41 @@ const ok = (c, m) => {
   ok(await js(`getComputedStyle(document.querySelector('.tpl-glyph')).animationName === 'mo-bob' && getComputedStyle(document.querySelector('.hero h1')).animationName === 'mo-shimmer' && getComputedStyle(document.body, '::before').animationName.includes('mo-drift')`), '动效：模板图标浮动、标题渐变流动、背景光斑漂移');
   await sleep(1600);
   ok(await js(`!document.querySelector('#tpls').classList.contains('intro') && [...document.querySelectorAll('#tpls .tpl')].every((e) => getComputedStyle(e).opacity === '1')`), '动效：模板卡片入场结束后全部可见，intro 标记已摘掉（点选重绘不会重播）');
+  // ---- 古诗词库选诗 ----
+  await click('[data-tpl="poem"]');
+  ok(await waitFor(`!!document.querySelector('#composer [data-poem-pick]')`, 4000), '古诗词模板：「写下内容」旁有「诗词库选诗」按钮');
+  await click('[data-poem-pick]');
+  ok(await waitFor(`!!document.querySelector('dialog.pp-dlg[open]') && document.querySelectorAll('.pp-item').length >= 20 && /精选库共 \\d+/.test(document.querySelector('[data-pp-count]').textContent)`, 5000), '诗词库：弹窗打开，默认列出诗词，并显示库里一共多少首');
+  ok(await js(`['先秦','唐','宋','清'].every((d) => [...document.querySelectorAll('[data-pp-dyn] .chip')].some((c) => c.textContent.startsWith(d))) && [...document.querySelectorAll('[data-pp-tag] .chip')].some((c) => c.textContent.startsWith('小学必背'))`), '诗词库：有朝代和合集（小学必背等）可选');
+  await shot('ui-poem-picker');
+  await setVal('[data-pp-q]', '静夜思');
+  ok(await waitFor(`document.querySelector('.pp-item b')?.textContent === '静夜思' && document.querySelector('.pp-item .pp-a').textContent.includes('李白')`, 4000), '诗词库：搜「静夜思」，第一条是李白的静夜思');
+  await setVal('[data-pp-q]', '');
+  await waitFor(`!!document.querySelector('[data-dyn="宋"]')`, 4000); // 搜索词清掉后，筛选项要重新出现
+  await click('[data-dyn="宋"]');
+  ok(await waitFor(`document.querySelector('[data-dyn="宋"].on') && [...document.querySelectorAll('.pp-item .pp-a')].length >= 20 && [...document.querySelectorAll('.pp-item .pp-a')].every((a) => a.textContent.endsWith('宋'))`, 4000), '诗词库：按朝代筛选，列表里全是宋代的');
+  await setVal('[data-pp-aq]', '苏');
+  ok(await waitFor(`!!document.querySelector('[data-pp-authors] [data-au="苏轼"]')`, 4000), '诗词库：输入作者名，下面列出匹配的作者');
+  await click('[data-pp-authors] [data-au="苏轼"]');
+  ok(await waitFor(`[...document.querySelectorAll('.pp-item .pp-a')].length >= 20 && [...document.querySelectorAll('.pp-item .pp-a')].every((a) => a.textContent.startsWith('苏轼'))`, 4000), '诗词库：选中作者后列表只剩他的作品');
+  await click('[data-pp-authors] [data-au="苏轼"]');
+  await click('[data-dyn="宋"]');
+  await setVal('[data-pp-q]', '静夜思');
+  await waitFor(`document.querySelector('.pp-item b')?.textContent === '静夜思'`, 4000);
+  await click('.pp-item');
+  ok(await waitFor(`!document.querySelector('dialog.pp-dlg')`, 2000), '诗词库：点一首后弹窗关闭');
+  ok(await js(`document.querySelector('[data-k="title"]').value === '静夜思' && document.querySelector('[data-k="author"]').value === '李白' && document.querySelector('[data-k="script"]').value === '床前明月光，疑是地上霜。\\n举头望明月，低头思故乡。' && document.querySelector('#scriptCount').textContent.length > 0`), '诗词库：自动填好诗名、作者和诗词正文');
+  await click('[data-seg="orientation"] [data-v="portrait"]');
+  ok(await js(`document.querySelector('[data-k="title"]').value === '静夜思' && document.querySelector('[data-k="script"]').value.startsWith('床前明月光') && !!document.querySelector('#composer [data-poem-pick]')`), '诗词库：填充的内容进了创作页的表单状态（重绘后还在），按钮也还在');
+  await click('[data-poem-pick]');
+  await waitFor(`!!document.querySelector('dialog.pp-dlg[open]')`, 3000);
+  await click('[data-pp-random]');
+  ok(await waitFor(`!document.querySelector('dialog.pp-dlg') && document.querySelector('[data-k="title"]').value !== '静夜思' && document.querySelector('[data-k="script"]').value.length > 8`, 4000), '诗词库：「随机一首」直接填一首');
+  await click('[data-tpl="story"]');
+  ok(await waitFor(`!document.querySelector('#composer [data-k="author"]') && !document.querySelector('#composer [data-poem-pick]')`, 3000), '换成别的模板：没有作者栏，也不出现诗词库按钮');
+  await click('[data-tpl="poem"]');
+  await waitFor(`!!document.querySelector('#composer [data-poem-pick]')`, 3000);
+
   await goto('#/settings/model');
   ok(await waitFor(`document.querySelector('#modelStatus')?.textContent.length > 5`, 3000), '模型配置状态挪到了「设置 → 模型」里');
 

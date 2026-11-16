@@ -7,6 +7,7 @@ import * as editsPage from './pages/edits.js';
 import * as cutterPage from './pages/cutter.js';
 import * as agentPage from './pages/agent.js';
 import * as dashboardPage from './pages/dashboard.js';
+import './poem-picker.js'; // 创作页「古诗词动画」的诗词库选择器（自己监听页面，把按钮挂上去）
 
 const ROUTES = [
   [/^#?\/?$/, createPage, 'create'],

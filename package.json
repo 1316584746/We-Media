@@ -15,6 +15,7 @@
     "@modelcontextprotocol/sdk": "^1.32.2",
     "express": "^4.21.2",
     "ffmpeg-static": "^5.2.0",
-    "node-edge-tts": "^1.2.12"
+    "node-edge-tts": "^1.2.12",
+    "opencc-js": "^1.4.2"
   }
 }

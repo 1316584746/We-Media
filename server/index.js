@@ -17,6 +17,7 @@ const extensions = require('./extensions');
 const agentSkills = require('./agent-skills');
 const publish = require('./publish');
 const mcp = require('./mcp');
+const poems = require('./poems');
 
 const app = express();
 // 安全：MCP 本地命令方式会在本机执行命令，默认只监听本机并校验 Host（防 DNS 重绑定）。
@@ -392,6 +393,14 @@ const extList = () => {
   const d = extensions.load();
   return { skills: d.skills, mcp: d.mcp.map(extensions.publicMcp) };
 };
+/* ---------- 古诗词库：创作页「古诗词动画」选诗自动填充 ---------- */
+app.get('/api/poems', wrap((req, res) => res.json(poems.search(req.query))));
+app.get('/api/poems/facets', wrap((req, res) => res.json(poems.facets(req.query))));
+app.get('/api/poems/authors', wrap((req, res) => res.json(poems.authors(req.query))));
+app.get('/api/poems/random', wrap((req, res) => res.json(poems.random(req.query) || {})));
+app.get('/api/poems/full', wrap((req, res) => res.json(poems.status())));
+app.post('/api/poems/full', wrap((req, res) => res.json(poems.startFullDownload())));
+
 app.get('/api/extensions', (req, res) => res.json(extList()));
 
 app.post('/api/skills/preview', wrap(async (req, res) => res.json(await extensions.previewSkillImport(req.body || {}))));

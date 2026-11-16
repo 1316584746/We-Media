@@ -411,6 +411,36 @@ async function waitDone(id, timeoutMs = 180000) {
     await api('DELETE', `/api/projects/${talk.id}`);
   }
 
+  // 古诗词库：检索、按朝代 / 作者 / 合集筛选、选中后自动填充用的数据
+  {
+    const get = async (p) => (await api('GET', p)).json;
+    const fc = await get('/api/poems/facets');
+    ok(fc.all >= 15000 && fc.total === fc.all, `诗词库：内置精选库 ${fc.all} 首`);
+    ok(['唐', '宋', '先秦', '清'].every((d) => fc.dynasties.some((x) => x.name === d && x.count > 0)) && fc.tags.some((t) => t.name === '小学必背' && t.count >= 50), '诗词库：朝代和合集（小学必背等）都有数据');
+    const s1 = await get(`/api/poems?q=${encodeURIComponent('静夜思')}`);
+    ok(s1.items[0]?.title === '静夜思' && s1.items[0].author === '李白' && s1.items[0].dynasty === '唐' && s1.items[0].text.startsWith('床前明月光，疑是地上霜'), '诗词库：搜诗名，名篇排第一，带完整正文');
+    const s2 = await get(`/api/poems?q=${encodeURIComponent('床前明月光疑是地上霜')}`);
+    ok(s2.items.some((i) => i.title === '静夜思'), '诗词库：按诗句搜（不用打标点）');
+    const s3 = await get(`/api/poems?author=${encodeURIComponent('李白')}&limit=100`);
+    ok(s3.total >= 50 && s3.items.every((i) => i.author === '李白' && i.dynasty === '唐'), `诗词库：按作者筛选（李白 ${s3.total} 首）`);
+    const s4 = await get(`/api/poems?dynasty=${encodeURIComponent('宋')}&kind=ci&q=${encodeURIComponent('水调歌头')}`);
+    ok(s4.items.some((i) => i.author === '苏轼' && i.kind === 'ci' && i.text.includes('明月几时有')) && s4.items.every((i) => i.dynasty === '宋' && i.kind === 'ci'), '诗词库：朝代 + 词牌组合搜索');
+    const s5 = await get(`/api/poems?tag=${encodeURIComponent('小学必背')}&limit=100`);
+    ok(s5.total >= 50 && ['咏鹅', '春晓', '登鹳雀楼', '小池'].every((t) => s5.items.some((i) => i.title === t)) && s5.items.every((i) => i.tags.includes('小学必背')), `诗词库：小学必背合集 ${s5.total} 首`);
+    const p1 = await get(`/api/poems?limit=10`);
+    const p2 = await get(`/api/poems?limit=10&offset=10`);
+    ok(p1.items.length === 10 && p2.items.length === 10 && p1.items[0].id !== p2.items[0].id, '诗词库：分页');
+    const au = await get(`/api/poems/authors?aq=${encodeURIComponent('苏')}`);
+    ok(au.some((a) => a.name === '苏轼' && a.count > 50) && au.every((a) => a.name.includes('苏')), '诗词库：作者名搜索（按篇数从多到少）');
+    const f2 = await get(`/api/poems/facets?dynasty=${encodeURIComponent('宋')}`);
+    ok(f2.total > 1000 && f2.total < f2.all && f2.tags.every((t) => t.count > 0), '诗词库：筛选项的数量跟着当前条件变化');
+    const rd = await get(`/api/poems/random?dynasty=${encodeURIComponent('唐')}`);
+    ok(rd.title && rd.dynasty === '唐' && rd.lines <= 16, '诗词库：随机一首');
+    ok((await get('/api/poems?q=zzzzqqq')).total === 0, '诗词库：没有结果时返回空');
+    const fs0 = await get('/api/poems/full');
+    ok(fs0.full === false && ['idle', 'running', 'done', 'error'].includes(fs0.state), `诗词库：完整库下载状态 ${fs0.state}`);
+  }
+
   console.log(failed ? `\n${failed} 项失败` : '\n全部通过');
   process.exit(failed ? 1 : 0);
 })().catch((e) => {
