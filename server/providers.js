@@ -118,15 +118,34 @@ function videoSpec(cfg) {
       timeoutMs: 15 * 60 * 1000,
     };
   }
-  // ark：火山方舟 Seedance
+  // ark / ark_i2v：火山方舟 Seedance（ark_i2v = 以插画为首帧的图生视频，Seedance 1.0 Pro Fast 约 0.09 元/秒）
   const base = trimSlash(cfg.baseUrl) || 'https://ark.cn-beijing.volces.com';
+  const submit =
+    cfg.mode === 'ark_i2v'
+      ? {
+          method: 'POST',
+          url: `${base}/api/v3/contents/generations/tasks`,
+          headers: { Authorization: 'Bearer {{apiKey}}' },
+          body: {
+            model: '{{model}}',
+            content: [
+              { type: 'text', text: '{{prompt}}' },
+              { type: 'image_url', role: 'first_frame', image_url: { url: '{{imageData}}' } },
+            ],
+            resolution: '{{resolutionLower}}',
+            ratio: 'adaptive',
+            duration: '{{duration}}',
+            watermark: false,
+          },
+        }
+      : {
+          method: 'POST',
+          url: `${base}/api/v3/contents/generations/tasks`,
+          headers: { Authorization: 'Bearer {{apiKey}}' },
+          body: { model: '{{model}}', content: [{ type: 'text', text: '{{prompt}} --ratio {{ratio}} --dur {{duration}}' }] },
+        };
   return {
-    submit: {
-      method: 'POST',
-      url: `${base}/api/v3/contents/generations/tasks`,
-      headers: { Authorization: 'Bearer {{apiKey}}' },
-      body: { model: '{{model}}', content: [{ type: 'text', text: '{{prompt}} --ratio {{ratio}} --dur {{duration}}' }] },
-    },
+    submit,
     taskIdPath: 'id',
     poll: { method: 'GET', url: `${base}/api/v3/contents/generations/tasks/{{taskId}}`, headers: { Authorization: 'Bearer {{apiKey}}' } },
     statusPath: 'status',
@@ -359,6 +378,7 @@ function videoVars(cfg, render, prompt, { duration, imageFile } = {}) {
     prompt,
     imageData,
     resolution: cfg.resolution || '720P',
+    resolutionLower: String(cfg.resolution || '720P').toLowerCase(),
     duration: want,
     ratio: portrait ? '9:16' : '16:9',
     size: portrait ? '1080*1920' : '1920*1080',

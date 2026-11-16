@@ -15,7 +15,7 @@ function setByPath(obj, p, v) {
 
 // 切换模式时，如果模型/音色框是空的或还是别家的默认值，就自动换成该模式的默认值
 const PRESETS = {
-  'video.mode': { field: 'video.model', map: { dashscope_i2v: 'wan2.7-i2v', openai: 'sora-2', ark: 'doubao-seedance-1-0-lite-t2v-250428', dashscope: 'wan2.2-t2v-plus' } },
+  'video.mode': { field: 'video.model', map: { dashscope_i2v: 'wan2.7-i2v', ark_i2v: 'doubao-seedance-1-0-pro-fast-251015', openai: 'sora-2', ark: 'doubao-seedance-1-0-lite-t2v-250428', dashscope: 'wan2.2-t2v-plus' } },
   'image.mode': { field: 'image.model', map: { dashscope: 'qwen-image-2.0' } },
   'tts.mode': { field: 'tts.model', map: { dashscope: 'qwen3-tts-flash', openai: 'tts-1' } },
 };
@@ -119,7 +119,7 @@ const PANES = `
     <div class="field"><label>API Key</label><input name="video.apiKey" type="password" autocomplete="off" /></div>
     <div class="field"><label>模型 / 接入点 ID</label><input name="video.model" list="videoModels" /></div>
     <div class="field"><label>清晰度（影响费用）</label>
-      <select name="video.resolution"><option value="720P">720P（推荐，便宜）</option><option value="1080P">1080P</option></select>
+      <select name="video.resolution"><option value="480P">480P（最便宜；仅火山方舟）</option><option value="720P">720P（推荐，便宜）</option><option value="1080P">1080P</option></select>
     </div>
   </div>
   <div class="row2">

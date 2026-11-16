@@ -36,7 +36,7 @@ const DEFAULTS = {
     custom: null,
   },
   video: {
-    // render.visual = i2v 用 dashscope_i2v；= video 用 dashscope(文生视频) | ark | openai；也可 custom | mock
+    // render.visual = i2v 用 dashscope_i2v | ark_i2v(火山方舟图生视频，最便宜)；= video 用 dashscope(文生视频) | ark | openai；也可 custom | mock
     mode: 'mock',
     apiKey: '',
     model: 'wan2.7-i2v',

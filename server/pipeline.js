@@ -545,10 +545,10 @@ async function runJob(job) {
   });
   persist(job);
 
-  if (visualMode === 'i2v' && !['dashscope_i2v', 'custom', 'mock'].includes(settings.video.mode)) {
+  if (visualMode === 'i2v' && !['dashscope_i2v', 'ark_i2v', 'custom', 'mock'].includes(settings.video.mode)) {
     job.status = 'error';
     job.stage = '失败';
-    job.error = '画面方式选了「图生视频」，但设置里「视频生成」的模式不是百炼图生视频 / 自定义 / mock，请到「设置」里修改';
+    job.error = '画面方式选了「图生视频」，但设置里「视频生成」的模式不是百炼图生视频 / 火山方舟图生视频 / 自定义 / mock，请到「设置」里修改';
     persist(job);
     return;
   }
@@ -620,7 +620,7 @@ async function runJob(job) {
         if (visualMode === 'i2v') {
           await getImage(scene);
           const audioDur = await getAudio(scene);
-          duration = clamp(Math.ceil(audioDur + tail), 2, 15); // 视频长度≈旁白长度，不浪费
+          duration = clamp(Math.ceil(audioDur + tail), 2, settings.video.mode === 'ark_i2v' ? 12 : 15); // 视频长度≈旁白长度，不浪费（Seedance 1.0 单段最长 12 秒）
           imageFile = path.join(sdir, 'image.png');
           prompt = `${scene.motion || tpl.defaultMotion}。${tpl.keepStyle}`;
         }

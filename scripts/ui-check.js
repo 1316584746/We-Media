@@ -406,6 +406,15 @@ const ok = (c, m) => {
   await shot('ui-settings-video-cost');
   await setVal('[name="video.resolution"]', '1080P');
   ok(await js(`document.querySelector('[data-cost="video"]').textContent.includes('1 元 / 秒')`), '切到 1080P：费用卡片实时变成 1 元/秒');
+  await setVal('[name="video.mode"]', 'ark_i2v');
+  await setVal('[name="video.model"]', 'doubao-seedance-1-0-pro-fast-251015');
+  await setVal('[name="video.resolution"]', '720P');
+  ok(await js(`!!document.querySelector('[name="video.mode"] [value="ark_i2v"]') && document.querySelector('[data-cost="video"]').textContent.includes('0.09 元 / 秒') && document.querySelector('[data-cost="video"]').textContent.includes('2.70 元')`), '视频选火山方舟图生视频（Pro Fast）720P：显示约 0.09 元/秒，30 秒约 2.7 元');
+  await setVal('[name="video.resolution"]', '480P');
+  ok(await js(`document.querySelector('[data-cost="video"]').textContent.includes('0.04 元 / 秒')`), '切到 480P：约 0.04 元/秒');
+  await setVal('[name="video.mode"]', 'dashscope_i2v');
+  await setVal('[name="video.model"]', 'wan2.7-i2v');
+  await setVal('[name="video.resolution"]', '1080P');
   await setVal('[name="tts.mode"]', 'edge');
   ok(await js(`document.querySelector('[data-cost="tts"]').classList.contains('cost-free') && document.querySelector('[data-badge="tts"]').textContent === '免费'`), '配音选 Edge：卡片和徽标都显示免费');
   ok(await js(`!document.querySelector('#costAll')`), '设置页没有「费用一览」');

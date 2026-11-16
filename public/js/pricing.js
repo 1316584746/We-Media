@@ -21,6 +21,13 @@ const VIDEO = {
   'wan2.7-t2v': { '720P': 0.6, '1080P': 1 },
   'wan2.2-t2v-plus': { '480P': 0.14, '1080P': 0.7, note: '没有 720P 档，只有 480P / 1080P' },
 };
+// 火山方舟 Seedance：官方按 token 计费（元/百万 token × 宽×高×帧率×秒数 ÷ 1024），这里按 16:9、24 帧折算成每秒价（估算）
+const ARK = {
+  'doubao-seedance-1-0-pro-fast-251015': { '480P': 0.04, '720P': 0.09, '1080P': 0.2, note: 'Seedance 1.0 Pro Fast：4.2 元/百万 token，没有声音，支持文生视频和首帧图生视频，单段 2~12 秒' },
+  'doubao-seedance-1-0-lite-t2v-250428': { '480P': 0.1, '720P': 0.216, '1080P': 0.49, note: 'Seedance 1.0 lite：10 元/百万 token，仅文生视频' },
+  'doubao-seedance-1-0-lite-i2v-250428': { '480P': 0.1, '720P': 0.216, '1080P': 0.49, note: 'Seedance 1.0 lite：10 元/百万 token，图生视频' },
+  'doubao-seedance-2-0-mini-260615': { '480P': 0.23, '720P': 0.5, note: 'Seedance 2.0 mini：23 元/百万 token，可带声音和参考图，不支持 1080P' },
+};
 // 文生图：元/张
 const IMAGE = {
   'qwen-image-2.0': { price: 0.2 },
@@ -58,7 +65,8 @@ export const MODE_LABEL = {
     dashscope_i2v: `${TAG.paid}阿里百炼 万相2.7 图生视频，0.6 元/秒起（配合「图生视频」）`,
     dashscope: `${TAG.paid}阿里百炼 万相 文生视频，0.14 元/秒起`,
     openai: `${TAG.dead}OpenAI Sora，官方已于 2026-09-24 关闭 API`,
-    ark: `${TAG.paid}火山方舟 Seedance，约 0.2 元/秒`,
+    ark_i2v: `${TAG.paid}火山方舟 Seedance 图生视频，最便宜约 0.09 元/秒（配合「图生视频」，推荐）`,
+    ark: `${TAG.paid}火山方舟 Seedance 文生视频，约 0.2 元/秒`,
     custom: `${TAG.vary}自定义请求模板`,
   },
 };
@@ -137,12 +145,28 @@ export function describe(block, cfg) {
     };
   }
   if (cfg.mode === 'custom') return { kind: 'vary', head: '取决于你接入的服务商', lines: ['自定义请求模板，费用由对应服务商决定。'] };
-  if (cfg.mode === 'ark') {
+  if (cfg.mode === 'ark' || cfg.mode === 'ark_i2v') {
+    const a = ARK[model];
+    if (!a) {
+      return {
+        kind: 'vary',
+        head: '价格见火山方舟价格页',
+        lines: [`「${model || '未填写'}」不在内置价格表里，请查看火山方舟价格页。`, '按 token 计费，token 数 ≈ 宽 × 高 × 帧率 × 秒数 ÷ 1024，所以分辨率、时长越大越贵；只对成功生成的视频计费。', '最便宜的是 doubao-seedance-1-0-pro-fast-251015（720P 约 0.09 元/秒）。'],
+      };
+    }
+    const res = ['480P', '720P', '1080P'].includes(cfg.resolution) ? cfg.resolution : '720P';
+    const price = a[res] ?? a['720P'];
+    const usedRes = a[res] != null ? res : '720P';
     return {
       kind: 'paid',
-      head: '10 元 / 百万 token（Seedance 1.0 lite）',
-      lines: ['按 token 计费，token 数 ≈ 宽 × 高 × 帧率 × 秒数 ÷ 1024，所以分辨率、时长越大越贵。', '免费额度：新用户有一定的免费 token（在线推理），具体以方舟控制台为准。', '720P、24 帧、5 秒的片段约 10.8 万 token ≈ 1.1 元，折合约 0.2 元/秒。'],
-      sample: `${SAMPLE.seconds} 秒视频：约 ${yuan(0.216 * SAMPLE.seconds)}（720P 估算）`,
+      head: `约 ${price} 元 / 秒（${usedRes}，按 token 估算）`,
+      lines: [
+        `全部档位：${['480P', '720P', '1080P'].filter((r) => a[r] != null).map((r) => `${r} ${a[r]} 元/秒`).join('，')}`,
+        a.note,
+        '免费额度：新用户有一定的免费 token（在线推理），具体以方舟控制台为准。',
+        '只对成功生成的视频计费，失败不收费；实际 token 以返回的用量为准。',
+      ],
+      sample: `${SAMPLE.seconds} 秒视频：约 ${yuan(price * SAMPLE.seconds)}（${usedRes}）`,
     };
   }
   // 百炼万相
@@ -180,7 +204,9 @@ function totals() {
   const base = imgs + llm;
   return [
     { name: '插画 + 镜头推拉（画面不动）', note: `${SAMPLE.scenes} 张图${'，配音用 Edge 免费'}`, cost: base, withTts: base + tts },
-    { name: '图生视频 720P（推荐，真动画）', note: `${SAMPLE.scenes} 张图 + ${SAMPLE.seconds} 秒视频`, cost: base + 0.6 * SAMPLE.seconds, withTts: base + 0.6 * SAMPLE.seconds + tts },
+    { name: '图生视频 480P·火山方舟 Seedance Pro Fast（最省）', note: `${SAMPLE.scenes} 张图 + ${SAMPLE.seconds} 秒视频`, cost: base + ARK['doubao-seedance-1-0-pro-fast-251015']['480P'] * SAMPLE.seconds, withTts: base + ARK['doubao-seedance-1-0-pro-fast-251015']['480P'] * SAMPLE.seconds + tts },
+    { name: '图生视频 720P·火山方舟 Seedance Pro Fast（推荐）', note: `${SAMPLE.scenes} 张图 + ${SAMPLE.seconds} 秒视频`, cost: base + ARK['doubao-seedance-1-0-pro-fast-251015']['720P'] * SAMPLE.seconds, withTts: base + ARK['doubao-seedance-1-0-pro-fast-251015']['720P'] * SAMPLE.seconds + tts },
+    { name: '图生视频 720P·百炼万相 2.7', note: `${SAMPLE.scenes} 张图 + ${SAMPLE.seconds} 秒视频`, cost: base + 0.6 * SAMPLE.seconds, withTts: base + 0.6 * SAMPLE.seconds + tts },
     { name: '图生视频 1080P', note: `${SAMPLE.scenes} 张图 + ${SAMPLE.seconds} 秒视频`, cost: base + 1 * SAMPLE.seconds, withTts: base + 1 * SAMPLE.seconds + tts },
     { name: '纯文生视频 480P（wan2.2-t2v-plus）', note: `${SAMPLE.seconds} 秒视频，不画图，角色一致性较差`, cost: llm + 0.14 * SAMPLE.seconds, withTts: llm + 0.14 * SAMPLE.seconds + tts },
   ];
@@ -198,6 +224,7 @@ export function overviewHtml(esc) {
     ['视频生成', 'mock', 'test', '免费', '占位，只用于测试'],
     ['视频生成', '万相2.7 图生视频', 'paid', '720P 0.6 / 1080P 1 元/秒', '无免费额度'],
     ['视频生成', '万相 wan2.2 文生视频', 'paid', '480P 0.14 / 1080P 0.7 元/秒', '无免费额度'],
+    ['视频生成', '火山方舟 Seedance 1.0 Pro Fast 图生视频', 'paid', '480P 约 0.04 / 720P 约 0.09 元/秒', '最便宜，没有声音；新用户有免费 token'],
     ['视频生成', '火山方舟 Seedance lite', 'paid', '约 0.2 元/秒（720P）', '新用户有免费 token'],
     ['视频生成', 'OpenAI Sora', 'dead', '已停用', '2026-09-24 关闭 API'],
   ];
@@ -255,7 +282,12 @@ function sceneTexts(script, split) {
 
 /** 每秒单价；null = 价格表里没有 */
 function videoPerSec(cfg) {
-  if (cfg.mode === 'ark') return 0.216;
+  if (cfg.mode === 'ark' || cfg.mode === 'ark_i2v') {
+    const a = ARK[String(cfg.model || '').trim()];
+    if (!a) return cfg.mode === 'ark' ? 0.216 : null;
+    const r = ['480P', '720P', '1080P'].includes(cfg.resolution) ? cfg.resolution : '720P';
+    return a[r] ?? a['720P'];
+  }
   const p = VIDEO[String(cfg.model || '').trim()];
   if (!p) return null;
   const res = cfg.resolution === '1080P' ? '1080P' : '720P';
